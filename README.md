@@ -1,8 +1,67 @@
-# Докрутка объявлений
+# Докрутка объявления
 
-## Задачи на текущий спринт (до `23.10`)
+Веб-сервис подготовки объявлений о недвижимости для Авито, ЦИАН и Telegram.
 
-1. Согласовать модель данных
-2. Выбрать подход и сервисы для текста и фото
-3. Сформировать первичный API контракт
-4. Рабочий прототип фронта
+## Запуск
+
+Нужны Git и запущенный Docker с Docker Compose v2 или новее.
+
+```sh
+git clone https://github.com/ta4ilka69/fine-tuning-of-advertising.git
+cd fine-tuning-of-advertising
+docker compose up --build -d --wait
+```
+
+Приложение доступно на [localhost:8088](http://localhost:8088).
+
+Все команды Docker Compose выполняются из корня репозитория.
+
+## Управление
+
+Состояние контейнеров:
+
+```sh
+docker compose ps
+```
+
+Логи:
+
+```sh
+docker compose logs -f
+```
+
+Остановка:
+
+```sh
+docker compose down
+```
+
+Для запуска на другом порту:
+
+```sh
+WEB_PORT=8089 docker compose up --build -d --wait
+```
+
+## Разработка фронтенда
+
+Нужны Node.js 24 и npm.
+
+```sh
+cd frontend
+npm ci
+npm run dev
+```
+
+Сервер разработки доступен на [localhost:5173](http://localhost:5173).
+Запросы `/api/` проксируются через `http://127.0.0.1:8088`.
+Другой адрес задаётся при запуске:
+
+```sh
+API_PROXY_TARGET=http://127.0.0.1:8089 npm run dev
+```
+
+Сборка:
+
+```sh
+npm run build
+```
