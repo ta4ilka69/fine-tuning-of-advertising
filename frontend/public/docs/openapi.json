@@ -439,7 +439,8 @@
                       "photos": [],
                       "latestGeneration": null,
                       "createdAt": "2026-10-21T12:00:00Z",
-                      "updatedAt": "2026-10-21T12:00:00Z"
+                      "updatedAt": "2026-10-21T12:00:00Z",
+                      "lastSuccessfulGeneration": null
                     }
                   }
                 }
@@ -516,6 +517,113 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Listing"
+                },
+                "examples": {
+                  "failedRetryWithPreviousResult": {
+                    "summary": "Повторный запуск не удался, предыдущий успешный результат доступен",
+                    "value": {
+                      "id": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                      "version": 4,
+                      "data": {
+                        "deal": {
+                          "type": "sale",
+                          "price": {
+                            "amount": "9800000",
+                            "currency": "RUB"
+                          }
+                        },
+                        "property": {
+                          "type": "flat",
+                          "rooms": 2,
+                          "totalArea": 54
+                        },
+                        "location": {
+                          "address": "Санкт-Петербург, Лесной проспект, 10"
+                        }
+                      },
+                      "photos": [
+                        {
+                          "id": "34b5feac-b144-489c-92d0-f8c621e94f3f",
+                          "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                          "fileName": "room.heic",
+                          "mimeType": "image/heic",
+                          "sizeBytes": 3200000,
+                          "position": 0,
+                          "status": "ready",
+                          "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/content",
+                          "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/thumbnail",
+                          "error": null
+                        }
+                      ],
+                      "latestGeneration": {
+                        "id": "8ce589a3-9f18-431d-80db-f013504f1947",
+                        "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                        "sourceVersion": 4,
+                        "channelIds": [
+                          "c356513a-7633-4fb5-bd6c-f908d83c136e",
+                          "ae249257-b465-44ee-8f00-f598de20f69b"
+                        ],
+                        "status": "failed",
+                        "createdAt": "2026-10-21T12:06:00Z",
+                        "completedAt": "2026-10-21T12:06:30Z",
+                        "result": null,
+                        "error": {
+                          "type": "about:blank",
+                          "title": "Не удалось подготовить результат",
+                          "status": 504,
+                          "code": "GENERATION_TIMEOUT",
+                          "detail": "Превышено время ожидания",
+                          "requestId": "b7064c09-52c9-4459-af95-5796e62cb5c1"
+                        }
+                      },
+                      "lastSuccessfulGeneration": {
+                        "id": "56b8ff15-6ce3-49f3-9b4d-0af54afc69de",
+                        "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                        "sourceVersion": 4,
+                        "channelIds": [
+                          "c356513a-7633-4fb5-bd6c-f908d83c136e",
+                          "ae249257-b465-44ee-8f00-f598de20f69b"
+                        ],
+                        "status": "succeeded",
+                        "createdAt": "2026-10-21T12:05:00Z",
+                        "completedAt": "2026-10-21T12:05:18Z",
+                        "result": {
+                          "channelResults": [
+                            {
+                              "channelId": "c356513a-7633-4fb5-bd6c-f908d83c136e",
+                              "channelRevision": 1,
+                              "title": "Двухкомнатная квартира 54 м² на Лесном проспекте",
+                              "text": "Продаётся двухкомнатная квартира площадью 54 м². Адрес: Санкт-Петербург, Лесной проспект, 10. Цена — 9 800 000 ₽."
+                            },
+                            {
+                              "channelId": "ae249257-b465-44ee-8f00-f598de20f69b",
+                              "channelRevision": 2,
+                              "title": "54 м² на Лесном проспекте",
+                              "text": "Санкт-Петербург, Лесной проспект, 10. В продаже двухкомнатная квартира площадью 54 м² за 9 800 000 ₽."
+                            }
+                          ],
+                          "assessment": {
+                            "score": 68,
+                            "reasons": [
+                              "Указаны цена, площадь и число комнат",
+                              "Есть точный адрес объекта",
+                              "Не указаны состояние квартиры и этаж, поэтому описание пока неполное"
+                            ]
+                          },
+                          "photoRecommendations": [
+                            {
+                              "photoId": "34b5feac-b144-489c-92d0-f8c621e94f3f",
+                              "rank": 1,
+                              "reason": "Единственный загруженный снимок показывает комнату; его можно использовать первым"
+                            }
+                          ]
+                        },
+                        "error": null
+                      },
+                      "createdAt": "2026-10-21T12:00:00Z",
+                      "updatedAt": "2026-10-21T12:04:00Z"
+                    }
+                  }
                 }
               }
             }
@@ -533,7 +641,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Возвращает фото и последний созданный запуск, включая активный. sourceVersion позволяет отличить старый результат от текущих данных.",
+        "description": "Возвращает исходные данные, фото, последний созданный запуск latestGeneration и последний успешный запуск lastSuccessfulGeneration. Незавершённый или неудачный повторный запуск не скрывает предыдущий успешный результат, в том числе после перезагрузки страницы. Актуальность успешного результата определяется сравнением его sourceVersion с version объявления.",
         "parameters": [
           {
             "$ref": "#/components/parameters/id"
@@ -554,30 +662,65 @@
                 "schema": {
                   "$ref": "#/components/schemas/Listing"
                 },
-                "example": {
-                  "id": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
-                  "version": 2,
-                  "data": {
-                    "deal": {
-                      "type": "sale",
-                      "price": {
-                        "amount": "9800000",
-                        "currency": "RUB"
-                      }
-                    },
-                    "property": {
-                      "type": "flat",
-                      "rooms": 2,
-                      "totalArea": 54
-                    },
-                    "location": {
-                      "address": "Санкт-Петербург, Лесной проспект, 10"
+                "examples": {
+                  "changed": {
+                    "summary": "Данные изменены, версия увеличена с 1 до 2",
+                    "value": {
+                      "id": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                      "version": 2,
+                      "data": {
+                        "deal": {
+                          "type": "sale",
+                          "price": {
+                            "amount": "9800000",
+                            "currency": "RUB"
+                          }
+                        },
+                        "property": {
+                          "type": "flat",
+                          "rooms": 2,
+                          "totalArea": 54
+                        },
+                        "location": {
+                          "address": "Санкт-Петербург, Лесной проспект, 10"
+                        }
+                      },
+                      "photos": [],
+                      "latestGeneration": null,
+                      "createdAt": "2026-10-21T12:00:00Z",
+                      "updatedAt": "2026-10-21T12:01:00Z",
+                      "lastSuccessfulGeneration": null
                     }
                   },
-                  "photos": [],
-                  "latestGeneration": null,
-                  "createdAt": "2026-10-21T12:00:00Z",
-                  "updatedAt": "2026-10-21T12:01:00Z"
+                  "unchanged": {
+                    "summary": "Данные не изменились, версия 2 и updatedAt сохранены",
+                    "value": {
+                      "id": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                      "version": 2,
+                      "data": {
+                        "deal": {
+                          "type": "sale",
+                          "price": {
+                            "amount": "9800000",
+                            "currency": "RUB"
+                          }
+                        },
+                        "property": {
+                          "type": "flat",
+                          "rooms": 2,
+                          "totalArea": 54
+                        },
+                        "location": {
+                          "address": "Санкт-Петербург, Лесной проспект, 10"
+                        }
+                      },
+                      "photos": [],
+                      "latestGeneration": null,
+                      "createdAt": "2026-10-21T12:00:00Z",
+                      "updatedAt": "2026-10-21T12:01:00Z",
+                      "lastSuccessfulGeneration": null
+                    }
+                  }
                 }
               }
             }
@@ -610,7 +753,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Заменяет data целиком. Успех увеличивает version. Неполные данные допустимы; неверные типы и неприменимые непустые поля отклоняются. Пока запуск queued/running, возвращается 409 LISTING_BUSY. Проверка версии и запись атомарны.",
+        "description": "Заменяет data целиком. Сначала проверяет expectedVersion; устаревшая версия возвращает 409 даже при неизменённых данных. Во время queued/running возвращается 409 LISTING_BUSY. После этих проверок сравнивает переданный data с сохранённым: при одинаковых значениях возвращает 200 с тем же объявлением, version и updatedAt не изменяются. Порядок ключей объектов при сравнении не учитывается; порядок элементов массивов учитывается. Только фактическое изменение data увеличивает version на 1 и обновляет updatedAt. Неполные данные допустимы; неверные типы и неприменимые непустые поля отклоняются. Проверка версии, сравнение и запись атомарны.",
         "parameters": [
           {
             "$ref": "#/components/parameters/Origin"
@@ -626,25 +769,53 @@
               "schema": {
                 "$ref": "#/components/schemas/UpdateListing"
               },
-              "example": {
-                "data": {
-                  "deal": {
-                    "type": "sale",
-                    "price": {
-                      "amount": "9800000",
-                      "currency": "RUB"
-                    }
-                  },
-                  "property": {
-                    "type": "flat",
-                    "rooms": 2,
-                    "totalArea": 54
-                  },
-                  "location": {
-                    "address": "Санкт-Петербург, Лесной проспект, 10"
+              "examples": {
+                "changed": {
+                  "summary": "Изменить данные черновика версии 1",
+                  "value": {
+                    "data": {
+                      "deal": {
+                        "type": "sale",
+                        "price": {
+                          "amount": "9800000",
+                          "currency": "RUB"
+                        }
+                      },
+                      "property": {
+                        "type": "flat",
+                        "rooms": 2,
+                        "totalArea": 54
+                      },
+                      "location": {
+                        "address": "Санкт-Петербург, Лесной проспект, 10"
+                      }
+                    },
+                    "expectedVersion": 1
                   }
                 },
-                "expectedVersion": 1
+                "unchanged": {
+                  "summary": "Сохранить те же данные объявления версии 2",
+                  "value": {
+                    "data": {
+                      "deal": {
+                        "type": "sale",
+                        "price": {
+                          "amount": "9800000",
+                          "currency": "RUB"
+                        }
+                      },
+                      "property": {
+                        "type": "flat",
+                        "rooms": 2,
+                        "totalArea": 54
+                      },
+                      "location": {
+                        "address": "Санкт-Петербург, Лесной проспект, 10"
+                      }
+                    },
+                    "expectedVersion": 2
+                  }
+                }
               }
             }
           }
@@ -3370,7 +3541,19 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Последний созданный запуск этого объявления независимо от его состояния; null, если запусков ещё не было."
+          },
+          "lastSuccessfulGeneration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SucceededGeneration"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Последний успешно завершённый запуск этого объявления; null, если успешных запусков ещё не было. Новый запуск в состоянии queued, running или failed не очищает это поле. Результат сохраняется после редактирования данных; его актуальность определяется сравнением sourceVersion с version объявления."
           },
           "createdAt": {
             "type": "string",
@@ -3388,6 +3571,7 @@
           "data",
           "photos",
           "latestGeneration",
+          "lastSuccessfulGeneration",
           "createdAt",
           "updatedAt"
         ]
@@ -3479,7 +3663,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "sourceVersion последнего успешного запуска (lastSuccessfulGeneration); null, если успешных запусков ещё не было. Ошибка нового запуска не очищает это значение."
           },
           "createdAt": {
             "type": "string",
