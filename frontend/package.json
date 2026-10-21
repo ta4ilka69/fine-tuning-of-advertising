@@ -12,7 +12,9 @@
     "preview": "vite preview --host 127.0.0.1",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc -b",
-    "check": "npm run lint && npm run typecheck"
+    "check": "npm run lint && npm run typecheck",
+    "predev": "node scripts/prepare-swagger.mjs",
+    "prebuild": "node scripts/prepare-swagger.mjs"
   },
   "dependencies": {
     "@mantine/core": "9.7.3",
@@ -30,8 +32,12 @@
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "0.5.7",
     "globals": "17.13.0",
+    "swagger-ui-dist": "5.34.0",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.0",
     "vite": "8.3.4"
+  },
+  "scarfSettings": {
+    "enabled": false
   }
 }

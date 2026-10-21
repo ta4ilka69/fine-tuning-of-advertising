@@ -21,6 +21,9 @@ docker compose up --build -d --wait
 
 Приложение доступно на [localhost:8088](http://localhost:8088).
 
+Swagger UI доступен на [localhost:8088/docs/](http://localhost:8088/docs/).
+Контракт OpenAPI: [localhost:8088/docs/openapi.json](http://localhost:8088/docs/openapi.json).
+
 Все команды Docker Compose выполняются из корня репозитория.
 
 ## Управление
@@ -60,6 +63,7 @@ npm run dev
 ```
 
 Сервер разработки доступен на [localhost:5173](http://localhost:5173).
+Документация API: [localhost:5173/docs/](http://localhost:5173/docs/).
 Запросы `/api/` проксируются через `http://127.0.0.1:8088`.
 Другой адрес задаётся при запуске:
 

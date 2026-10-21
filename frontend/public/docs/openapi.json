@@ -1,0 +1,4095 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Докрутка объявления API",
+    "version": "0.1.0-draft",
+    "description": "Подготовка объявлений о недвижимости для Авито, ЦИАН и Telegram."
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Аккаунт"
+    },
+    {
+      "name": "Объявления"
+    },
+    {
+      "name": "Фотографии"
+    },
+    {
+      "name": "Площадки"
+    },
+    {
+      "name": "Генерация"
+    },
+    {
+      "name": "Администрирование"
+    }
+  ],
+  "security": [
+    {
+      "sessionCookie": []
+    }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "operationId": "register",
+        "summary": "Зарегистрироваться",
+        "tags": [
+          "Аккаунт"
+        ],
+        "responses": {
+          "201": {
+            "description": "Успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                },
+                "examples": {
+                  "example1": {
+                    "summary": "Регистрация с автоматическим входом",
+                    "value": {
+                      "user": {
+                        "id": "9a07b31d-ac15-495c-bb91-e3756fe40bcc",
+                        "login": "agent_demo",
+                        "role": "agent"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Непрозрачный session, HttpOnly; SameSite=Lax; Path=/api/v1; без Domain; Secure на HTTPS. Идентификатор меняется при входе и регистрации."
+              },
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "415": {
+            "$ref": "#/components/responses/415"
+          },
+          "422": {
+            "$ref": "#/components/responses/422"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Создаёт обычного пользователя с ролью agent и открывает сессию. Пароль и его хеш не возвращаются.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Браузер устанавливает автоматически. Сервер требует точное совпадение scheme/host/port с доверенным публичным origin; отсутствующий, null или чужой Origin отклоняется. Не доверять произвольному Host/X-Forwarded-Host.",
+            "example": "http://localhost:8088"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Credentials"
+              },
+              "examples": {
+                "example1": {
+                  "summary": "Регистрация с автоматическим входом",
+                  "value": {
+                    "login": "agent_demo",
+                    "password": "<пароль пользователя>"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "login",
+        "summary": "Войти",
+        "tags": [
+          "Аккаунт"
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Непрозрачный session, HttpOnly; SameSite=Lax; Path=/api/v1; без Domain; Secure на HTTPS. Идентификатор меняется при входе и регистрации."
+              },
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "description": "Неверный логин или пароль",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Неверный логин или пароль",
+                  "status": 401,
+                  "code": "INVALID_CREDENTIALS",
+                  "requestId": "a6cdd08a-a252-48fa-a6c5-73f485bc494e"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "415": {
+            "$ref": "#/components/responses/415"
+          },
+          "422": {
+            "$ref": "#/components/responses/422"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "401 INVALID_CREDENTIALS не раскрывает существование login.",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "summary": "Выйти",
+        "tags": [
+          "Аккаунт"
+        ],
+        "responses": {
+          "204": {
+            "description": "Успешно"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Идемпотентно завершает сессию и удаляет cookie с тем же Path. При отсутствии сессии также 204. Origin проверяется.",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "operationId": "getCurrentUser",
+        "summary": "Текущий пользователь",
+        "tags": [
+          "Аккаунт"
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/channels": {
+      "get": {
+        "operationId": "listChannels",
+        "summary": "Доступные площадки",
+        "tags": [
+          "Площадки"
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Channel"
+                      }
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Ответ без systemPrompt и checklist. ID не зашиты во фронтенд."
+      }
+    },
+    "/listings": {
+      "get": {
+        "operationId": "listListings",
+        "summary": "Свои объявления",
+        "tags": [
+          "Объявления"
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "422": {
+            "$ref": "#/components/responses/422"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Только свои записи; сортировка createdAt DESC, id DESC. nextCursor=null — конец. При изменении фильтра курсор сбрасывается.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Поиск подстроки адреса без учёта регистра"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Начало периода createdAt включительно"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Конец периода createdAt исключительно; to должен быть позже from"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Непрозрачный курсор того же фильтра"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "createListing",
+        "summary": "Создать черновик",
+        "tags": [
+          "Объявления"
+        ],
+        "responses": {
+          "201": {
+            "description": "Успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Listing"
+                },
+                "examples": {
+                  "example2": {
+                    "summary": "Создание пустого черновика",
+                    "value": {
+                      "id": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                      "version": 1,
+                      "data": {},
+                      "photos": [],
+                      "latestGeneration": null,
+                      "createdAt": "2026-10-21T12:00:00Z",
+                      "updatedAt": "2026-10-21T12:00:00Z",
+                      "lastSuccessfulGeneration": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "415": {
+            "$ref": "#/components/responses/415"
+          },
+          "422": {
+            "$ref": "#/components/responses/422"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "data={} допустим. ownerId определяется сессией, начальная version=1.",
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Браузер устанавливает автоматически. Сервер требует точное совпадение scheme/host/port с доверенным публичным origin; отсутствующий, null или чужой Origin отклоняется. Не доверять произвольному Host/X-Forwarded-Host.",
+            "example": "http://localhost:8088"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateListing"
+              },
+              "examples": {
+                "example2": {
+                  "summary": "Создание пустого черновика",
+                  "value": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/listings/{id}": {
+      "get": {
+        "operationId": "getListing",
+        "summary": "Открыть своё объявление",
+        "tags": [
+          "Объявления"
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Listing"
+                },
+                "examples": {
+                  "failedRetryWithPreviousResult": {
+                    "summary": "Повторный запуск не удался, предыдущий успешный результат доступен",
+                    "value": {
+                      "id": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                      "version": 4,
+                      "data": {
+                        "deal": {
+                          "type": "sale",
+                          "price": {
+                            "amount": "9800000",
+                            "currency": "RUB"
+                          }
+                        },
+                        "property": {
+                          "type": "flat",
+                          "rooms": 2,
+                          "totalArea": 54
+                        },
+                        "location": {
+                          "address": "Санкт-Петербург, Лесной проспект, 10"
+                        }
+                      },
+                      "photos": [
+                        {
+                          "id": "34b5feac-b144-489c-92d0-f8c621e94f3f",
+                          "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                          "fileName": "room.heic",
+                          "mimeType": "image/heic",
+                          "sizeBytes": 3200000,
+                          "position": 0,
+                          "status": "ready",
+                          "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/content",
+                          "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/thumbnail",
+                          "error": null
+                        }
+                      ],
+                      "latestGeneration": {
+                        "id": "8ce589a3-9f18-431d-80db-f013504f1947",
+                        "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                        "sourceVersion": 4,
+                        "channelIds": [
+                          "c356513a-7633-4fb5-bd6c-f908d83c136e",
+                          "ae249257-b465-44ee-8f00-f598de20f69b"
+                        ],
+                        "status": "failed",
+                        "createdAt": "2026-10-21T12:06:00Z",
+                        "completedAt": "2026-10-21T12:06:30Z",
+                        "result": null,
+                        "error": {
+                          "type": "about:blank",
+                          "title": "Не удалось подготовить результат",
+                          "status": 504,
+                          "code": "GENERATION_TIMEOUT",
+                          "detail": "Превышено время ожидания",
+                          "requestId": "b7064c09-52c9-4459-af95-5796e62cb5c1"
+                        }
+                      },
+                      "lastSuccessfulGeneration": {
+                        "id": "56b8ff15-6ce3-49f3-9b4d-0af54afc69de",
+                        "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                        "sourceVersion": 4,
+                        "channelIds": [
+                          "c356513a-7633-4fb5-bd6c-f908d83c136e",
+                          "ae249257-b465-44ee-8f00-f598de20f69b"
+                        ],
+                        "status": "succeeded",
+                        "createdAt": "2026-10-21T12:05:00Z",
+                        "completedAt": "2026-10-21T12:05:18Z",
+                        "result": {
+                          "channelResults": [
+                            {
+                              "channelId": "c356513a-7633-4fb5-bd6c-f908d83c136e",
+                              "channelRevision": 1,
+                              "title": "Двухкомнатная квартира 54 м² на Лесном проспекте",
+                              "text": "Продаётся двухкомнатная квартира площадью 54 м². Адрес: Санкт-Петербург, Лесной проспект, 10. Цена — 9 800 000 ₽."
+                            },
+                            {
+                              "channelId": "ae249257-b465-44ee-8f00-f598de20f69b",
+                              "channelRevision": 2,
+                              "title": "54 м² на Лесном проспекте",
+                              "text": "Санкт-Петербург, Лесной проспект, 10. В продаже двухкомнатная квартира площадью 54 м² за 9 800 000 ₽."
+                            }
+                          ],
+                          "assessment": {
+                            "score": 68,
+                            "reasons": [
+                              "Указаны цена, площадь и число комнат",
+                              "Есть точный адрес объекта",
+                              "Не указаны состояние квартиры и этаж, поэтому описание пока неполное"
+                            ]
+                          },
+                          "photoRecommendations": [
+                            {
+                              "photoId": "34b5feac-b144-489c-92d0-f8c621e94f3f",
+                              "rank": 1,
+                              "reason": "Единственный загруженный снимок показывает комнату; его можно использовать первым"
+                            }
+                          ]
+                        },
+                        "error": null
+                      },
+                      "createdAt": "2026-10-21T12:00:00Z",
+                      "updatedAt": "2026-10-21T12:04:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Возвращает исходные данные, фото, последний созданный запуск latestGeneration и последний успешный запуск lastSuccessfulGeneration. Незавершённый или неудачный повторный запуск не скрывает предыдущий успешный результат, в том числе после перезагрузки страницы. Актуальность успешного результата определяется сравнением его sourceVersion с version объявления.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
+        ]
+      },
+      "put": {
+        "operationId": "updateListing",
+        "summary": "Обновить данные объявления",
+        "tags": [
+          "Объявления"
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Listing"
+                },
+                "examples": {
+                  "changed": {
+                    "summary": "Данные изменены, версия увеличена с 1 до 2",
+                    "value": {
+                      "id": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                      "version": 2,
+                      "data": {
+                        "deal": {
+                          "type": "sale",
+                          "price": {
+                            "amount": "9800000",
+                            "currency": "RUB"
+                          }
+                        },
+                        "property": {
+                          "type": "flat",
+                          "rooms": 2,
+                          "totalArea": 54
+                        },
+                        "location": {
+                          "address": "Санкт-Петербург, Лесной проспект, 10"
+                        }
+                      },
+                      "photos": [],
+                      "latestGeneration": null,
+                      "createdAt": "2026-10-21T12:00:00Z",
+                      "updatedAt": "2026-10-21T12:01:00Z",
+                      "lastSuccessfulGeneration": null
+                    }
+                  },
+                  "unchanged": {
+                    "summary": "Данные не изменились, версия 2 и updatedAt сохранены",
+                    "value": {
+                      "id": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                      "version": 2,
+                      "data": {
+                        "deal": {
+                          "type": "sale",
+                          "price": {
+                            "amount": "9800000",
+                            "currency": "RUB"
+                          }
+                        },
+                        "property": {
+                          "type": "flat",
+                          "rooms": 2,
+                          "totalArea": 54
+                        },
+                        "location": {
+                          "address": "Санкт-Петербург, Лесной проспект, 10"
+                        }
+                      },
+                      "photos": [],
+                      "latestGeneration": null,
+                      "createdAt": "2026-10-21T12:00:00Z",
+                      "updatedAt": "2026-10-21T12:01:00Z",
+                      "lastSuccessfulGeneration": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "415": {
+            "$ref": "#/components/responses/415"
+          },
+          "422": {
+            "$ref": "#/components/responses/422"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Заменяет data целиком. Сначала проверяет expectedVersion; устаревшая версия возвращает 409 даже при неизменённых данных. Во время queued/running возвращается 409 LISTING_BUSY. После этих проверок сравнивает переданный data с сохранённым: при одинаковых значениях возвращает 200 с тем же объявлением, version и updatedAt не изменяются. Порядок ключей объектов при сравнении не учитывается; порядок элементов массивов учитывается. Только фактическое изменение data увеличивает version на 1 и обновляет updatedAt. Неполные данные допустимы; неверные типы и неприменимые непустые поля отклоняются. Проверка версии, сравнение и запись атомарны.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateListing"
+              },
+              "examples": {
+                "changed": {
+                  "summary": "Изменить данные черновика версии 1",
+                  "value": {
+                    "data": {
+                      "deal": {
+                        "type": "sale",
+                        "price": {
+                          "amount": "9800000",
+                          "currency": "RUB"
+                        }
+                      },
+                      "property": {
+                        "type": "flat",
+                        "rooms": 2,
+                        "totalArea": 54
+                      },
+                      "location": {
+                        "address": "Санкт-Петербург, Лесной проспект, 10"
+                      }
+                    },
+                    "expectedVersion": 1
+                  }
+                },
+                "unchanged": {
+                  "summary": "Сохранить те же данные объявления версии 2",
+                  "value": {
+                    "data": {
+                      "deal": {
+                        "type": "sale",
+                        "price": {
+                          "amount": "9800000",
+                          "currency": "RUB"
+                        }
+                      },
+                      "property": {
+                        "type": "flat",
+                        "rooms": 2,
+                        "totalArea": 54
+                      },
+                      "location": {
+                        "address": "Санкт-Петербург, Лесной проспект, 10"
+                      }
+                    },
+                    "expectedVersion": 2
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteListing",
+        "summary": "Удалить своё объявление",
+        "tags": [
+          "Объявления"
+        ],
+        "responses": {
+          "204": {
+            "description": "Успешно"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "422": {
+            "$ref": "#/components/responses/422"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Удаляет доступ к объявлению, фото и генерациям. 409 для старой версии или queued/running. Пользовательское подтверждение выполняет фронтенд.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/ExpectedVersion"
+          }
+        ]
+      }
+    },
+    "/listings/{id}/photos": {
+      "post": {
+        "operationId": "uploadPhoto",
+        "summary": "Загрузить фотографию",
+        "tags": [
+          "Фотографии"
+        ],
+        "responses": {
+          "201": {
+            "description": "Успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoMutation"
+                },
+                "examples": {
+                  "example6": {
+                    "summary": "Загрузка HEIC с последующей обработкой на сервере",
+                    "value": {
+                      "version": 4,
+                      "photo": {
+                        "id": "34b5feac-b144-489c-92d0-f8c621e94f3f",
+                        "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                        "fileName": "room.heic",
+                        "mimeType": "image/heic",
+                        "sizeBytes": 3200000,
+                        "position": 0,
+                        "status": "processing",
+                        "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/content",
+                        "thumbnailUrl": null,
+                        "error": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "413": {
+            "$ref": "#/components/responses/413"
+          },
+          "415": {
+            "$ref": "#/components/responses/415"
+          },
+          "422": {
+            "$ref": "#/components/responses/422"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Один файл за запрос. Проверка лимита 20 и изменение version атомарны. Загрузки клиента последовательные, каждая использует version предыдущего ответа. processing/ready/failed обновляются в GET объявления. Переход статуса обработки не меняет version, поскольку исходный файл не изменяется. При активном запуске 409. Лимит файла относится к байтам файла, не к multipart-обрамлению.",
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Браузер устанавливает автоматически. Сервер требует точное совпадение scheme/host/port с доверенным публичным origin; отсутствующий, null или чужой Origin отклоняется. Не доверять произвольному Host/X-Forwarded-Host.",
+            "example": "http://localhost:8088"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoUpload"
+              },
+              "encoding": {
+                "file": {
+                  "contentType": "image/jpeg, image/png, image/heic"
+                }
+              },
+              "examples": {
+                "example6": {
+                  "summary": "Загрузка HEIC с последующей обработкой на сервере",
+                  "value": {
+                    "expectedVersion": 3,
+                    "file": "<байты HEIC>"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/listings/{id}/photos/{photoId}": {
+      "delete": {
+        "operationId": "deletePhoto",
+        "summary": "Удалить фотографию",
+        "tags": [
+          "Фотографии"
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "422": {
+            "$ref": "#/components/responses/422"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Возвращает новую version; использует проверку владельца и принадлежности фото объявлению. Во время запуска 409. Удаление увеличивает version.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/photoId"
+          },
+          {
+            "$ref": "#/components/parameters/ExpectedVersion"
+          }
+        ]
+      }
+    },
+    "/listings/{id}/photos/{photoId}/content": {
+      "get": {
+        "operationId": "getPhotoContent",
+        "summary": "Получить исходную фотографию",
+        "tags": [
+          "Фотографии"
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/heic": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Только владелец объявления. Превью требует status=ready; иначе 409 PHOTO_NOT_READY. Исходник доступен после загрузки. Cache-Control: private, no-store.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/photoId"
+          }
+        ]
+      }
+    },
+    "/listings/{id}/photos/{photoId}/thumbnail": {
+      "get": {
+        "operationId": "getPhotoThumbnail",
+        "summary": "Получить превью фотографии",
+        "tags": [
+          "Фотографии"
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Только владелец объявления. Превью требует status=ready; иначе 409 PHOTO_NOT_READY. Исходник доступен после загрузки. Cache-Control: private, no-store.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/photoId"
+          }
+        ]
+      }
+    },
+    "/listings/{id}/validate": {
+      "post": {
+        "operationId": "validateListing",
+        "summary": "Проверить перед генерацией",
+        "tags": [
+          "Объявления"
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationReport"
+                },
+                "examples": {
+                  "example3": {
+                    "summary": "Проверка пустого черновика; сокращённый пример ошибок",
+                    "value": {
+                      "version": 1,
+                      "canGenerate": false,
+                      "errors": [
+                        {
+                          "code": "REQUIRED",
+                          "field": "/deal/type",
+                          "message": "Выберите тип сделки"
+                        },
+                        {
+                          "code": "REQUIRED",
+                          "field": "/location/address",
+                          "message": "Укажите адрес"
+                        }
+                      ],
+                      "warnings": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "415": {
+            "$ref": "#/components/responses/415"
+          },
+          "422": {
+            "$ref": "#/components/responses/422"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Ничего не изменяет. 200 с errors/warnings; canGenerate=true только при пустых errors. Проверяет ReadyListingData и минимум одно фото; все прикреплённые фото должны быть ready. Расхождения площадей и этажности — warnings. При запуске проверка повторяется атомарно.",
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Браузер устанавливает автоматически. Сервер требует точное совпадение scheme/host/port с доверенным публичным origin; отсутствующий, null или чужой Origin отклоняется. Не доверять произвольному Host/X-Forwarded-Host.",
+            "example": "http://localhost:8088"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedVersion"
+              },
+              "examples": {
+                "example3": {
+                  "summary": "Проверка пустого черновика; сокращённый пример ошибок",
+                  "value": {
+                    "expectedVersion": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/listings/{id}/generations": {
+      "post": {
+        "operationId": "startGeneration",
+        "summary": "Подготовить тексты, оценку и фото",
+        "tags": [
+          "Генерация"
+        ],
+        "responses": {
+          "202": {
+            "description": "Успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Generation"
+                },
+                "examples": {
+                  "example4": {
+                    "summary": "Запуск для двух площадок",
+                    "value": {
+                      "id": "56b8ff15-6ce3-49f3-9b4d-0af54afc69de",
+                      "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                      "sourceVersion": 4,
+                      "channelIds": [
+                        "c356513a-7633-4fb5-bd6c-f908d83c136e",
+                        "ae249257-b465-44ee-8f00-f598de20f69b"
+                      ],
+                      "status": "queued",
+                      "createdAt": "2026-10-21T12:05:00Z",
+                      "completedAt": null,
+                      "result": null,
+                      "error": null
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "format": "uri-reference"
+                },
+                "description": "Путь к GET созданного запуска"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "description": "Конфликт версии, занятость объявления или login/code недоступен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "example5": {
+                    "summary": "Попытка запуска со старой версией",
+                    "value": {
+                      "type": "about:blank",
+                      "title": "Данные изменились",
+                      "status": 409,
+                      "detail": "Обновите объявление перед запуском",
+                      "code": "VERSION_CONFLICT",
+                      "currentVersion": 4,
+                      "requestId": "e3b614ec-87d1-4f10-8f83-1099151b273c"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "$ref": "#/components/responses/415"
+          },
+          "422": {
+            "$ref": "#/components/responses/422"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Непустой уникальный набор доступных channelIds. Сохраняется неизменяемый снимок данных, фото и ревизий каналов; sourceVersion=expectedVersion. Новый запуск не меняет Listing.version. Один активный запуск на объявление. Для нового запуска ошибки данных дают 422 с fieldErrors. Повтор Idempotency-Key возвращает 202 и прежний запуск. Результат ожидается до 30 секунд с приёма, включая очередь; при невозможности принять — 429 с Retry-After. По истечении срока запуск failed с GENERATION_TIMEOUT; поздний ответ не переводит его в succeeded. Частичный результат не считается успешным.",
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Браузер устанавливает автоматически. Сервер требует точное совпадение scheme/host/port с доверенным публичным origin; отсутствующий, null или чужой Origin отклоняется. Не доверять произвольному Host/X-Forwarded-Host.",
+            "example": "http://localhost:8088"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Ключ одного намерения запуска. Область: пользователь и объявление; хранение минимум 24 часа с приёма. Тот же ключ и тело возвращают прежний запуск, даже если он завершился; другое тело с тем же ключом — 409 IDEMPOTENCY_CONFLICT. Проверка повтора предшествует проверке текущей версии. Новая попытка после ошибки — новый ключ.",
+            "example": "d780ebda-52d2-4c46-b37a-4fc184d5ed02"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartGeneration"
+              },
+              "examples": {
+                "example4": {
+                  "summary": "Запуск для двух площадок",
+                  "value": {
+                    "expectedVersion": 4,
+                    "channelIds": [
+                      "c356513a-7633-4fb5-bd6c-f908d83c136e",
+                      "ae249257-b465-44ee-8f00-f598de20f69b"
+                    ]
+                  }
+                },
+                "example5": {
+                  "summary": "Попытка запуска со старой версией",
+                  "value": {
+                    "expectedVersion": 3,
+                    "channelIds": [
+                      "c356513a-7633-4fb5-bd6c-f908d83c136e"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/listings/{id}/generations/{generationId}": {
+      "get": {
+        "operationId": "getGeneration",
+        "summary": "Состояние и результат запуска",
+        "tags": [
+          "Генерация"
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Generation"
+                },
+                "examples": {
+                  "example7": {
+                    "summary": "Полный результат для двух площадок и одной фотографии",
+                    "value": {
+                      "id": "56b8ff15-6ce3-49f3-9b4d-0af54afc69de",
+                      "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                      "sourceVersion": 4,
+                      "channelIds": [
+                        "c356513a-7633-4fb5-bd6c-f908d83c136e",
+                        "ae249257-b465-44ee-8f00-f598de20f69b"
+                      ],
+                      "status": "succeeded",
+                      "createdAt": "2026-10-21T12:05:00Z",
+                      "completedAt": "2026-10-21T12:05:18Z",
+                      "result": {
+                        "channelResults": [
+                          {
+                            "channelId": "c356513a-7633-4fb5-bd6c-f908d83c136e",
+                            "channelRevision": 1,
+                            "title": "Двухкомнатная квартира 54 м² на Лесном проспекте",
+                            "text": "Продаётся двухкомнатная квартира площадью 54 м². Адрес: Санкт-Петербург, Лесной проспект, 10. Цена — 9 800 000 ₽."
+                          },
+                          {
+                            "channelId": "ae249257-b465-44ee-8f00-f598de20f69b",
+                            "channelRevision": 2,
+                            "title": "54 м² на Лесном проспекте",
+                            "text": "Санкт-Петербург, Лесной проспект, 10. В продаже двухкомнатная квартира площадью 54 м² за 9 800 000 ₽."
+                          }
+                        ],
+                        "assessment": {
+                          "score": 68,
+                          "reasons": [
+                            "Указаны цена, площадь и число комнат",
+                            "Есть точный адрес объекта",
+                            "Не указаны состояние квартиры и этаж, поэтому описание пока неполное"
+                          ]
+                        },
+                        "photoRecommendations": [
+                          {
+                            "photoId": "34b5feac-b144-489c-92d0-f8c621e94f3f",
+                            "rank": 1,
+                            "reason": "Единственный загруженный снимок показывает комнату; его можно использовать первым"
+                          }
+                        ]
+                      },
+                      "error": null
+                    }
+                  },
+                  "example8": {
+                    "summary": "Альтернативное завершение того же запуска с ошибкой",
+                    "value": {
+                      "id": "56b8ff15-6ce3-49f3-9b4d-0af54afc69de",
+                      "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                      "sourceVersion": 4,
+                      "channelIds": [
+                        "c356513a-7633-4fb5-bd6c-f908d83c136e",
+                        "ae249257-b465-44ee-8f00-f598de20f69b"
+                      ],
+                      "status": "failed",
+                      "createdAt": "2026-10-21T12:05:00Z",
+                      "completedAt": "2026-10-21T12:05:30Z",
+                      "result": null,
+                      "error": {
+                        "type": "about:blank",
+                        "title": "Не удалось подготовить результат",
+                        "status": 504,
+                        "code": "GENERATION_TIMEOUT",
+                        "detail": "Превышено время ожидания",
+                        "requestId": "b7064c09-52c9-4459-af95-5796e62cb5c1"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Рекомендуемый опрос раз в 2 секунды с остановкой в терминальном состоянии или при уходе со страницы. Состояние failed возвращается как ресурс с HTTP 200; HTTP-ошибка относится к получению ресурса.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/generationId"
+          }
+        ]
+      }
+    },
+    "/admin/channels": {
+      "get": {
+        "operationId": "listAdminChannels",
+        "summary": "Конфигурации площадок",
+        "tags": [
+          "Администрирование"
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AdminChannel"
+                      }
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Только admin. Ответ содержит systemPrompt и checklist; Cache-Control: no-store."
+      },
+      "post": {
+        "operationId": "createChannel",
+        "summary": "Создать площадку",
+        "tags": [
+          "Администрирование"
+        ],
+        "responses": {
+          "201": {
+            "description": "Успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminChannel"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "415": {
+            "$ref": "#/components/responses/415"
+          },
+          "422": {
+            "$ref": "#/components/responses/422"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Только admin. code уникален. checklist — содержательные текстовые правила с уникальными id. Начальная revision=1.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminChannelWrite"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/channels/{id}": {
+      "put": {
+        "operationId": "updateChannel",
+        "summary": "Обновить конфигурацию площадки",
+        "tags": [
+          "Администрирование"
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminChannel"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "415": {
+            "$ref": "#/components/responses/415"
+          },
+          "422": {
+            "$ref": "#/components/responses/422"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        },
+        "description": "Обновление всей конфигурации с expectedRevision. Revision увеличивается атомарно. Изменение не влияет на уже запущенную генерацию, использующую сохранённую редакцию.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminChannelUpdate"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "login": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "agent",
+              "admin"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "login",
+          "role"
+        ]
+      },
+      "Credentials": {
+        "type": "object",
+        "properties": {
+          "login": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 32,
+            "pattern": "^[A-Za-z0-9_.-]+$",
+            "description": "Логин от 3 до 32 символов; регистр незначим, сервер сохраняет нижний регистр."
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "writeOnly": true,
+            "description": "Пароль от 12 до 128 символов; не обрезается и не нормализуется."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "login",
+          "password"
+        ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "login": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "login",
+          "password"
+        ]
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "user"
+        ]
+      },
+      "Money": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]{1,2})?$",
+            "description": "Десятичная сумма; для price должна быть больше нуля"
+          },
+          "currency": {
+            "const": "RUB",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "amount",
+          "currency"
+        ],
+        "examples": [
+          {
+            "amount": "9800000",
+            "currency": "RUB"
+          }
+        ]
+      },
+      "PositiveMoney": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Money"
+          },
+          {
+            "properties": {
+              "amount": {
+                "not": {
+                  "pattern": "^0(?:\\.0{1,2})?$"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Deposit": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "none"
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "status"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": "specified"
+              },
+              "amount": {
+                "$ref": "#/components/schemas/PositiveMoney"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "status",
+              "amount"
+            ]
+          }
+        ]
+      },
+      "Commission": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "none"
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "status"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": "specified"
+              },
+              "type": {
+                "const": "fixed"
+              },
+              "amount": {
+                "$ref": "#/components/schemas/PositiveMoney"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "status",
+              "type",
+              "amount"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": "specified"
+              },
+              "type": {
+                "const": "percent"
+              },
+              "percent": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 100
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "status",
+              "type",
+              "percent"
+            ]
+          }
+        ]
+      },
+      "Utilities": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "included",
+              "excluded",
+              "partly_included",
+              "unknown"
+            ]
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "status"
+        ]
+      },
+      "Deal": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sale",
+                  "long_term_rent",
+                  "short_term_rent"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "sale — продажа; long_term_rent — длительная аренда; short_term_rent — посуточная аренда."
+          },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PositiveMoney"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Цена в RUB: полная стоимость объекта для sale, стоимость за месяц для long_term_rent, стоимость за сутки для short_term_rent. Период определяется типом сделки."
+          },
+          "deposit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Deposit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "commission": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Commission"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "utilities": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Utilities"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "Property": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "flat",
+                  "room",
+                  "house",
+                  "apartments"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rooms": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Число комнат. Для flat и apartments значение 0 означает студию, значения от 1 — число комнат. Для house указывается число от 1. Для отдельной комнаты room поле не заполняется: отсутствует или null."
+          },
+          "totalArea": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Общая площадь объекта в м². Для room — площадь самой продаваемой или сдаваемой комнаты."
+          },
+          "livingArea": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Жилая площадь в м², если известна."
+          },
+          "kitchenArea": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Площадь кухни в м², если известна."
+          }
+        },
+        "additionalProperties": false
+      },
+      "Building": {
+        "type": "object",
+        "properties": {
+          "floor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "floorsTotal": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "constructionType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "builtYear": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "elevator": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parking": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "Condition": {
+        "type": "object",
+        "properties": {
+          "renovation": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "furniture": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "uniqueItems": true
+          },
+          "appliances": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "uniqueItems": true
+          },
+          "bathroom": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "balcony": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "Transport": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "metro",
+              "bus_stop",
+              "rail_station",
+              "other"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "travelMinutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "travelMode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "walk",
+                  "car",
+                  "public_transport"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "name"
+        ]
+      },
+      "Location": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nearbyTransport": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Transport"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "Infrastructure": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "school",
+              "kindergarten",
+              "shop",
+              "park",
+              "other"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "distanceMeters": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "name"
+        ]
+      },
+      "RentalRules": {
+        "type": "object",
+        "properties": {
+          "childrenAllowed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "petsAllowed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "availableFrom": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ListingData": {
+        "type": "object",
+        "properties": {
+          "deal": {
+            "$ref": "#/components/schemas/Deal"
+          },
+          "property": {
+            "$ref": "#/components/schemas/Property"
+          },
+          "building": {
+            "$ref": "#/components/schemas/Building"
+          },
+          "condition": {
+            "$ref": "#/components/schemas/Condition"
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "infrastructure": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Infrastructure"
+            }
+          },
+          "rentalRules": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RentalRules"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "description": "Неполный черновик допустим. Отсутствие необязательного поля означает отсутствие сведений. Значение null имеет тот же смысл только для полей, чья схема допускает null. PUT заменяет data целиком: для очистки необязательного блока его исключают из data, для очистки списка передают []. Пустой список мебели означает, что ничего не отмечено, а не что мебели точно нет.",
+        "examples": [
+          {
+            "deal": {
+              "type": "sale",
+              "price": {
+                "amount": "9800000",
+                "currency": "RUB"
+              }
+            },
+            "property": {
+              "type": "flat",
+              "rooms": 2,
+              "totalArea": 54
+            },
+            "location": {
+              "address": "Санкт-Петербург, Лесной проспект, 10"
+            }
+          }
+        ]
+      },
+      "ReadyListingData": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ListingData"
+          },
+          {
+            "type": "object",
+            "required": [
+              "deal",
+              "property",
+              "location"
+            ],
+            "properties": {
+              "deal": {
+                "type": "object",
+                "required": [
+                  "type",
+                  "price"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "sale",
+                      "long_term_rent",
+                      "short_term_rent"
+                    ]
+                  },
+                  "price": {
+                    "$ref": "#/components/schemas/PositiveMoney"
+                  }
+                }
+              },
+              "property": {
+                "type": "object",
+                "required": [
+                  "type",
+                  "totalArea"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flat",
+                      "room",
+                      "house",
+                      "apartments"
+                    ]
+                  },
+                  "totalArea": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                }
+              },
+              "location": {
+                "type": "object",
+                "required": [
+                  "address"
+                ],
+                "properties": {
+                  "address": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S"
+                  }
+                }
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "deal": {
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "long_term_rent",
+                            "short_term_rent"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "deal": {
+                      "required": [
+                        "deposit",
+                        "commission",
+                        "utilities"
+                      ],
+                      "properties": {
+                        "deposit": {
+                          "$ref": "#/components/schemas/Deposit"
+                        },
+                        "commission": {
+                          "$ref": "#/components/schemas/Commission"
+                        },
+                        "utilities": {
+                          "$ref": "#/components/schemas/Utilities"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "deal": {
+                      "properties": {
+                        "type": {
+                          "const": "sale"
+                        }
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "deal": {
+                      "properties": {
+                        "deposit": {
+                          "type": "null"
+                        },
+                        "commission": {
+                          "type": "null"
+                        },
+                        "utilities": {
+                          "type": "null"
+                        }
+                      }
+                    },
+                    "rentalRules": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "property": {
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "flat",
+                            "apartments"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "property": {
+                      "required": [
+                        "rooms"
+                      ],
+                      "properties": {
+                        "rooms": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "property": {
+                      "properties": {
+                        "type": {
+                          "const": "house"
+                        }
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "property": {
+                      "required": [
+                        "rooms"
+                      ],
+                      "properties": {
+                        "rooms": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      }
+                    },
+                    "building": {
+                      "properties": {
+                        "floor": {
+                          "type": "null"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "property": {
+                      "properties": {
+                        "type": {
+                          "const": "room"
+                        }
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "property": {
+                      "properties": {
+                        "rooms": {
+                          "type": "null"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "description": "Полнота перед генерацией. Дополнительно сервер проверяет price.amount > 0 и применимость полей. Числовые противоречия площадей и этажей — предупреждения, не ошибки.",
+        "examples": [
+          {
+            "deal": {
+              "type": "sale",
+              "price": {
+                "amount": "9800000",
+                "currency": "RUB"
+              }
+            },
+            "property": {
+              "type": "flat",
+              "rooms": 2,
+              "totalArea": 54
+            },
+            "location": {
+              "address": "Санкт-Петербург, Лесной проспект, 10"
+            }
+          },
+          {
+            "deal": {
+              "type": "short_term_rent",
+              "price": {
+                "amount": "4500",
+                "currency": "RUB"
+              },
+              "deposit": {
+                "status": "specified",
+                "amount": {
+                  "amount": "5000",
+                  "currency": "RUB"
+                }
+              },
+              "commission": {
+                "status": "none"
+              },
+              "utilities": {
+                "status": "included"
+              }
+            },
+            "property": {
+              "type": "apartments",
+              "rooms": 0,
+              "totalArea": 28
+            },
+            "location": {
+              "address": "Санкт-Петербург, Невский проспект, 100"
+            }
+          }
+        ]
+      },
+      "FieldIssue": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "field": {
+            "type": "string",
+            "pattern": "^/",
+            "description": "JSON Pointer относительно Listing.data, /photos для фотографий"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "field",
+          "message"
+        ]
+      },
+      "ValidationReport": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "canGenerate": {
+            "type": "boolean"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldIssue"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldIssue"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "canGenerate",
+          "errors",
+          "warnings"
+        ]
+      },
+      "Problem": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "requestId"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri-reference"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "detail": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fieldErrors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldIssue"
+            }
+          },
+          "currentVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": true,
+        "description": "RFC 9457; стабильный code, русское сообщение. Без паролей, промптов, трассировок и сведений о чужих ресурсах."
+      },
+      "Photo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "listingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/heic"
+            ]
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 15000000
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "ready",
+              "failed"
+            ]
+          },
+          "contentUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri-reference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "thumbnailUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri-reference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Problem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "listingId",
+          "fileName",
+          "mimeType",
+          "sizeBytes",
+          "position",
+          "status",
+          "contentUrl",
+          "thumbnailUrl",
+          "error"
+        ],
+        "description": "URL проверяет сессию, не является публичным адресом. Для HEIC ready означает доступность браузерного превью и декодированного изображения. Предел 15 МБ трактуется как 15 000 000 байт.",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "ready"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "contentUrl": {
+                  "type": "string",
+                  "format": "uri-reference",
+                  "minLength": 1
+                },
+                "thumbnailUrl": {
+                  "type": "string",
+                  "format": "uri-reference",
+                  "minLength": 1
+                },
+                "error": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "processing"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "error": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "failed"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "error": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ChannelLimits": {
+        "type": "object",
+        "properties": {
+          "titleMaxLength": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "textMaxLength": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "titleMaxLength",
+          "textMaxLength"
+        ],
+        "description": "null означает отсутствие установленного предела; длина — число Unicode code points. Контракт не выдумывает лимиты площадок."
+      },
+      "Channel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "description": {
+            "type": "string"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/ChannelLimits"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "code",
+          "name",
+          "description",
+          "limits",
+          "revision"
+        ]
+      },
+      "ChecklistRule": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "text"
+        ]
+      },
+      "AdminChannelWrite": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "description": {
+            "type": "string"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/ChannelLimits"
+          },
+          "systemPrompt": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "checklist": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChecklistRule"
+            },
+            "minItems": 1
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "name",
+          "description",
+          "limits",
+          "systemPrompt",
+          "checklist"
+        ]
+      },
+      "AdminChannel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "description": {
+            "type": "string"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/ChannelLimits"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "systemPrompt": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "checklist": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChecklistRule"
+            },
+            "minItems": 1
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "code",
+          "name",
+          "description",
+          "limits",
+          "revision",
+          "systemPrompt",
+          "checklist"
+        ]
+      },
+      "AdminChannelUpdate": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "description": {
+            "type": "string"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/ChannelLimits"
+          },
+          "systemPrompt": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "checklist": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChecklistRule"
+            },
+            "minItems": 1
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "name",
+          "description",
+          "limits",
+          "systemPrompt",
+          "checklist",
+          "expectedRevision"
+        ]
+      },
+      "ChannelResult": {
+        "type": "object",
+        "properties": {
+          "channelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channelRevision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "channelId",
+          "channelRevision",
+          "title",
+          "text"
+        ]
+      },
+      "Assessment": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "minItems": 3
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "score",
+          "reasons"
+        ]
+      },
+      "PhotoRecommendation": {
+        "type": "object",
+        "properties": {
+          "photoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rank": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "photoId",
+          "rank",
+          "reason"
+        ]
+      },
+      "GenerationResult": {
+        "type": "object",
+        "properties": {
+          "channelResults": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChannelResult"
+            },
+            "minItems": 1
+          },
+          "assessment": {
+            "$ref": "#/components/schemas/Assessment"
+          },
+          "photoRecommendations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PhotoRecommendation"
+            },
+            "minItems": 1,
+            "maxItems": 3
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "channelResults",
+          "assessment",
+          "photoRecommendations"
+        ],
+        "description": "Ровно один текст для каждого выбранного channelId без дублей. Число рекомендаций = min(3, число фото снимка), photoId уникальны и принадлежат снимку, rank подряд от 1. Все факты только из исходных данных; оценка и фото общие для запуска."
+      },
+      "PendingGeneration": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "listingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "channelIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running"
+            ]
+          },
+          "completedAt": {
+            "type": "null"
+          },
+          "result": {
+            "type": "null"
+          },
+          "error": {
+            "type": "null"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "listingId",
+          "sourceVersion",
+          "channelIds",
+          "createdAt",
+          "status",
+          "completedAt",
+          "result",
+          "error"
+        ]
+      },
+      "SucceededGeneration": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "listingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "channelIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "const": "succeeded"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "result": {
+            "$ref": "#/components/schemas/GenerationResult"
+          },
+          "error": {
+            "type": "null"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "listingId",
+          "sourceVersion",
+          "channelIds",
+          "createdAt",
+          "status",
+          "completedAt",
+          "result",
+          "error"
+        ]
+      },
+      "FailedGeneration": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "listingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "channelIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "const": "failed"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "result": {
+            "type": "null"
+          },
+          "error": {
+            "$ref": "#/components/schemas/Problem"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "listingId",
+          "sourceVersion",
+          "channelIds",
+          "createdAt",
+          "status",
+          "completedAt",
+          "result",
+          "error"
+        ]
+      },
+      "Generation": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/PendingGeneration"
+          },
+          {
+            "$ref": "#/components/schemas/SucceededGeneration"
+          },
+          {
+            "$ref": "#/components/schemas/FailedGeneration"
+          }
+        ],
+        "description": "queued → running → succeeded/failed; терминальные состояния неизменяемы. sourceVersion связывает результат со снимком данных, фото и ревизий каналов. Устаревший результат не показывается как актуальный."
+      },
+      "Listing": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "data": {
+            "$ref": "#/components/schemas/ListingData"
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Photo"
+            },
+            "maxItems": 20
+          },
+          "latestGeneration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Generation"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Последний созданный запуск этого объявления независимо от его состояния; null, если запусков ещё не было."
+          },
+          "lastSuccessfulGeneration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SucceededGeneration"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Последний успешно завершённый запуск этого объявления; null, если успешных запусков ещё не было. Новый запуск в состоянии queued, running или failed не очищает это поле. Результат сохраняется после редактирования данных; его актуальность определяется сравнением sourceVersion с version объявления."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version",
+          "data",
+          "photos",
+          "latestGeneration",
+          "lastSuccessfulGeneration",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ListingSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dealType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sale",
+                  "long_term_rent",
+                  "short_term_rent"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "propertyType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "flat",
+                  "room",
+                  "house",
+                  "apartments"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PositiveMoney"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latestGenerationStatus": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "queued",
+                  "running",
+                  "succeeded",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generatedForVersion": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "sourceVersion последнего успешного запуска (lastSuccessfulGeneration); null, если успешных запусков ещё не было. Ошибка нового запуска не очищает это значение."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version",
+          "address",
+          "dealType",
+          "propertyType",
+          "price",
+          "latestGenerationStatus",
+          "generatedForVersion",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ListingPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListingSummary"
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "CreateListing": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ListingData"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "data"
+        ]
+      },
+      "UpdateListing": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ListingData"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "expectedVersion"
+        ]
+      },
+      "ExpectedVersion": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion"
+        ]
+      },
+      "StartGeneration": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "channelIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "channelIds"
+        ]
+      },
+      "PhotoUpload": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "Один JPG, PNG или HEIC, до 15 000 000 байт. MIME и успешность декодирования проверяются сервером.",
+            "x-max-size-bytes": 15000000
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "file",
+          "expectedVersion"
+        ]
+      },
+      "PhotoMutation": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "photo": {
+            "$ref": "#/components/schemas/Photo"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "photo"
+        ]
+      }
+    },
+    "responses": {
+      "400": {
+        "description": "Некорректный запрос",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "example": {
+              "type": "about:blank",
+              "title": "Некорректный запрос",
+              "status": 400,
+              "code": "INVALID_REQUEST",
+              "requestId": "a6cdd08a-a252-48fa-a6c5-73f485bc494e"
+            }
+          }
+        }
+      },
+      "401": {
+        "description": "Нет действующей сессии или неверные данные входа",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "example": {
+              "type": "about:blank",
+              "title": "Нет действующей сессии или неверные данные входа",
+              "status": 401,
+              "code": "UNAUTHENTICATED",
+              "requestId": "a6cdd08a-a252-48fa-a6c5-73f485bc494e"
+            }
+          }
+        }
+      },
+      "403": {
+        "description": "Недостаточная роль или недопустимый Origin",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "example": {
+              "type": "about:blank",
+              "title": "Недостаточная роль или недопустимый Origin",
+              "status": 403,
+              "code": "FORBIDDEN",
+              "requestId": "a6cdd08a-a252-48fa-a6c5-73f485bc494e"
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "Ресурс не найден или принадлежит другому пользователю",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "example": {
+              "type": "about:blank",
+              "title": "Ресурс не найден или принадлежит другому пользователю",
+              "status": 404,
+              "code": "NOT_FOUND",
+              "requestId": "a6cdd08a-a252-48fa-a6c5-73f485bc494e"
+            }
+          }
+        }
+      },
+      "409": {
+        "description": "Конфликт версии, занятость объявления или login/code недоступен",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "example": {
+              "type": "about:blank",
+              "title": "Конфликт версии, занятость объявления или login/code недоступен",
+              "status": 409,
+              "code": "CONFLICT",
+              "requestId": "a6cdd08a-a252-48fa-a6c5-73f485bc494e"
+            }
+          }
+        }
+      },
+      "413": {
+        "description": "Файл или тело запроса превышает предел",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "example": {
+              "type": "about:blank",
+              "title": "Файл или тело запроса превышает предел",
+              "status": 413,
+              "code": "FILE_TOO_LARGE",
+              "requestId": "a6cdd08a-a252-48fa-a6c5-73f485bc494e"
+            }
+          }
+        }
+      },
+      "415": {
+        "description": "Неподдерживаемый тип содержимого или формат файла",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "example": {
+              "type": "about:blank",
+              "title": "Неподдерживаемый тип содержимого или формат файла",
+              "status": 415,
+              "code": "UNSUPPORTED_MEDIA_TYPE",
+              "requestId": "a6cdd08a-a252-48fa-a6c5-73f485bc494e"
+            }
+          }
+        }
+      },
+      "422": {
+        "description": "Невалидные поля, неготовые фото или недоступный канал",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "example": {
+              "type": "about:blank",
+              "title": "Невалидные поля, неготовые фото или недоступный канал",
+              "status": 422,
+              "code": "VALIDATION_FAILED",
+              "requestId": "a6cdd08a-a252-48fa-a6c5-73f485bc494e",
+              "fieldErrors": [
+                {
+                  "code": "REQUIRED",
+                  "field": "/location/address",
+                  "message": "Укажите адрес"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "429": {
+        "description": "Превышен лимит запросов или нет мощности для генерации",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "example": {
+              "type": "about:blank",
+              "title": "Превышен лимит запросов или нет мощности для генерации",
+              "status": 429,
+              "code": "RATE_LIMITED",
+              "requestId": "a6cdd08a-a252-48fa-a6c5-73f485bc494e"
+            }
+          }
+        },
+        "headers": {
+          "Retry-After": {
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Число секунд до следующей попытки"
+          }
+        }
+      },
+      "500": {
+        "description": "Ошибка сервиса",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "example": {
+              "type": "about:blank",
+              "title": "Ошибка сервиса",
+              "status": 500,
+              "code": "INTERNAL_ERROR",
+              "requestId": "a6cdd08a-a252-48fa-a6c5-73f485bc494e"
+            }
+          }
+        }
+      },
+      "503": {
+        "description": "Временно недоступен сервис",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "example": {
+              "type": "about:blank",
+              "title": "Временно недоступен сервис",
+              "status": 503,
+              "code": "SERVICE_UNAVAILABLE",
+              "requestId": "a6cdd08a-a252-48fa-a6c5-73f485bc494e"
+            }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "id": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "photoId": {
+        "name": "photoId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "generationId": {
+        "name": "generationId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "Origin": {
+        "name": "Origin",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uri"
+        },
+        "description": "Браузер устанавливает автоматически. Сервер требует точное совпадение scheme/host/port с доверенным публичным origin; отсутствующий, null или чужой Origin отклоняется. Не доверять произвольному Host/X-Forwarded-Host."
+      },
+      "ExpectedVersion": {
+        "name": "expectedVersion",
+        "in": "query",
+        "required": true,
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Ключ одного намерения запуска. Область: пользователь и объявление; хранение минимум 24 часа с приёма. Тот же ключ и тело возвращают прежний запуск, даже если он завершился; другое тело с тем же ключом — 409 IDEMPOTENCY_CONFLICT. Проверка повтора предшествует проверке текущей версии. Новая попытка после ошибки — новый ключ."
+      }
+    },
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session",
+        "description": "Непрозрачный HttpOnly session cookie, SameSite=Lax, Secure для HTTPS. Пароли и токены не хранятся в localStorage."
+      }
+    }
+  }
+}
