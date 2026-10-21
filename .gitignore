@@ -12,3 +12,10 @@ test-results/
 frontend/public/docs/vendor/
 /frontend/core
 /frontend/*.core
+
+# AI resources for agent code, that are not necessary or not allowed to push in repo
+.zcodeignore
+docs/ai/
+
+# For all secrets
+*.env
