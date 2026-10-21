@@ -9,7 +9,13 @@ const destination = fileURLToPath(new URL('../public/docs/vendor/', import.meta.
 
 await mkdir(destination, { recursive: true });
 await Promise.all(
-  ['swagger-ui-bundle.js', 'swagger-ui.css', 'LICENSE', 'NOTICE'].map((file) =>
+  [
+    'swagger-ui-bundle.js',
+    'swagger-ui-bundle.js.LICENSE.txt',
+    'swagger-ui.css',
+    'LICENSE',
+    'NOTICE',
+  ].map((file) =>
     copyFile(resolve(source, file), resolve(destination, file)),
   ),
 );
