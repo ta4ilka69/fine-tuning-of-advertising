@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   plugins: [react()],
   build: {
+    manifest: true,
     rolldownOptions: {
       input: {
         app: fileURLToPath(new URL('./index.html', import.meta.url)),

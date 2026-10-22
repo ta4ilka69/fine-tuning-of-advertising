@@ -8,9 +8,10 @@
     "noEmit": true,
     "skipLibCheck": true,
     "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
     "noUnusedLocals": true,
     "types": ["node"],
     "tsBuildInfoFile": "./node_modules/.cache/tsconfig.node.tsbuildinfo"
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts", "vitest.config.ts", "playwright.config.ts", "scripts/**/*.ts"]
 }

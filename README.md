@@ -76,3 +76,7 @@ API_PROXY_TARGET=http://127.0.0.1:8089 npm run dev
 ```sh
 npm run build
 ```
+
+## Тесты
+
+[Запуск тестов и описание CI](frontend/tests/README.md).

@@ -1,0 +1,7 @@
+extends:
+  - minimal
+rules:
+  info-license: off
+  tag-description: off
+  no-unused-components: off
+  no-invalid-media-type-examples: off
