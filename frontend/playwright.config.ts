@@ -2,14 +2,9 @@ import { defineConfig, devices } from '@playwright/test';
 
 const externalURL = process.env.E2E_BASE_URL;
 
-if (process.argv.some((argument) => argument.startsWith('--update-snapshots') && argument !== '--update-snapshots=none')) {
-  if (process.platform !== 'linux' || process.arch !== 'arm64') {
-    throw new Error('Эталоны обновляются в Linux ARM64 через workflow Update screenshots.');
-  }
-}
-
 export default defineConfig({
   testDir: './tests/e2e',
+  globalSetup: './tests/e2e/global-setup.ts',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   failOnFlakyTests: Boolean(process.env.CI),
