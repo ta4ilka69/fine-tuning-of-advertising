@@ -15,7 +15,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      frontend: ${{ steps.changes.outputs.frontend }}
+      workflow: ${{ steps.changes.outputs.workflow }}
+      compose: ${{ steps.changes.outputs.compose }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: frontend/.nvmrc
+      - id: changes
+        run: node frontend/scripts/ci.ts changes
+
   frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
@@ -55,6 +75,8 @@ jobs:
           retention-days: 1
 
   workflow:
+    needs: changes
+    if: needs.changes.outputs.workflow == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -68,7 +90,8 @@ jobs:
           "$RUNNER_TEMP/actionlint"
 
   browser:
-    needs: frontend
+    needs: [changes, frontend]
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 10
     container:
@@ -104,6 +127,8 @@ jobs:
           retention-days: 14
 
   compose:
+    needs: changes
+    if: needs.changes.outputs.compose == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -124,17 +149,16 @@ jobs:
   required:
     name: Frontend required
     if: always()
-    needs: [frontend, workflow, browser, compose]
+    needs: [changes, frontend, workflow, browser, compose]
     runs-on: ubuntu-24.04
     timeout-minutes: 1
     steps:
-      - run: |
-          test "$FRONTEND" = success
-          test "$WORKFLOW" = success
-          test "$BROWSER" = success
-          test "$COMPOSE" = success
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: frontend/.nvmrc
+      - run: node frontend/scripts/ci.ts required
         env:
-          FRONTEND: ${{ needs.frontend.result }}
-          WORKFLOW: ${{ needs.workflow.result }}
-          BROWSER: ${{ needs.browser.result }}
-          COMPOSE: ${{ needs.compose.result }}
+          CI_NEEDS: ${{ toJSON(needs) }}
