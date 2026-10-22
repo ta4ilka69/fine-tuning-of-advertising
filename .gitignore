@@ -10,3 +10,5 @@ test-results/
 *.tsbuildinfo
 *.local
 frontend/public/docs/vendor/
+/frontend/core
+/frontend/*.core

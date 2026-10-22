@@ -8,3 +8,5 @@ test-results
 *.local
 *.tsbuildinfo
 public/docs/vendor
+core
+*.core
