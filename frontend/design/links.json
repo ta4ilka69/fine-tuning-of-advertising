@@ -1,0 +1,483 @@
+{
+  "title": "Докрутка объявления — UX/UI",
+  "design": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg",
+  "desktopPrototype": "https://www.figma.com/proto/sRJKjBDE8UctvKwacFGybg?node-id=18-170&starting-point-node-id=18-170",
+  "mobilePrototype": "https://www.figma.com/proto/sRJKjBDE8UctvKwacFGybg?node-id=20-897&starting-point-node-id=20-897",
+  "stateIndex": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=45-183",
+  "screens": {
+    "listDesktop": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=9-6",
+    "editorDesktop": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=9-85",
+    "resultDesktop": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=9-198",
+    "homeDesktop": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-101",
+    "loginDesktop": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-133",
+    "registerDesktop": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-163",
+    "adminListDesktop": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-194",
+    "adminSettingsDesktop": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-240",
+    "adminCreateDesktop": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-328",
+    "listMobile": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-416",
+    "editorMobile": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-483",
+    "resultMobile": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-594",
+    "homeMobile": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-667",
+    "loginMobile": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-695",
+    "registerMobile": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-722",
+    "adminListMobile": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-750",
+    "adminSettingsMobile": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-787",
+    "listEmpty": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-379",
+    "listNoResults": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-415",
+    "listFiltered": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-453",
+    "listLoading": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-504",
+    "listError": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-541",
+    "editorSaleEmpty": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-577",
+    "editorLongRentFilled": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-671",
+    "editorShortRentFilled": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-811",
+    "editorRoomFilled": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-951",
+    "editorHouseFilled": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-1063",
+    "editorApartmentsFilled": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-1176",
+    "editorLongRentExpanded": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-1289",
+    "editorErrors": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-1548",
+    "editorWarning": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-1659",
+    "editorSaving": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-1773",
+    "editorSaved": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-1885",
+    "editorSaveError": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-1999",
+    "editorConflict": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-2116",
+    "editorLocked": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-2233",
+    "editorPhotoErrors": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-2351",
+    "editorLongRentMobile": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-2465",
+    "editorShortRentMobile": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-2603",
+    "listEmptyMobile": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-2741",
+    "resultNone": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-1563",
+    "resultStale": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-1584",
+    "resultRetryQueued": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-1668",
+    "resultRetryRunning": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-1749",
+    "resultRetryFailed": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-1830",
+    "resultLoadError": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-1914",
+    "resultCopied": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-1935",
+    "resultCopyError": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2016",
+    "resultOnePhoto": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2100",
+    "resultTwoPhotos": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2160",
+    "resultCian": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2229",
+    "resultTelegram": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2307",
+    "generationQueued": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2385",
+    "generationRunning": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2404",
+    "generationFailed": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2423",
+    "generationRateLimit": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2441",
+    "generationNoChannels": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2459",
+    "generationInsufficient": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2477",
+    "generationPhotosPending": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2495",
+    "resultRetryFailedMobile": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2513",
+    "generationRunningMobile": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2592",
+    "authLoginInvalid": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1830",
+    "authLoginNetwork": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1860",
+    "authLoginSubmitting": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1890",
+    "authLoginPasswordVisible": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1917",
+    "authLoginExpired": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1944",
+    "authRegisterFieldErrors": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1974",
+    "authRegisterTaken": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2005",
+    "authRegisterSubmitting": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2036",
+    "authRegisterNetwork": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2064",
+    "adminListEmpty": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2095",
+    "adminListLoading": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2120",
+    "adminListError": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2142",
+    "adminSettingsErrors": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2167",
+    "adminSettingsSaving": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2247",
+    "adminSettingsSaved": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2327",
+    "adminSettingsError": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2410",
+    "adminSettingsConflict": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2496",
+    "adminSettingsDenied": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2582",
+    "adminSettingsRuleAdded": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2601",
+    "deleteDefault": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2694",
+    "deleteDraft": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2702",
+    "deleteDeleting": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2710",
+    "deleteError": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2718",
+    "deleteBusy": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2729",
+    "leaveUnsaved": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2740",
+    "deleteMobile": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2750",
+    "photoUploadErrors": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2758",
+    "rentValues": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2772",
+    "selectMenus": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2783",
+    "editor320": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=16-2386",
+    "result320": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=16-2497",
+    "list360": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=16-2570",
+    "register320": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=16-2637",
+    "editorTablet768": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=160-2330",
+    "photoGalleryReady": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=67-3630",
+    "photoGalleryEmpty": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=120-1163",
+    "photoGalleryProcessing": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=214-1369",
+    "photoGalleryFailed": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=218-1374",
+    "photoGallery20": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=79-3680",
+    "photoGallery320": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=233-1379",
+    "listingConflictConfirm": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=152-1171",
+    "listingLocalCopy": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=153-1174",
+    "adminConflictConfirm": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=141-1165",
+    "adminLocalCopy": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=151-1168",
+    "reviewImplementationNotes": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=247-1384"
+  },
+  "issues": {
+    "10": [
+      {
+        "screen": "listDesktop",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=9-6"
+      },
+      {
+        "screen": "editorTablet768",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=160-2330"
+      },
+      {
+        "screen": "photoGallery320",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=233-1379"
+      }
+    ],
+    "11": [
+      {
+        "screen": "authLoginExpired",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1944"
+      },
+      {
+        "screen": "authLoginNetwork",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1860"
+      },
+      {
+        "screen": "adminSettingsDenied",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2582"
+      }
+    ],
+    "12": [
+      {
+        "screen": "loginDesktop",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-133"
+      },
+      {
+        "screen": "authLoginInvalid",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1830"
+      },
+      {
+        "screen": "authLoginSubmitting",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1890"
+      },
+      {
+        "screen": "authLoginPasswordVisible",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1917"
+      }
+    ],
+    "13": [
+      {
+        "screen": "registerDesktop",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-163"
+      },
+      {
+        "screen": "authRegisterFieldErrors",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1974"
+      },
+      {
+        "screen": "authRegisterTaken",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2005"
+      },
+      {
+        "screen": "authRegisterSubmitting",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2036"
+      },
+      {
+        "screen": "authRegisterNetwork",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2064"
+      }
+    ],
+    "14": [
+      {
+        "screen": "listDesktop",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=9-6"
+      },
+      {
+        "screen": "listEmpty",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-379"
+      },
+      {
+        "screen": "listLoading",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-504"
+      },
+      {
+        "screen": "listError",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-541"
+      },
+      {
+        "screen": "listMobile",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-416"
+      }
+    ],
+    "15": [
+      {
+        "screen": "listFiltered",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-453"
+      },
+      {
+        "screen": "listNoResults",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-415"
+      }
+    ],
+    "16": [
+      {
+        "screen": "editorSaleEmpty",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-577"
+      },
+      {
+        "screen": "editorLongRentFilled",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-671"
+      },
+      {
+        "screen": "editorShortRentFilled",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-811"
+      },
+      {
+        "screen": "editorRoomFilled",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-951"
+      },
+      {
+        "screen": "editorHouseFilled",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-1063"
+      },
+      {
+        "screen": "editorApartmentsFilled",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-1176"
+      },
+      {
+        "screen": "editorTablet768",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=160-2330"
+      }
+    ],
+    "17": [
+      {
+        "screen": "editorPhotoErrors",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-2351"
+      },
+      {
+        "screen": "photoUploadErrors",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2758"
+      },
+      {
+        "screen": "photoGalleryReady",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=67-3630"
+      },
+      {
+        "screen": "photoGalleryEmpty",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=120-1163"
+      },
+      {
+        "screen": "photoGalleryProcessing",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=214-1369"
+      },
+      {
+        "screen": "photoGalleryFailed",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=218-1374"
+      },
+      {
+        "screen": "photoGallery20",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=79-3680"
+      },
+      {
+        "screen": "photoGallery320",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=233-1379"
+      }
+    ],
+    "18": [
+      {
+        "screen": "editorSaved",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-1885"
+      },
+      {
+        "screen": "editorSaveError",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-1999"
+      },
+      {
+        "screen": "editorWarning",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-1659"
+      },
+      {
+        "screen": "editorConflict",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-2116"
+      },
+      {
+        "screen": "editorLocked",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-2233"
+      },
+      {
+        "screen": "leaveUnsaved",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2740"
+      },
+      {
+        "screen": "listingConflictConfirm",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=152-1171"
+      },
+      {
+        "screen": "listingLocalCopy",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=153-1174"
+      }
+    ],
+    "19": [
+      {
+        "screen": "deleteDefault",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2694"
+      },
+      {
+        "screen": "deleteDraft",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2702"
+      },
+      {
+        "screen": "deleteDeleting",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2710"
+      },
+      {
+        "screen": "deleteError",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2718"
+      },
+      {
+        "screen": "deleteBusy",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2729"
+      },
+      {
+        "screen": "deleteMobile",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2750"
+      }
+    ],
+    "20": [
+      {
+        "screen": "generationQueued",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2385"
+      },
+      {
+        "screen": "generationRunning",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2404"
+      },
+      {
+        "screen": "generationFailed",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2423"
+      },
+      {
+        "screen": "generationRateLimit",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2441"
+      },
+      {
+        "screen": "generationNoChannels",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2459"
+      },
+      {
+        "screen": "generationInsufficient",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2477"
+      },
+      {
+        "screen": "generationPhotosPending",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2495"
+      }
+    ],
+    "21": [
+      {
+        "screen": "resultDesktop",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=9-198"
+      },
+      {
+        "screen": "resultCian",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2229"
+      },
+      {
+        "screen": "resultTelegram",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2307"
+      },
+      {
+        "screen": "resultCopied",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-1935"
+      },
+      {
+        "screen": "resultCopyError",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2016"
+      }
+    ],
+    "22": [
+      {
+        "screen": "resultStale",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-1584"
+      },
+      {
+        "screen": "resultRetryQueued",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-1668"
+      },
+      {
+        "screen": "resultRetryRunning",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-1749"
+      },
+      {
+        "screen": "resultRetryFailed",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-1830"
+      },
+      {
+        "screen": "resultOnePhoto",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2100"
+      },
+      {
+        "screen": "resultTwoPhotos",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=13-2160"
+      }
+    ],
+    "23": [
+      {
+        "screen": "adminListDesktop",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-194"
+      },
+      {
+        "screen": "adminListEmpty",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2095"
+      },
+      {
+        "screen": "adminListLoading",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2120"
+      },
+      {
+        "screen": "adminListError",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2142"
+      },
+      {
+        "screen": "adminCreateDesktop",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-328"
+      },
+      {
+        "screen": "adminSettingsDenied",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2582"
+      }
+    ],
+    "24": [
+      {
+        "screen": "adminSettingsDesktop",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-240"
+      },
+      {
+        "screen": "adminSettingsErrors",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2167"
+      },
+      {
+        "screen": "adminSettingsSaving",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2247"
+      },
+      {
+        "screen": "adminSettingsSaved",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2327"
+      },
+      {
+        "screen": "adminSettingsError",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2410"
+      },
+      {
+        "screen": "adminSettingsConflict",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2496"
+      },
+      {
+        "screen": "adminSettingsRuleAdded",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2601"
+      },
+      {
+        "screen": "adminConflictConfirm",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=141-1165"
+      },
+      {
+        "screen": "adminLocalCopy",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=151-1168"
+      }
+    ]
+  }
+}
