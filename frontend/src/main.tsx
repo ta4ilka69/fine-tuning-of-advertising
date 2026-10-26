@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@mantine/core/styles.css';
+import '@fontsource-variable/inter/wght.css';
 import { App } from './app/App';
 import './app/styles.css';
 

@@ -1,0 +1,23 @@
+.notice {
+  --notice-color: var(--app-brand);
+  background: var(--app-positive);
+}
+
+.notice[data-tone='warning'] {
+  --notice-color: var(--app-warning);
+  background: var(--app-warningBg);
+}
+
+.notice[data-tone='error'] {
+  --notice-color: var(--app-error);
+  background: var(--app-errorBg);
+}
+
+.content {
+  color: var(--notice-color);
+}
+
+.closeButton {
+  min-width: var(--app-control-height);
+  min-height: var(--app-control-height);
+}
