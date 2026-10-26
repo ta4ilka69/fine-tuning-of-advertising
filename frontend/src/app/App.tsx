@@ -1,11 +1,10 @@
-import { MantineProvider } from '@mantine/core';
 import { HomePage } from '../pages/home/HomePage';
-import { theme } from './theme';
+import { AppProvider } from './AppProvider';
 
 export function App() {
   return (
-    <MantineProvider theme={theme} defaultColorScheme="light">
+    <AppProvider>
       <HomePage />
-    </MantineProvider>
+    </AppProvider>
   );
 }

@@ -4,7 +4,7 @@ const externalURL = process.env.E2E_BASE_URL;
 
 export default defineConfig({
   testDir: './tests/e2e',
-  globalSetup: './tests/e2e/global-setup.ts',
+  globalSetup: ['./tests/e2e/global-setup.ts', './tests/e2e/build-ui-fixture.ts'],
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   failOnFlakyTests: Boolean(process.env.CI),

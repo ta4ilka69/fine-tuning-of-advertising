@@ -23,3 +23,8 @@ vi.stubGlobal('ResizeObserver', class {
   unobserve() {}
   disconnect() {}
 });
+
+Object.defineProperty(Element.prototype, 'scrollIntoView', {
+  configurable: true,
+  value: vi.fn(),
+});
