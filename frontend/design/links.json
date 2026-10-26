@@ -3,6 +3,7 @@
   "design": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg",
   "desktopPrototype": "https://www.figma.com/proto/sRJKjBDE8UctvKwacFGybg?node-id=18-170&starting-point-node-id=18-170",
   "mobilePrototype": "https://www.figma.com/proto/sRJKjBDE8UctvKwacFGybg?node-id=20-897&starting-point-node-id=20-897",
+  "mobileLoginPrototype": "https://www.figma.com/proto/sRJKjBDE8UctvKwacFGybg?node-id=326-3957&starting-point-node-id=20-897",
   "stateIndex": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=45-183",
   "screens": {
     "listDesktop": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=9-6",
@@ -110,7 +111,8 @@
     "listingLocalCopy": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=153-1174",
     "adminConflictConfirm": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=141-1165",
     "adminLocalCopy": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=151-1168",
-    "reviewImplementationNotes": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=247-1384"
+    "reviewImplementationNotes": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=247-1384",
+    "prototypeLoginMobile": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=326-3957"
   },
   "issues": {
     "10": [
@@ -157,6 +159,10 @@
       {
         "screen": "authLoginPasswordVisible",
         "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1917"
+      },
+      {
+        "screen": "prototypeLoginMobile",
+        "url": "https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=326-3957"
       }
     ],
     "13": [

@@ -1,11 +1,14 @@
 # Докрутка объявления — UX/UI
 
-Редактируемые макеты, состояния интерфейса и кликабельные прототипы веб-сервиса. Снимок от 25 октября 2026 года.
+Редактируемые макеты, состояния интерфейса и кликабельные прототипы веб-сервиса. Снимок от 26 октября 2026 года.
 
 - [Макет в Figma](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg)
 - [Основной прототип](https://www.figma.com/proto/sRJKjBDE8UctvKwacFGybg?node-id=18-170&starting-point-node-id=18-170)
 - [Мобильный прототип](https://www.figma.com/proto/sRJKjBDE8UctvKwacFGybg?node-id=20-897&starting-point-node-id=20-897)
+- [Мобильный вход](https://www.figma.com/proto/sRJKjBDE8UctvKwacFGybg?node-id=326-3957&starting-point-node-id=20-897)
 - [Индекс состояний](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=45-183)
+
+На главной «Начать работу» открывает вход. Переход к регистрации и обратно доступен внутри формы.
 
 ## Файлы
 
@@ -33,7 +36,7 @@
 | --- | --- | --- |
 | [№ 10](https://github.com/ta4ilka69/fine-tuning-of-advertising/issues/10) | Общая UI-основа | [listDesktop](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=9-6) · [editorTablet768](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=160-2330) · [photoGallery320](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=233-1379) |
 | [№ 11](https://github.com/ta4ilka69/fine-tuning-of-advertising/issues/11) | Клиент API и сессия | [authLoginExpired](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1944) · [authLoginNetwork](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1860) · [adminSettingsDenied](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2582) |
-| [№ 12](https://github.com/ta4ilka69/fine-tuning-of-advertising/issues/12) | Вход | [loginDesktop](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-133) · [authLoginInvalid](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1830) · [authLoginSubmitting](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1890) · [authLoginPasswordVisible](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1917) |
+| [№ 12](https://github.com/ta4ilka69/fine-tuning-of-advertising/issues/12) | Вход | [loginDesktop](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-133) · [authLoginInvalid](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1830) · [authLoginSubmitting](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1890) · [authLoginPasswordVisible](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1917) · [prototypeLoginMobile](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=326-3957) |
 | [№ 13](https://github.com/ta4ilka69/fine-tuning-of-advertising/issues/13) | Регистрация | [registerDesktop](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-163) · [authRegisterFieldErrors](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-1974) · [authRegisterTaken](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2005) · [authRegisterSubmitting](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2036) · [authRegisterNetwork](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=14-2064) |
 | [№ 14](https://github.com/ta4ilka69/fine-tuning-of-advertising/issues/14) | Список объявлений | [listDesktop](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=9-6) · [listEmpty](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-379) · [listLoading](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-504) · [listError](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-541) · [listMobile](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=10-416) |
 | [№ 15](https://github.com/ta4ilka69/fine-tuning-of-advertising/issues/15) | Поиск и фильтры | [listFiltered](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-453) · [listNoResults](https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg?node-id=12-415) |
