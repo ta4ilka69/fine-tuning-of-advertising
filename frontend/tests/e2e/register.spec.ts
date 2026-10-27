@@ -33,7 +33,7 @@ for (const width of [320, 390, 768, 1440]) {
     expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
     await password.press('Enter');
     await expect(page).toHaveURL(`${loginServer.url}/app`);
-    await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
     expect(loginServer.calls.find((call) => call.path.endsWith('/register'))).toMatchObject({
       body: { login: 'Agent_Demo', password: '  password 123  ' }, method: 'POST', origin: loginServer.url,
     });
@@ -60,18 +60,19 @@ test('вход ↔ регистрация, Back/Forward, перезагрузк�
   await page.getByRole('textbox', { name: /^Логин/ }).fill('agent_demo');
   await page.getByLabel('Пароль', { exact: true }).fill(' '.repeat(12));
   await page.getByRole('button', { name: 'Зарегистрироваться', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
   expect((await context.cookies()).find((cookie) => cookie.name === 'session')).toMatchObject({ httpOnly: true, path: '/api/v1', sameSite: 'Lax' });
   expect(await page.evaluate(() => document.cookie)).not.toContain('session=');
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
   expect(loginServer.calls.filter((call) => call.path.endsWith('/me')).at(-1)?.cookie).toContain('session=test-session');
   await page.goto(`${loginServer.url}/register?returnTo=https://attacker.invalid/`);
   await expect(page).toHaveURL(`${loginServer.url}/app`);
-  await page.getByRole('button', { name: 'Выйти', exact: true }).click();
+  await page.getByRole('button', { name: /Меню пользователя/ }).click();
+  await page.getByRole('menuitem', { name: 'Выйти', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'С возвращением' })).toBeVisible();
   await page.goto(`${loginServer.url}/app`);
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toHaveCount(0);
   await expect(page).toHaveURL(`${loginServer.url}/login`);
 });
 
@@ -89,7 +90,7 @@ test('занятый логин: 409 без специального кода, �
   loginServer.controls.registerError = null;
   await login.fill('another_agent');
   await page.getByRole('button', { name: 'Зарегистрироваться', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
   expect(loginServer.calls.filter((call) => call.path.endsWith('/register'))).toHaveLength(2);
 });
 
@@ -171,9 +172,9 @@ test('двойная отправка и поздний /me не отменяю�
   await expect(page.getByRole('button', { name: 'Показать пароль' })).toBeDisabled();
   expect(loginServer.calls.filter((call) => call.path.endsWith('/register'))).toHaveLength(1);
   releaseRegister();
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
   releaseMe();
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
 });
 
 test('первоначальный сбой /me не мешает регистрации', async ({ page, loginServer }) => {
@@ -183,5 +184,5 @@ test('первоначальный сбой /me не мешает регистр
   await page.getByRole('textbox', { name: /^Логин/ }).fill('agent_demo');
   await page.getByLabel('Пароль', { exact: true }).fill('test password');
   await page.getByRole('button', { name: 'Зарегистрироваться', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
 });

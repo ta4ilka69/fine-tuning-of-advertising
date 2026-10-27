@@ -21,7 +21,7 @@ function fill(login = 'Agent_Demo', password = '  password 🏠  ') {
   fireEvent.change(loginField(), { target: { value: login } });
   fireEvent.change(passwordField(), { target: { value: password } });
 }
-beforeEach(() => { vi.stubGlobal('fetch', fetchMock); });
+beforeEach(() => { vi.stubGlobal('fetch', (url: RequestInfo | URL, options?: RequestInit) => String(url).startsWith('/api/v1/listings') ? Promise.resolve(json({ items: [], nextCursor: null })) : fetchMock(url, options)); });
 afterEach(() => { window.history.replaceState(null, '', '/'); vi.unstubAllGlobals(); fetchMock.mockReset(); });
 
 test('требования показаны заранее, пустые поля не отправляются, ошибки связаны с полями', async () => {
@@ -58,7 +58,7 @@ test.each(['  password 🏠  ', ' '.repeat(12), 'е\u0301'.repeat(6), '🏠'.rep
   fetchMock.mockResolvedValueOnce(json({ user }, 201));
   fill('Agent_Demo', password);
   await userEvent.type(passwordField(), '{Enter}');
-  expect(await screen.findByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Мои объявления' })).toBeVisible();
   expect(window.location.pathname).toBe('/app');
   expect(calls()).toHaveLength(1);
   expect(JSON.parse(String(calls()[0]?.[1]?.body))).toEqual({ login: 'Agent_Demo', password });
@@ -82,7 +82,7 @@ test('занятый логин определяется по 409 и допус�
   await userEvent.clear(loginField());
   await userEvent.type(loginField(), 'another_agent');
   await userEvent.click(submit());
-  expect(await screen.findByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Мои объявления' })).toBeVisible();
   expect(calls()).toHaveLength(2);
 });
 
@@ -131,7 +131,7 @@ test.each(['network', 'invalid', 'wrong-status', 'broken-json'] as const)('сб�
   expect(screen.queryByText(/Sensitive/)).not.toBeInTheDocument();
   fetchMock.mockResolvedValueOnce(json({ user }, 201));
   await userEvent.click(submit());
-  expect(await screen.findByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Мои объявления' })).toBeVisible();
 });
 
 test('показ и скрытие пароля работают с клавиатуры', async () => {
@@ -162,7 +162,7 @@ test('два submit в одном событии создают один зап�
   expect(screen.getByRole('button', { name: 'Показать пароль' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Регистрируем…' })).toBeDisabled();
   await act(async () => { release(json({ user }, 201)); });
-  expect(await screen.findByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Мои объявления' })).toBeVisible();
 });
 
 test('сбой первоначального /me не мешает регистрации', async () => {
@@ -170,7 +170,7 @@ test('сбой первоначального /me не мешает регист
   fetchMock.mockResolvedValueOnce(json({ user }, 201));
   fill();
   await userEvent.click(submit());
-  expect(await screen.findByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Мои объявления' })).toBeVisible();
 });
 
 test('поздний /me не отменяет зарегистрированную сессию', async () => {
@@ -181,9 +181,9 @@ test('поздний /me не отменяет зарегистрированн�
   await screen.findByRole('heading', { name: 'Создать аккаунт' });
   fill();
   await userEvent.click(submit());
-  await screen.findByRole('heading', { name: 'Личный кабинет' });
+  await screen.findByRole('heading', { name: 'Мои объявления' });
   await act(async () => { release(problem(401)); });
-  expect(screen.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  expect(screen.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
 });
 
 test('авторизованный пользователь перенаправляется из /register в /app', async () => {
@@ -191,6 +191,6 @@ test('авторизованный пользователь перенаправ
   fetchMock.mockResolvedValueOnce(json({ user }));
   render(<App />);
   await waitFor(() => expect(window.location.pathname).toBe('/app'));
-  expect(await screen.findByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Мои объявления' })).toBeVisible();
   expect(calls()).toHaveLength(0);
 });

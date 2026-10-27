@@ -21,7 +21,7 @@ async function fill(login = 'a', password = 'x') {
   await userEvent.type(loginField(), login);
   await userEvent.type(passwordField(), password);
 }
-beforeEach(() => { vi.stubGlobal('fetch', fetchMock); });
+beforeEach(() => { vi.stubGlobal('fetch', (url: RequestInfo | URL, options?: RequestInit) => String(url).startsWith('/api/v1/listings') ? Promise.resolve(json({ items: [], nextCursor: null })) : fetchMock(url, options)); });
 afterEach(() => { window.history.replaceState(null, '', '/'); vi.unstubAllGlobals(); fetchMock.mockReset(); });
 
 test('пустые поля не отправляют запрос, ошибка подписана, фокус на первом поле', async () => {
@@ -44,7 +44,7 @@ test('Enter отправляет исходный пароль и коротки
   expect(loginField()).toHaveAttribute('autocomplete', 'username');
   expect(passwordField()).toHaveAttribute('autocomplete', 'current-password');
   await userEvent.type(passwordField(), '{Enter}');
-  expect(await screen.findByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Мои объявления' })).toBeVisible();
   expect(window.location.pathname).toBe('/app');
   expect(loginCalls()).toHaveLength(1);
   expect(JSON.parse(String(loginCalls()[0]?.[1]?.body))).toEqual({ login: 'a', password: '  x  ' });
@@ -107,7 +107,7 @@ test.each(['network', 'invalid'] as const)('ошибка %s позволяет �
   expect(loginCalls()).toHaveLength(1);
   fetchMock.mockResolvedValueOnce(json({ user }));
   await userEvent.click(screen.getByRole('button', { name: 'Войти' }));
-  expect(await screen.findByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Мои объявления' })).toBeVisible();
   expect(loginCalls()).toHaveLength(2);
 });
 
@@ -140,7 +140,7 @@ test('двойной submit блокируется синхронно, поля 
   expect(screen.getByRole('button', { name: 'Входим…' })).toBeDisabled();
   expect(screen.getByRole('status')).toHaveTextContent('Проверяем логин и пароль');
   await act(async () => { release(json({ user })); });
-  expect(await screen.findByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Мои объявления' })).toBeVisible();
 });
 
 test('неудачная первоначальная проверка сессии не блокирует вход', async () => {
@@ -148,7 +148,7 @@ test('неудачная первоначальная проверка сесс�
   fetchMock.mockResolvedValueOnce(json({ user }));
   await fill();
   await userEvent.click(screen.getByRole('button', { name: 'Войти' }));
-  expect(await screen.findByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Мои объявления' })).toBeVisible();
 });
 
 test('поздний /me не отменяет вход через форму', async () => {
@@ -159,9 +159,9 @@ test('поздний /me не отменяет вход через форму', 
   await screen.findByRole('heading', { name: 'С возвращением' });
   await fill();
   await userEvent.click(screen.getByRole('button', { name: 'Войти' }));
-  await screen.findByRole('heading', { name: 'Личный кабинет' });
+  await screen.findByRole('heading', { name: 'Мои объявления' });
   await act(async () => { release(problem(401)); });
-  expect(screen.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  expect(screen.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
 });
 
 test('прямой защищённый адрес не показывает кабинет гостю', async () => {
@@ -169,7 +169,7 @@ test('прямой защищённый адрес не показывает к�
   let release!: (response: Response) => void;
   fetchMock.mockReturnValueOnce(new Promise((resolve) => { release = resolve; }));
   render(<App />);
-  expect(screen.queryByText('Личный кабинет')).not.toBeInTheDocument();
+  expect(screen.queryByText('Мои объявления')).not.toBeInTheDocument();
   await act(async () => { release(problem(401)); });
   expect(await screen.findByRole('heading', { name: 'С возвращением' })).toBeVisible();
   expect(window.location.pathname).toBe('/login');
@@ -179,12 +179,21 @@ test('восстановленная сессия открывает кабин�
   window.history.replaceState(null, '', '/app');
   fetchMock.mockResolvedValueOnce(json({ user })).mockResolvedValueOnce(problem(503));
   render(<App />);
-  await screen.findByRole('heading', { name: 'Личный кабинет' });
-  await userEvent.click(screen.getByRole('button', { name: 'Выйти' }));
+  await screen.findByRole('heading', { name: 'Мои объявления' });
+  fireEvent.click(screen.getByRole('button', { name: /Меню пользователя/ }));
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Выйти' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось выйти');
-  expect(screen.getByText('agent_demo', { selector: 'strong' })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Меню пользователя: agent_demo' })).toBeVisible();
+});
+
+test('выход из восстановленной сессии открывает вход', async () => {
+  window.history.replaceState(null, '', '/app');
+  fetchMock.mockResolvedValueOnce(json({ user }));
+  render(<App />);
+  await screen.findByRole('heading', { name: 'Мои объявления' });
   fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
-  await userEvent.click(screen.getByRole('button', { name: 'Выйти' }));
+  await userEvent.click(screen.getByRole('button', { name: /Меню пользователя/ }));
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Выйти' }));
   expect(await screen.findByRole('heading', { name: 'С возвращением' })).toBeVisible();
   expect(window.location.pathname).toBe('/login');
 });
@@ -195,7 +204,7 @@ test('ошибка проверки защищённой страницы даё
   render(<App />);
   expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось проверить сессию');
   expect(screen.getByRole('link', { name: 'Войти в аккаунт' })).toHaveAttribute('href', '/login');
-  expect(screen.queryByText('Личный кабинет')).not.toBeInTheDocument();
+  expect(screen.queryByText('Мои объявления')).not.toBeInTheDocument();
 });
 
 test('главная открывает кабинет авторизованному пользователю', async () => {
@@ -204,7 +213,7 @@ test('главная открывает кабинет авторизованн�
   render(<App />);
   await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
   await userEvent.click(screen.getAllByRole('button', { name: 'Начать работу' })[0]!);
-  expect(await screen.findByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Мои объявления' })).toBeVisible();
   act(() => { navigate('/app'); navigate('/app'); });
   expect(window.location.pathname).toBe('/app');
 });

@@ -28,7 +28,7 @@ for (const width of [320, 390, 768, 1440]) {
     expect(accessibility.violations).toEqual([]);
     await page.getByLabel('Пароль', { exact: false }).press('Enter');
     await expect(page).toHaveURL(`${loginServer.url}/app`);
-    await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
     expect(loginServer.calls.find((call) => call.path.endsWith('/login'))?.body).toEqual({ login: 'a', password: '  x  ' });
     expect(await page.evaluate(() => ({ local: localStorage.length, session: sessionStorage.length }))).toEqual({ local: 0, session: 0 });
   });
@@ -44,10 +44,10 @@ test('cookie, перезагрузка, прямой адрес, Back/Forward и
   await page.getByRole('textbox', { name: /^Логин/ }).fill('agent_demo');
   await page.getByLabel('Пароль', { exact: false }).fill('x');
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
   expect((await context.cookies()).find((cookie) => cookie.name === 'session')).toMatchObject({ httpOnly: true, path: '/api/v1', sameSite: 'Lax' });
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
   expect(loginServer.calls.filter((call) => call.path.endsWith('/me')).at(-1)?.cookie).toContain('session=test-session');
   expect(await page.evaluate(() => document.cookie)).not.toContain('session=');
   await page.goto(`${loginServer.url}/login?returnTo=https://attacker.invalid/`);
@@ -57,18 +57,20 @@ test('cookie, перезагрузка, прямой адрес, Back/Forward и
   await page.getByRole('main').getByRole('button', { name: 'Начать работу' }).click();
   await expect(page).toHaveURL(`${loginServer.url}/app`);
   loginServer.controls.failLogout = true;
-  await page.getByRole('button', { name: 'Выйти', exact: true }).click();
+  await page.getByRole('button', { name: /Меню пользователя/ }).click();
+  await page.getByRole('menuitem', { name: 'Выйти', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Не удалось выйти');
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
   loginServer.controls.failLogout = false;
-  await page.getByRole('button', { name: 'Выйти', exact: true }).click();
+  await page.getByRole('button', { name: /Меню пользователя/ }).click();
+  await page.getByRole('menuitem', { name: 'Выйти', exact: true }).click();
   await expect(page).toHaveURL(`${loginServer.url}/login`);
   await page.goBack();
   await page.goForward();
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toHaveCount(0);
   await page.goto(`${loginServer.url}/app`);
   await expect(page).toHaveURL(`${loginServer.url}/login`);
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toHaveCount(0);
 });
 
 for (const [failure, message] of [
@@ -83,7 +85,7 @@ for (const [failure, message] of [
     await page.getByLabel('Пароль', { exact: false }).fill('x');
     await page.getByRole('button', { name: 'Войти', exact: true }).click();
     await expect(page.getByRole('alert')).toContainText(message);
-    await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Мои объявления' })).toHaveCount(0);
     expect(loginServer.calls.filter((call) => call.path.endsWith('/login'))).toHaveLength(1);
     await expect(page.getByRole('button', { name: 'Войти', exact: true })).toBeEnabled();
     if (failure === 422) {
@@ -108,21 +110,21 @@ test('отправка блокирует повторы и допускаетс
   await expect(page.getByRole('button', { name: 'Показать пароль' })).toBeDisabled();
   expect(loginServer.calls.filter((call) => call.path.endsWith('/login'))).toHaveLength(1);
   releaseLogin();
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
   releaseMe();
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
 });
 
 test('сбой /me на защищённом адресе оставляет доступ ко входу', async ({ page, loginServer }) => {
   loginServer.controls.meError = 503;
   await page.goto(`${loginServer.url}/app`);
   await expect(page.getByRole('alert')).toContainText('Не удалось проверить сессию');
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toHaveCount(0);
   await page.getByRole('link', { name: 'Войти в аккаунт' }).click();
   await page.getByRole('textbox', { name: /^Логин/ }).fill('a');
   await page.getByLabel('Пароль', { exact: false }).fill('x');
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
 });
 
 test('ожидание восстановления не показывает защищённые данные гостю', async ({ page, loginServer }) => {
@@ -130,7 +132,7 @@ test('ожидание восстановления не показывает з
   loginServer.controls.holdMe = new Promise((resolve) => { release = resolve; });
   await page.goto(`${loginServer.url}/app`);
   await expect(page.getByText('Проверяем сессию')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Мои объявления' })).toHaveCount(0);
   release();
   await expect(page).toHaveURL(`${loginServer.url}/login`);
 });
@@ -150,11 +152,12 @@ test('возврат из BFCache после выхода заново пров�
     await page.getByRole('textbox', { name: /^Логин/ }).fill('a');
     await page.getByLabel('Пароль', { exact: false }).fill('x');
     await page.getByRole('button', { name: 'Войти', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
     await page.getByRole('link', { name: 'Докрутка объявления', exact: true }).click();
     await page.getByRole('main').getByRole('button', { name: 'Начать работу' }).click();
-    await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
-    await page.getByRole('button', { name: 'Выйти', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
+    await page.getByRole('button', { name: /Меню пользователя/ }).click();
+  await page.getByRole('menuitem', { name: 'Выйти', exact: true }).click();
     await expect(page).toHaveURL(`${loginServer.url}/login`);
     let release!: () => void;
     loginServer.controls.holdMe = new Promise((resolve) => { release = resolve; });
@@ -162,9 +165,9 @@ test('возврат из BFCache после выхода заново пров�
     await page.goBack({ waitUntil: 'commit' });
     await expect(page.locator('html')).toHaveAttribute('data-bfcache', 'true');
     await expect(page.getByText('Проверяем сессию')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Мои объявления' })).toHaveCount(0);
     release();
     await expect(page.getByRole('heading', { name: 'С возвращением' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Мои объявления' })).toHaveCount(0);
   } finally { await browser.close(); }
 });
