@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
-export function navigate(path: '/' | '/login' | '/app', replace = false) {
+export function navigate(path: '/' | '/login' | '/register' | '/app', replace = false) {
   if (window.location.pathname === path && !window.location.search && !window.location.hash) return;
   window.history[replace ? 'replaceState' : 'pushState'](null, '', path);
   window.dispatchEvent(new PopStateEvent('popstate'));
