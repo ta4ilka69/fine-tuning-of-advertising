@@ -3,10 +3,7 @@ package com.adtune.backend.config;
 import com.adtune.backend.ai.AdGenerationClient;
 import com.adtune.backend.ai.SystemPromptBuilder;
 import com.adtune.backend.ai.openai.OpenAiAdGenerationClient;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -33,12 +30,7 @@ public class AiClientConfig {
       AiProperties properties,
       SystemPromptBuilder promptBuilder) {
     AiProperties.OpenAi openAi = properties.openai();
-    ObjectMapper wireMapper = JsonMapper.builder()
-        .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-        // Ответ OpenAI содержит много полей, которые нам не нужны (id, usage-детали,
-        // system_fingerprint и т.п.) — падать на них нельзя.
-        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-        .build();
+    ObjectMapper wireMapper = OpenAiAdGenerationClient.wireMapper();
     RestClient restClient = OpenAiAdGenerationClient.configureRestClient(
             restClientBuilder, openAi.baseUrl(), openAi.apiKey(),
             properties.timeout(), wireMapper)

@@ -7,13 +7,18 @@ import com.adtune.backend.ai.AiClientException;
 import com.adtune.backend.ai.ChannelAiInput;
 import com.adtune.backend.ai.SystemPromptBuilder;
 import com.adtune.backend.config.AiProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
@@ -35,6 +40,8 @@ public class OpenAiAdGenerationClient implements AdGenerationClient {
 
   private static final Logger log = LoggerFactory.getLogger(OpenAiAdGenerationClient.class);
   private static final String SCHEMA_NAME = "ad_generation_result";
+  private static final Set<String> ALLOWED_REASONING_EFFORTS =
+      Set.of("minimal", "low", "medium", "high");
 
   /**
    * Схема ответа модели. Ключи совпадают с JSON-представлением
@@ -108,12 +115,24 @@ public class OpenAiAdGenerationClient implements AdGenerationClient {
   private final ObjectMapper jsonMapper;
   private final JsonNode resultSchema;
 
+  /**
+   * Маппер wire-формата OpenAI: snake_case, лишние поля ответа игнорируются,
+   * null-поля запроса (например, не заданный reasoning_effort) не отправляются.
+   */
+  public static ObjectMapper wireMapper() {
+    return JsonMapper.builder()
+        .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        .serializationInclusion(JsonInclude.Include.NON_NULL)
+        .build();
+  }
+
   public OpenAiAdGenerationClient(RestClient restClient,
       AiProperties.OpenAi settings,
       SystemPromptBuilder promptBuilder,
       ObjectMapper jsonMapper) {
     this.restClient = restClient;
-    this.settings = settings;
+    this.settings = normalize(settings);
     this.promptBuilder = promptBuilder;
     this.jsonMapper = jsonMapper;
     try {
@@ -121,6 +140,24 @@ public class OpenAiAdGenerationClient implements AdGenerationClient {
     } catch (JsonProcessingException e) {
       throw new IllegalStateException("Некорректная встроенная схема ответа модели", e);
     }
+  }
+
+  /** Проверяет reasoning_effort и превращает пустое значение в null (не отправлять). */
+  private static AiProperties.OpenAi normalize(AiProperties.OpenAi settings) {
+    String effort = settings.reasoningEffort();
+    if (effort == null || effort.isBlank()) {
+      return new AiProperties.OpenAi(
+          settings.baseUrl(), settings.apiKey(), settings.model(), null);
+    }
+    String normalized = effort.trim().toLowerCase();
+    if (!ALLOWED_REASONING_EFFORTS.contains(normalized)) {
+      throw new IllegalStateException(
+          "Недопустимое значение adtune.ai.openai.reasoning-effort: '" + effort
+              + "'. Допустимо: " + String.join(", ", ALLOWED_REASONING_EFFORTS)
+              + " или пусто (не отправлять параметр).");
+    }
+    return new AiProperties.OpenAi(
+        settings.baseUrl(), settings.apiKey(), settings.model(), normalized);
   }
 
   /** Настраивает билдер RestClient под wire-формат OpenAI (snake_case, таймаут, ключ). */
@@ -164,17 +201,32 @@ public class OpenAiAdGenerationClient implements AdGenerationClient {
             new ChatMessage("system", promptBuilder.buildSystemPrompt()),
             new ChatMessage("user", promptBuilder.buildUserPrompt(request))),
         new ResponseFormat("json_schema",
-            new JsonSchemaFormat(SCHEMA_NAME, Boolean.TRUE, resultSchema)));
+            new JsonSchemaFormat(SCHEMA_NAME, Boolean.TRUE, resultSchema)),
+        settings.reasoningEffort());
 
     long startedAt = System.nanoTime();
     ChatResponse response = callModel(chatRequest);
     String content = extractContent(response);
     AdGenerationResult result = parseResult(content);
-    log.info("Модель {} вернула результат за {} мс: score={}, площадок={}, токенов={}",
-        settings.model(), (System.nanoTime() - startedAt) / 1_000_000,
+    log.info("Модель {} (reasoning={}) вернула результат за {} мс: score={}, площадок={}, {}",
+        settings.model(),
+        settings.reasoningEffort() == null ? "default" : settings.reasoningEffort(),
+        (System.nanoTime() - startedAt) / 1_000_000,
         result.score(), result.channels().size(),
-        response.usage() == null ? "?" : response.usage().totalTokens());
+        usageSummary(response.usage()));
     return result;
+  }
+
+  private static String usageSummary(Usage usage) {
+    if (usage == null || usage.totalTokens() == null) {
+      return "токенов=?";
+    }
+    Integer reasoning = usage.completionTokensDetails() == null
+        ? null
+        : usage.completionTokensDetails().reasoningTokens();
+    return reasoning == null
+        ? "токенов=" + usage.totalTokens()
+        : "токенов=" + usage.totalTokens() + " (reasoning=" + reasoning + ")";
   }
 
   /**
@@ -248,7 +300,8 @@ public class OpenAiAdGenerationClient implements AdGenerationClient {
 
   // ----- wire-формат OpenAI; сериализуется ObjectMapper'ом в snake_case -----
 
-  record ChatRequest(String model, List<ChatMessage> messages, ResponseFormat responseFormat) {
+  record ChatRequest(String model, List<ChatMessage> messages, ResponseFormat responseFormat,
+      String reasoningEffort) {
   }
 
   record ChatMessage(String role, String content) {
@@ -266,6 +319,9 @@ public class OpenAiAdGenerationClient implements AdGenerationClient {
   record Choice(int index, ChatMessage message, String finishReason) {
   }
 
-  record Usage(Integer totalTokens) {
+  record Usage(Integer totalTokens, CompletionTokensDetails completionTokensDetails) {
+  }
+
+  record CompletionTokensDetails(Integer reasoningTokens) {
   }
 }

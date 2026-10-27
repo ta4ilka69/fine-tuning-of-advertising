@@ -14,7 +14,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "adtune.ai")
 public record AiProperties(String provider, Duration timeout, OpenAi openai) {
 
-  /** Настройки OpenAI-совместимого API. */
-  public record OpenAi(String baseUrl, String apiKey, String model) {
+  /**
+   * Настройки OpenAI-совместимого API.
+   *
+   * @param reasoningEffort глубина «размышлений» модели (minimal/low/medium/high);
+   *                        null или пусто — параметр не отправляется (нужно для
+   *                        моделей без поддержки, например gpt-4o)
+   */
+  public record OpenAi(String baseUrl, String apiKey, String model, String reasoningEffort) {
   }
 }

@@ -16,8 +16,6 @@ import com.adtune.backend.ai.DefaultSystemPromptBuilder;
 import com.adtune.backend.ai.PhotoAiInput;
 import com.adtune.backend.config.AiProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,10 +30,7 @@ class OpenAiAdGenerationClientTest {
   private static final String BASE_URL = "https://api.test/v1";
 
   private final ObjectMapper plainMapper = new ObjectMapper();
-  private final ObjectMapper wireMapper = JsonMapper.builder()
-      .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-      .disable(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-      .build();
+  private final ObjectMapper wireMapper = OpenAiAdGenerationClient.wireMapper();
 
   private RestClient.Builder restClientBuilder;
   private MockRestServiceServer server;
@@ -43,7 +38,7 @@ class OpenAiAdGenerationClientTest {
 
   @BeforeEach
   void setUp() {
-    AiProperties.OpenAi settings = new AiProperties.OpenAi(BASE_URL, "test-key", "gpt-test");
+    AiProperties.OpenAi settings = new AiProperties.OpenAi(BASE_URL, "test-key", "gpt-test", "low");
     // Сначала общий конфиг (base url, конвертеры, таймаут), затем мок-сервер:
     // bindTo подменяет request factory билдера и должен остаться последним.
     restClientBuilder = OpenAiAdGenerationClient.configureRestClient(
@@ -124,6 +119,7 @@ class OpenAiAdGenerationClientTest {
     server.expect(requestTo(BASE_URL + "/chat/completions"))
         .andExpect(method(HttpMethod.POST))
         .andExpect(jsonPath("$.model").value("gpt-test"))
+        .andExpect(jsonPath("$.reasoning_effort").value("low"))
         .andExpect(jsonPath("$.messages[0].role").value("system"))
         .andExpect(jsonPath("$.messages[1].role").value("user"))
         .andExpect(jsonPath("$.response_format.type").value("json_schema"))
@@ -184,12 +180,60 @@ class OpenAiAdGenerationClientTest {
 
   @Test
   void rejectsBlankApiKeyBeforeRequest() throws Exception {
-    AiProperties.OpenAi settings = new AiProperties.OpenAi(BASE_URL, "", "gpt-test");
+    AiProperties.OpenAi settings = new AiProperties.OpenAi(BASE_URL, "", "gpt-test", null);
     OpenAiAdGenerationClient noKeyClient = new OpenAiAdGenerationClient(
         restClientBuilder.build(), settings, new DefaultSystemPromptBuilder(), wireMapper);
 
     assertThatThrownBy(() -> noKeyClient.generate(sampleRequest()))
         .isInstanceOf(AiClientException.class)
         .hasMessageContaining("OPENAI_API_KEY");
+  }
+
+  @Test
+  void omitsReasoningEffortWhenNotConfigured() throws Exception {
+    AiProperties.OpenAi settings = new AiProperties.OpenAi(BASE_URL, "test-key", "gpt-4o-mini", null);
+    OpenAiAdGenerationClient gpt4Client = new OpenAiAdGenerationClient(
+        restClientBuilder.build(), settings, new DefaultSystemPromptBuilder(), wireMapper);
+
+    server.expect(requestTo(BASE_URL + "/chat/completions"))
+        .andExpect(jsonPath("$.model").value("gpt-4o-mini"))
+        .andExpect(jsonPath("$.reasoning_effort").doesNotExist())
+        .andRespond(withSuccess(chatResponseWithContent(minimalResultJson()), MediaType.APPLICATION_JSON));
+
+    gpt4Client.generate(sampleRequest());
+    server.verify();
+  }
+
+  @Test
+  void rejectsInvalidReasoningEffortAtConstruction() {
+    AiProperties.OpenAi settings = new AiProperties.OpenAi(BASE_URL, "test-key", "gpt-test", "ultra");
+    assertThatThrownBy(() -> new OpenAiAdGenerationClient(
+        restClientBuilder.build(), settings, new DefaultSystemPromptBuilder(), wireMapper))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("reasoning-effort")
+        .hasMessageContaining("ultra");
+  }
+
+  private String minimalResultJson() {
+    return """
+        {
+          "score": 50,
+          "why": [
+            {"plus": true, "text": "причина 1"},
+            {"plus": true, "text": "причина 2"},
+            {"plus": false, "text": "причина 3"}
+          ],
+          "how_to_improve": ["совет"],
+          "channels": [
+            {
+              "channel_id": "avito",
+              "titles": ["Заголовок"],
+              "text": "Текст",
+              "checklist": [true],
+              "photos": {"top": [], "rest": [], "excluded": []}
+            }
+          ]
+        }
+        """;
   }
 }
