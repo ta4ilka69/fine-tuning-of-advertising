@@ -112,6 +112,20 @@ describe('единые ошибки', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  test.each(['me', 'login'] as const)('обрыв потока ответа %s остаётся сетевой ошибкой без повтора запроса', async (method) => {
+    const stream = new ReadableStream({
+      start(controller) { controller.error(new TypeError('terminated password=secret')); },
+    });
+    fetchMock.mockResolvedValue(new Response(stream, { headers: { 'Content-Type': 'application/json' } }));
+    const operation = method === 'me' ? account.me() : account.login({ login: 'a', password: 'secret' });
+    const error: unknown = await operation.catch((error: unknown) => error);
+    expect(error).toBeInstanceOf(RequestError);
+    expect(error).toMatchObject({ kind: 'network' });
+    expect(String(error)).not.toContain('secret');
+    expect(JSON.stringify(error)).not.toContain('secret');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   test('AbortSignal отменяет запрос, включая произвольную причину abort', async () => {
     const controller = new AbortController();
     fetchMock.mockImplementation((_url, init) => new Promise((_resolve, reject) => {

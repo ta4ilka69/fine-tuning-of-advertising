@@ -77,6 +77,7 @@ export async function request<TResponse = void, TBody = never>(
     if (options.signal?.aborted || (error instanceof Error && error.name === 'AbortError')) {
       throw transportError(error, options.signal);
     }
+    if (error instanceof TypeError) throw transportError(error, options.signal);
     throw new RequestError('invalid-response', response.status);
   }
   try {
