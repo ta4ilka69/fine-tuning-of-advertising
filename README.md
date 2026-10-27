@@ -77,6 +77,10 @@ API_PROXY_TARGET=http://127.0.0.1:8089 npm run dev
 npm run build
 ```
 
+## База данных
+
+[Модель данных, договорённости и пересоздание базы](infra/README.md).
+
 ## Макеты
 
 [Макеты, состояния интерфейса и прототипы](frontend/design/README.md).

@@ -28,3 +28,25 @@ services:
       retries: 3
       start_period: 5s
     restart: unless-stopped
+
+  db:
+    image: postgres:18.4-alpine
+    environment:
+      POSTGRES_DB: advertising
+      POSTGRES_USER: advertising
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-advertising}
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql
+      - ./infra/db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "advertising", "-d", "advertising"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  db-data:
