@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { AppProvider } from '../../src/app/AppProvider';
+import { ListingList } from '../../src/pages/account/ListingList';
 import { App } from '../../src/app/App';
 import { navigate } from '../../src/app/navigation';
 import { listing, listingDetails, listingItems } from '../fixtures/listings';
@@ -185,3 +187,39 @@ test('карточка, повтор после 404, новый экран и Hi
   expect(fetchMock.mock.calls.every(([, options]) => options?.method === 'GET')).toBe(true);
   expect(() => navigate('/outside' as '/app')).toThrow();
 });
+
+
+test('401 сбрасывает всю историю курсоров перед повтором первой страницы', async () => {
+  const recheck = vi.fn();
+  page = async () => json({ items: [listing()], nextCursor: 'cursor-a' });
+  render(<AppProvider><ListingList recheck={recheck} /></AppProvider>);
+  await screen.findByRole('button', { name: 'Показать ещё' });
+  page = async () => json({ items: [listingItems[1]], nextCursor: 'cursor-b' });
+  await userEvent.click(screen.getByRole('button', { name: 'Показать ещё' }));
+  await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(2));
+  page = async () => json({}, 401);
+  await userEvent.click(screen.getByRole('button', { name: 'Показать ещё' }));
+  await screen.findByRole('alert');
+  expect(recheck).toHaveBeenLastCalledWith(true);
+  page = async () => json({ items: [listing()], nextCursor: 'cursor-a' });
+  await userEvent.click(screen.getByRole('button', { name: 'Повторить' }));
+  expect(await screen.findByRole('list')).toHaveTextContent('Лесной');
+  expect(screen.getByRole('button', { name: 'Показать ещё' })).toBeVisible();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
+for (const destination of ['/app', `/app/listings/${listing().id}`]) {
+  test(`новый переход ${destination} после 401 снова проверяет истёкшую сессию`, async () => {
+    page = async () => json({}, 401);
+    detail = async () => json({}, 401);
+    await open();
+    await screen.findByRole('alert');
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/me'))).toHaveLength(2));
+    await userEvent.click(screen.getByRole('button', { name: 'Создать объявление' }));
+    await screen.findByRole('heading', { name: 'Новое объявление' });
+    me = async () => json({}, 401);
+    act(() => navigate(destination as '/app'));
+    expect(await screen.findByRole('heading', { name: 'С возвращением' })).toBeVisible();
+    expect(window.location.pathname).toBe('/login');
+  });
+}

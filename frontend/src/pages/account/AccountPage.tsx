@@ -1,5 +1,5 @@
 import { Anchor, Stack, Text, Title } from '@mantine/core';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { SessionGuard } from '../../features/session/SessionGuard';
 import { actionError } from '../../features/session/actionError';
 import { useSession } from '../../features/session/context';
@@ -18,6 +18,7 @@ export default function AccountPage() {
   const [error, setError] = useState<string>();
   const userId = state.status === 'authenticated' ? state.user.id : null;
   const checked = useRef<string | null>(null);
+  useEffect(() => { checked.current = null; }, [path]);
   const recheck = useCallback((unauthorized: boolean) => {
     if (!unauthorized) { checked.current = null; return; }
     if (checked.current === userId) return;

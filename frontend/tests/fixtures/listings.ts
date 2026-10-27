@@ -20,3 +20,20 @@ export const listingDetails = (item = listing()) => ({
   data: { deal: { type: item.dealType, price: item.price }, property: { type: item.propertyType }, location: { address: item.address } },
   photos: [], latestGeneration: null, lastSuccessfulGeneration: null, createdAt: item.createdAt, updatedAt: item.updatedAt,
 });
+
+
+export const succeededGeneration = {
+  id: 'f986b179-311a-4a11-b158-93a5608d0324', listingId: listing().id, sourceVersion: 2,
+  channelIds: ['9ad535e0-4826-4e1c-af12-96959dce03a8'], createdAt: '2026-10-24T11:00:00Z',
+  status: 'succeeded', completedAt: '2026-10-24T11:00:10Z', error: null,
+  result: {
+    channelResults: [{ channelId: '9ad535e0-4826-4e1c-af12-96959dce03a8', channelRevision: 1, title: 'Квартира на Лесном проспекте', text: 'Квартира в Санкт-Петербурге.' }],
+    assessment: { score: 70, reasons: ['Указан адрес', 'Указана цена', 'Указан тип объекта'] },
+    photoRecommendations: [{ photoId: 'dcb3b59f-389a-46e7-b6fc-9f760ea02b91', rank: 1, reason: 'Общий вид комнаты' }],
+  },
+};
+
+export const failedGeneration = {
+  ...succeededGeneration, id: 'f986b179-311a-4a11-b158-93a5608d0325', status: 'failed', result: null,
+  error: { type: 'about:blank', title: 'Не удалось выполнить генерацию', status: 503, code: 'SERVICE_UNAVAILABLE', requestId: 'a6cdd08a-a252-48fa-a6c5-73f485bc494e' },
+};

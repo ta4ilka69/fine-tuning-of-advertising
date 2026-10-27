@@ -60,6 +60,7 @@ export function ListingList({ recheck }: { recheck: (unauthorized: boolean) => v
       if (failure instanceof RequestError && failure.status === 401) {
         setItems([]);
         setCursor(null);
+        visited.current.clear();
         setError('Не удалось получить доступ к объявлениям. Повторите загрузку.');
         recheck(true);
       } else {

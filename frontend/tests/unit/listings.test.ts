@@ -4,7 +4,7 @@ import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { listings } from '../../src/shared/api/listings';
 import { formatPrice, generationLabels } from '../../src/pages/account/format';
-import { listing, listingItems, listingDetails } from '../fixtures/listings';
+import { listing, listingItems, listingDetails, succeededGeneration, failedGeneration } from '../fixtures/listings';
 
 const response = (value: unknown) => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } });
 afterEach(() => vi.unstubAllGlobals());
@@ -14,7 +14,7 @@ test('фикстуры списка и карточки соответствую
   const ajv = new Ajv2020({ strict: false });
   addFormats(ajv);
   ajv.addSchema({ $id: 'contract', components: contract.components });
-  for (const [schema, value] of [['ListingPage', { items: listingItems, nextCursor: 'opaque+/=' }], ['Listing', listingDetails()]] as const) {
+  for (const [schema, value] of [['ListingPage', { items: listingItems, nextCursor: 'opaque+/=' }], ['Listing', listingDetails()], ['Listing', { ...listingDetails(), latestGeneration: failedGeneration, lastSuccessfulGeneration: succeededGeneration }]] as const) {
     const validate = ajv.compile({ $ref: `contract#/components/schemas/${schema}` });
     expect(validate(value), JSON.stringify(validate.errors)).toBe(true);
   }
@@ -71,14 +71,50 @@ for (const latestGenerationStatus of [null, 'queued', 'running', 'succeeded', 'f
 
 test('получает карточку по ID, понимает неполный черновик и успешный результат после ошибки', async () => {
   const detail = listingDetails();
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response({ ...detail, data: {} })).mockResolvedValueOnce(response({ ...detail, latestGeneration: { status: 'failed' }, lastSuccessfulGeneration: { sourceVersion: 2 } })));
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response({ ...detail, data: {} })).mockResolvedValueOnce(response({ ...detail, latestGeneration: failedGeneration, lastSuccessfulGeneration: succeededGeneration })));
   expect(await listings.get(detail.id)).toMatchObject({ address: null, price: null });
   expect(await listings.get(detail.id)).toMatchObject({ latestGenerationStatus: 'failed', generatedForVersion: 2 });
   expect(() => listings.get('../auth/me')).toThrow();
 });
-for (const changes of [{ data: null }, { data: { deal: null } }, { latestGeneration: 3 }, { lastSuccessfulGeneration: {} }, { id: '70792597-4a2a-4ddb-9d00-c2340dd8c099' }]) {
+for (const changes of [{ data: null }, { data: { deal: null } }, { latestGeneration: 3 }, { lastSuccessfulGeneration: {} }, { lastSuccessfulGeneration: { sourceVersion: 2, status: 'failed', result: null } }, { id: '70792597-4a2a-4ddb-9d00-c2340dd8c099' }]) {
   test(`отклоняет некорректную карточку ${JSON.stringify(changes)}`, async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ ...listingDetails(), ...changes })));
     await expect(listings.get(listing().id)).rejects.toMatchObject({ kind: 'invalid-response' });
   });
 }
+
+
+for (const [label, generation] of [
+  ['без результата', { ...succeededGeneration, result: null }],
+  ['без времени завершения', { ...succeededGeneration, completedAt: null }],
+  ['чужое объявление', { ...succeededGeneration, listingId: '70792597-4a2a-4ddb-9d00-c2340dd8c099' }],
+  ['без выбранных площадок', { ...succeededGeneration, channelIds: [] }],
+  ['без текстов', { ...succeededGeneration, result: { ...succeededGeneration.result, channelResults: [] } }],
+  ['пустой текст', { ...succeededGeneration, result: { ...succeededGeneration.result, channelResults: [{ ...succeededGeneration.result.channelResults[0], text: ' ' }] } }],
+  ['неверная оценка', { ...succeededGeneration, result: { ...succeededGeneration.result, assessment: { score: 101, reasons: ['a', 'b', 'c'] } } }],
+  ['мало причин', { ...succeededGeneration, result: { ...succeededGeneration.result, assessment: { score: 50, reasons: ['a'] } } }],
+  ['без рекомендаций фото', { ...succeededGeneration, result: { ...succeededGeneration.result, photoRecommendations: [] } }],
+  ['неверный rank', { ...succeededGeneration, result: { ...succeededGeneration.result, photoRecommendations: [{ ...succeededGeneration.result.photoRecommendations[0], rank: 2 }] } }],
+] as const) {
+  test(`не показывает готовность некорректного успешного запуска: ${label}`, async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ ...listingDetails(), lastSuccessfulGeneration: generation })));
+    await expect(listings.get(listing().id)).rejects.toMatchObject({ kind: 'invalid-response' });
+  });
+}
+
+for (const status of ['queued', 'running']) {
+  test(`новый запуск ${status} сохраняет успешно полученный результат`, async () => {
+    const pending = { ...succeededGeneration, status, completedAt: null, result: null };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ ...listingDetails(), latestGeneration: pending, lastSuccessfulGeneration: succeededGeneration })));
+    expect(await listings.get(listing().id)).toMatchObject({ latestGenerationStatus: status, generatedForVersion: 2 });
+  });
+}
+
+test('порядок рекомендаций не подменяет их rank', async () => {
+  const generation = { ...succeededGeneration, result: { ...succeededGeneration.result, photoRecommendations: [
+    { photoId: 'dcb3b59f-389a-46e7-b6fc-9f760ea02b92', rank: 2, reason: 'Общий вид' },
+    ...succeededGeneration.result.photoRecommendations,
+  ] } };
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ ...listingDetails(), lastSuccessfulGeneration: generation })));
+  expect(await listings.get(listing().id)).toMatchObject({ generatedForVersion: 2 });
+});
