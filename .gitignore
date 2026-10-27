@@ -19,3 +19,9 @@ docs/ai/
 
 # For all secrets
 *.env
+
+# Backend (Gradle / Java)
+backend/.gradle/
+backend/build/
+backend/out/
+backend/bin/
