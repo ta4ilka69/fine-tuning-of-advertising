@@ -12,20 +12,21 @@ const AccountPage = lazy(() => import('../pages/account/AccountPage'));
 
 export function AppRoutes() {
   const path = usePathname();
+  const protectedPath = path === '/app' || path === '/app/new' || /^\/app\/listings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(path);
   const previousPath = useRef(path);
   const { state } = useSession();
   useEffect(() => {
-    document.title = path === '/' ? 'Докрутка объявления' : path === '/login' ? 'Вход' : path === '/register' ? 'Регистрация' : path === '/app' ? 'Личный кабинет' : 'Страница не найдена';
+    document.title = path === '/' ? 'Докрутка объявления' : path === '/login' ? 'Вход' : path === '/register' ? 'Регистрация' : path === '/app/new' ? 'Новое объявление' : protectedPath ? 'Мои объявления' : 'Страница не найдена';
     if (previousPath.current !== path) document.getElementById('main-content')?.focus();
     previousPath.current = path;
-  }, [path]);
+  }, [path, protectedPath]);
   useEffect(() => {
     if ((path === '/login' || path === '/register') && state.status === 'authenticated') navigate('/app', true);
-    if (path === '/app' && state.status === 'anonymous') navigate('/login', true);
-  }, [path, state.status]);
+    if (protectedPath && state.status === 'anonymous') navigate('/login', true);
+  }, [path, state.status, protectedPath]);
 
   if (path === '/') return <HomePage onStart={() => navigate(state.status === 'authenticated' ? '/app' : '/login')} />;
-  if (path === '/login' || path === '/register' || path === '/app') {
+  if (path === '/login' || path === '/register' || protectedPath) {
     return (
       <Suspense fallback={<PageLayout header={{ variant: 'guest' }}><LoadingState label="Загружаем страницу" /></PageLayout>}>
         {path === '/login' ? <LoginPage /> : path === '/register' ? <RegisterPage /> : <AccountPage />}

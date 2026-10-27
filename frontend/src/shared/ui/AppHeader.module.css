@@ -97,7 +97,7 @@
   .navigation,
   .userName,
   .desktopIcon,
-  .start {
+  .header .start {
     display: none;
   }
 
