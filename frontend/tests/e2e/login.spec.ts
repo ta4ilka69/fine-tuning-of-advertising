@@ -134,3 +134,37 @@ test('ожидание восстановления не показывает з
   release();
   await expect(page).toHaveURL(`${loginServer.url}/login`);
 });
+
+test('возврат из BFCache после выхода заново проверяет сессию', async ({ browserName, loginServer }) => {
+  test.skip(browserName !== 'chromium');
+  const { chromium } = await import('@playwright/test');
+  const browser = await chromium.launch({ channel: 'chromium', ignoreDefaultArgs: ['--disable-back-forward-cache'] });
+  const page = await browser.newPage();
+  try {
+    await page.addInitScript(() => {
+      window.addEventListener('pageshow', (event) => {
+        document.documentElement.dataset.bfcache = String(event.persisted);
+      });
+    });
+    await page.goto(`${loginServer.url}/login`);
+    await page.getByRole('textbox', { name: /^Логин/ }).fill('a');
+    await page.getByLabel('Пароль', { exact: false }).fill('x');
+    await page.getByRole('button', { name: 'Войти', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+    await page.getByRole('link', { name: 'Докрутка объявления', exact: true }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Начать работу' }).click();
+    await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toBeVisible();
+    await page.getByRole('button', { name: 'Выйти', exact: true }).click();
+    await expect(page).toHaveURL(`${loginServer.url}/login`);
+    let release!: () => void;
+    loginServer.controls.holdMe = new Promise((resolve) => { release = resolve; });
+    await page.goBack({ waitUntil: 'commit' });
+    await page.goBack({ waitUntil: 'commit' });
+    await expect(page.locator('html')).toHaveAttribute('data-bfcache', 'true');
+    await expect(page.getByText('Проверяем сессию')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toHaveCount(0);
+    release();
+    await expect(page.getByRole('heading', { name: 'С возвращением' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Личный кабинет' })).toHaveCount(0);
+  } finally { await browser.close(); }
+});

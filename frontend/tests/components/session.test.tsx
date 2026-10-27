@@ -219,3 +219,28 @@ test('неверный вход до завершения /me возвращае
   await act(async () => { initial.resolve(failure(401)); });
   expect(result.current.state).toEqual({ status: 'authenticated', user });
 });
+
+test('возврат из BFCache скрывает старого пользователя до новой проверки сессии', async () => {
+  const restored = deferred();
+  fetchMock.mockResolvedValueOnce(json({ user })).mockReturnValueOnce(restored.promise);
+  render(<SessionGuard><p>Секрет</p></SessionGuard>, { wrapper });
+  expect(await screen.findByText('Секрет')).toBeVisible();
+  act(() => { window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: false })); });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  act(() => { window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })); });
+  expect(screen.queryByText('Секрет')).not.toBeInTheDocument();
+  expect(screen.getByText('Проверяем сессию')).toBeVisible();
+  await act(async () => { restored.resolve(failure(401)); });
+  expect(await screen.findByText('Войдите в аккаунт')).toBeVisible();
+  expect(screen.queryByText('Секрет')).not.toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+});
+
+test('ошибка проверки после BFCache не возвращает старое защищённое содержимое', async () => {
+  fetchMock.mockResolvedValueOnce(json({ user })).mockRejectedValueOnce(new TypeError('offline'));
+  render(<SessionGuard><p>Секрет</p></SessionGuard>, { wrapper });
+  await screen.findByText('Секрет');
+  act(() => { window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })); });
+  expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось проверить сессию');
+  expect(screen.queryByText('Секрет')).not.toBeInTheDocument();
+});
