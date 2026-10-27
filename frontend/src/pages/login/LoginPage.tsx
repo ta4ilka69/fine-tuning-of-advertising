@@ -1,4 +1,4 @@
-import { Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Anchor, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
@@ -8,7 +8,7 @@ import { RequestError } from '../../shared/api/errors';
 import { AppButton } from '../../shared/ui/AppButton';
 import { AppNotice } from '../../shared/ui/AppNotice';
 import { PageLayout } from '../../shared/ui/PageLayout';
-import classes from './LoginPage.module.css';
+import classes from '../../features/session/AuthPage.module.css';
 
 export default function LoginPage() {
   const { login } = useSession();
@@ -70,7 +70,7 @@ export default function LoginPage() {
               <Text role="status" className={classes.status}>{pending ? 'Проверяем логин и пароль' : ''}</Text>
             </Stack>
           </form>
-          <Text size="sm" c="dimmed" ta="center">Нет аккаунта? Регистрация скоро появится</Text>
+          <Text size="sm" c="dimmed" ta="center">Нет аккаунта? <Anchor href="/register" size="sm" underline="always">Зарегистрироваться</Anchor></Text>
         </Stack>
       </Paper>
     </PageLayout>

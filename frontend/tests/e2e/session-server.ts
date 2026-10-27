@@ -12,8 +12,12 @@ export async function startSessionServer() {
   const controls = {
     failLogin: false, failLogout: false, role: 'agent' as 'agent' | 'admin',
     loginError: null as number | 'network' | 'invalid' | null,
+    registerError: null as number | 'network' | 'invalid' | 'broken-json' | 'wrong-status' | null,
+    registerFields: ['/login'] as string[],
+    retryAfter: '30' as string | null,
     meError: null as number | null,
     holdLogin: undefined as Promise<void> | undefined,
+    holdRegister: undefined as Promise<void> | undefined,
     holdMe: undefined as Promise<void> | undefined,
   };
   const server = createServer(async (request, response) => {
@@ -28,7 +32,7 @@ export async function startSessionServer() {
       return;
     }
     if (!path.startsWith('/api/')) {
-      const target = ['/', '/login', '/app'].includes(path) ? 'index.html' : path === '/docs/' ? 'docs/index.html' : path.slice(1);
+      const target = ['/', '/login', '/register', '/app'].includes(path) ? 'index.html' : path === '/docs/' ? 'docs/index.html' : path.slice(1);
       const file = new URL(target, application);
       if (!file.href.startsWith(application.href)) { response.writeHead(404).end(); return; }
       try {
@@ -59,18 +63,25 @@ export async function startSessionServer() {
         response.setHeader('Set-Cookie', 'session=; HttpOnly; SameSite=Lax; Path=/api/v1; Max-Age=0');
       }
     } else if ((path === '/api/v1/auth/login' || path === '/api/v1/auth/register') && request.method === 'POST') {
-      await controls.holdLogin;
-      if (controls.loginError === 'network') {
-        response.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length': '1000' });
+      const registration = path.endsWith('/register');
+      await (registration ? controls.holdRegister : controls.holdLogin);
+      const error = registration ? controls.registerError : controls.loginError;
+      if (error === 'network') {
+        response.writeHead(registration ? 201 : 200, { 'Content-Type': 'application/json', 'Content-Length': '1000' });
         response.write('{"user":');
         setTimeout(() => response.destroy(), 25);
         return;
       }
-      if (controls.loginError === 'invalid') body = { unexpected: true };
-      else if (typeof controls.loginError === 'number') {
-        fail(controls.loginError, controls.loginError === 401 ? 'INVALID_CREDENTIALS' : 'VALIDATION_ERROR');
-        if (controls.loginError === 429) response.setHeader('Retry-After', '30');
-        if (controls.loginError === 422) body = { ...(body as object), fieldErrors: [{ field: '/login', code: 'INVALID', message: 'Technical diagnostic must stay hidden' }] };
+      if (error === 'broken-json') {
+        response.writeHead(201, { 'Content-Type': 'application/json' }).end('{');
+        return;
+      }
+      if (error === 'invalid') { status = registration ? 201 : 200; body = { unexpected: true }; }
+      else if (error === 'wrong-status') status = 200;
+      else if (typeof error === 'number') {
+        fail(error, error === 401 ? 'INVALID_CREDENTIALS' : error === 409 ? 'CONFLICT' : 'VALIDATION_ERROR');
+        if (error === 429 && controls.retryAfter !== null) response.setHeader('Retry-After', controls.retryAfter);
+        if (error === 400 || error === 422) body = { ...(body as object), fieldErrors: (registration ? controls.registerFields : ['/login']).map((field) => ({ field, code: 'INVALID', message: 'Technical diagnostic must stay hidden' })) };
       }
       else if (path.endsWith('/login') && controls.failLogin) fail(401, 'INVALID_CREDENTIALS');
       else {
