@@ -20,6 +20,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       frontend: ${{ steps.changes.outputs.frontend }}
+      backend: ${{ steps.changes.outputs.backend }}
       workflow: ${{ steps.changes.outputs.workflow }}
       compose: ${{ steps.changes.outputs.compose }}
     steps:
@@ -73,6 +74,19 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Тесты бэкенда в Gradle-контейнере
+        run: |
+          docker run --rm -u root -v "$PWD/backend:/workspace" -w /workspace gradle:8.14.3-jdk21 gradle --no-daemon test
 
   workflow:
     needs: changes
@@ -130,7 +144,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.compose == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -147,9 +161,9 @@ jobs:
         run: docker compose down
 
   required:
-    name: Frontend required
+    name: Required
     if: always()
-    needs: [changes, frontend, workflow, browser, compose]
+    needs: [changes, frontend, backend, workflow, browser, compose]
     runs-on: ubuntu-24.04
     timeout-minutes: 1
     steps:

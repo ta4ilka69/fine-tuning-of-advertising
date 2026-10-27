@@ -51,31 +51,35 @@ describe('выбор проверок', () => {
     expect(selectChecks([file])).toMatchObject({ frontend: true, compose: true });
   });
 
-  test.each(['backend/app.py', 'compose.yaml', 'compose.override.yml', 'docker-compose.yml', '.env.example', '.dockerignore'])('%s запускает только Compose', (file) => {
-    expect(selectChecks([file])).toEqual({ frontend: false, workflow: false, compose: true });
+  test.each(['compose.yaml', 'compose.override.yml', 'docker-compose.yml', '.env.example', '.dockerignore'])('%s запускает только Compose', (file) => {
+    expect(selectChecks([file])).toEqual({ frontend: false, backend: false, workflow: false, compose: true });
+  });
+
+  test.each(['backend/build.gradle.kts', 'backend/Dockerfile', 'backend/src/main/java/App.java'])('%s запускает Compose и тесты бэкенда', (file) => {
+    expect(selectChecks([file])).toEqual({ frontend: false, backend: true, workflow: false, compose: true });
   });
 
   test('отдельный workflow бекенда требует только actionlint', () => {
-    expect(selectChecks(['.github/workflows/backend.yml'])).toEqual({ frontend: false, workflow: true, compose: false });
+    expect(selectChecks(['.github/workflows/backend.yml'])).toEqual({ frontend: false, backend: false, workflow: true, compose: false });
   });
 
   test.each([{ files: [] }, { files: ['README.md'] }, { files: ['LICENSE'] }, { files: ['research/notes.md'] }])('документы и отсутствие изменений не запускают тесты: $files', ({ files }) => {
-    expect(selectChecks(files)).toEqual({ frontend: false, workflow: false, compose: false });
+    expect(selectChecks(files)).toEqual({ frontend: false, backend: false, workflow: false, compose: false });
   });
 
   test('ручной запуск и первый push выполняют все проверки', () => {
-    const all = { frontend: true, workflow: true, compose: true };
+    const all = { frontend: true, backend: true, workflow: true, compose: true };
     expect(detectChecks('workflow_dispatch', {}, '')).toEqual(all);
     expect(detectChecks('push', { before: '0'.repeat(40), after: '1'.repeat(40) }, '')).toEqual(all);
   });
 
   test.each([
-    { files: ['README.md'], expected: { frontend: false, workflow: false, compose: false } },
-    { files: ['backend/app.py'], expected: { frontend: false, workflow: false, compose: true } },
-    { files: ['frontend/package-lock.json'], expected: { frontend: true, workflow: false, compose: true } },
-    { files: ['compose.yaml'], expected: { frontend: false, workflow: false, compose: true } },
-    { files: ['frontend/src/page.tsx', 'backend/app.py'], expected: { frontend: true, workflow: false, compose: true } },
-    { files: ['.github/workflows/verify.yml'], expected: { frontend: true, workflow: true, compose: true } },
+    { files: ['README.md'], expected: { frontend: false, backend: false, workflow: false, compose: false } },
+    { files: ['backend/build.gradle.kts'], expected: { frontend: false, backend: true, workflow: false, compose: true } },
+    { files: ['frontend/package-lock.json'], expected: { frontend: true, backend: false, workflow: false, compose: true } },
+    { files: ['compose.yaml'], expected: { frontend: false, backend: false, workflow: false, compose: true } },
+    { files: ['frontend/src/page.tsx', 'backend/src/App.java'], expected: { frontend: true, backend: true, workflow: false, compose: true } },
+    { files: ['.github/workflows/verify.yml'], expected: { frontend: true, backend: false, workflow: true, compose: true } },
   ])('PR $files получает нужные проверки и успешный итог', ({ files, expected }) => {
     const repo = repository();
     for (const file of files) repo.write(file, 'changed');
@@ -95,7 +99,7 @@ describe('выбор проверок', () => {
     repo.git('switch', '--quiet', 'main');
     repo.write('.github/workflows/backend.yml');
     const base = repo.commit();
-    expect(detectChecks('pull_request', { pull_request: { base: { sha: base }, head: { sha: head } } }, repo.cwd)).toEqual({ frontend: true, workflow: false, compose: true });
+    expect(detectChecks('pull_request', { pull_request: { base: { sha: base }, head: { sha: head } } }, repo.cwd)).toEqual({ frontend: true, backend: true, workflow: false, compose: true });
   });
 
   test('push сравнивает before и after даже при смене истории', () => {
@@ -104,9 +108,9 @@ describe('выбор проверок', () => {
     repo.write('frontend/src/page.tsx');
     const before = repo.commit();
     repo.git('switch', '--quiet', 'main');
-    repo.write('backend/app.py');
+    repo.write('backend/build.gradle.kts');
     const after = repo.commit();
-    expect(detectChecks('push', { before, after }, repo.cwd)).toEqual({ frontend: true, workflow: false, compose: true });
+    expect(detectChecks('push', { before, after }, repo.cwd)).toEqual({ frontend: true, backend: true, workflow: false, compose: true });
   });
 
   test('перенос из frontend и удаление файла учитывают старые пути', () => {
@@ -118,7 +122,7 @@ describe('выбор проверок', () => {
     repo.git('mv', 'frontend/page.tsx', 'backend/page.tsx');
     repo.git('rm', '.github/workflows/verify.yml');
     const after = repo.commit();
-    expect(detectChecks('push', { before, after }, repo.cwd)).toEqual({ frontend: true, workflow: true, compose: true });
+    expect(detectChecks('push', { before, after }, repo.cwd)).toEqual({ frontend: true, backend: true, workflow: true, compose: true });
   });
 
   test('имена файлов с переводами строк не теряются', () => {
@@ -140,6 +144,7 @@ function jobs(checks: Checks): Record<string, Job> {
   return {
     changes: { result: 'success', outputs: Object.fromEntries(Object.entries(checks).map(([name, value]) => [name, String(value)])) },
     frontend: { result: checks.frontend ? 'success' : 'skipped' },
+    backend: { result: checks.backend ? 'success' : 'skipped' },
     browser: { result: checks.frontend ? 'success' : 'skipped' },
     workflow: { result: checks.workflow ? 'success' : 'skipped' },
     compose: { result: checks.compose ? 'success' : 'skipped' },
@@ -148,28 +153,29 @@ function jobs(checks: Checks): Record<string, Job> {
 
 describe('обязательная проверка', () => {
   test.each([
-    { frontend: false, workflow: false, compose: false },
-    { frontend: false, workflow: false, compose: true },
-    { frontend: false, workflow: true, compose: false },
-    { frontend: true, workflow: true, compose: true },
+    { frontend: false, backend: false, workflow: false, compose: false },
+    { frontend: false, backend: false, workflow: false, compose: true },
+    { frontend: false, backend: true, workflow: false, compose: true },
+    { frontend: false, backend: false, workflow: true, compose: false },
+    { frontend: true, backend: true, workflow: true, compose: true },
   ])('принимает успешные необходимые проверки и ненужные пропуски: %j', (checks) => {
     expect(() => validateResults(jobs(checks))).not.toThrow();
   });
 
-  test.each(['frontend', 'browser', 'workflow', 'compose'])('%s не может упасть, отмениться, пропуститься или исчезнуть, если нужен', (name) => {
+  test.each(['frontend', 'backend', 'browser', 'workflow', 'compose'])('%s не может упасть, отмениться, пропуститься или исчезнуть, если нужен', (name) => {
     for (const result of ['failure', 'cancelled', 'skipped', 'timed_out']) {
-      const needs = jobs({ frontend: true, workflow: true, compose: true });
+      const needs = jobs({ frontend: true, backend: true, workflow: true, compose: true });
       needs[name] = { result };
       expect(() => validateResults(needs)).toThrow(name);
     }
-    const needs = jobs({ frontend: true, workflow: true, compose: true });
+    const needs = jobs({ frontend: true, backend: true, workflow: true, compose: true });
     delete needs[name];
     expect(() => validateResults(needs)).toThrow(name);
   });
 
   test('ошибка определения изменений или неполные outputs блокируют итог', () => {
     for (const result of ['failure', 'cancelled', 'skipped']) {
-      const needs = jobs({ frontend: false, workflow: false, compose: false });
+      const needs = jobs({ frontend: false, backend: false, workflow: false, compose: false });
       needs.changes = { result };
       expect(() => validateResults(needs)).toThrow();
     }
@@ -177,7 +183,7 @@ describe('обязательная проверка', () => {
   });
 
   test('ошибка запущенного job не игнорируется даже при отсутствии изменений', () => {
-    const needs = jobs({ frontend: false, workflow: false, compose: false });
+    const needs = jobs({ frontend: false, backend: false, workflow: false, compose: false });
     needs.frontend = { result: 'failure' };
     expect(() => validateResults(needs)).toThrow('frontend');
   });
@@ -191,7 +197,7 @@ test('CLI записывает outputs и принимает итог через
   const script = fileURLToPath(new URL('../../scripts/ci.ts', import.meta.url));
   const env = { ...process.env, GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_EVENT_PATH: eventPath, GITHUB_OUTPUT: outputPath };
   execFileSync(process.execPath, [script, 'changes'], { cwd, env });
-  expect(readFileSync(outputPath, 'utf8')).toBe('frontend=true\nworkflow=true\ncompose=true\n');
-  const needs = jobs({ frontend: false, workflow: false, compose: true });
+  expect(readFileSync(outputPath, 'utf8')).toBe('frontend=true\nbackend=true\nworkflow=true\ncompose=true\n');
+  const needs = jobs({ frontend: false, backend: false, workflow: false, compose: true });
   expect(() => execFileSync(process.execPath, [script, 'required'], { cwd, env: { ...env, CI_NEEDS: JSON.stringify(needs) } })).not.toThrow();
 });
