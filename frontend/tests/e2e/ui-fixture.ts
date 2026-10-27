@@ -15,7 +15,11 @@ export async function openUIFixture(page: Page, header = 'guest') {
       contentType: contentTypes[path.split('.').at(-1) ?? ''] ?? 'application/octet-stream',
     });
   });
-  await page.goto(`/__ui/index.html?header=${header}`);
+  await page.goto(header === 'session' ? '/__ui/index.html?session' : `/__ui/index.html?header=${header}`);
+  if (header === 'session') {
+    await page.getByRole('heading', { name: 'Проверка сессии' }).waitFor();
+    return;
+  }
   await page.getByRole('heading', { name: 'Общие элементы' }).waitFor();
   if (header !== 'guest') await page.getByRole('button', { name: /Меню пользователя:/ }).waitFor();
   await page.evaluate(() => document.fonts.ready);
