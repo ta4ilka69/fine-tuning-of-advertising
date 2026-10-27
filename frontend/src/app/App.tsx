@@ -1,12 +1,12 @@
 import { SessionProvider } from '../features/session/SessionProvider';
-import { HomePage } from '../pages/home/HomePage';
+import { AppRoutes } from './AppRoutes';
 import { AppProvider } from './AppProvider';
 
 export function App() {
   return (
     <AppProvider>
       <SessionProvider>
-        <HomePage />
+        <AppRoutes />
       </SessionProvider>
     </AppProvider>
   );

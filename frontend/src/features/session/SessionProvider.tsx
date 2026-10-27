@@ -47,6 +47,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => { invalidate(); };
   }, [checkSession, invalidate]);
 
+  useEffect(() => {
+    const restoreCachedSession = (event: PageTransitionEvent) => {
+      if (event.persisted) void restore();
+    };
+    window.addEventListener('pageshow', restoreCachedSession);
+    return () => window.removeEventListener('pageshow', restoreCachedSession);
+  }, [restore]);
+
   const changeSession = useCallback(async (operation: () => Promise<SessionState>) => {
     if (mutation.current) throw new Error('Изменение сессии уже выполняется');
     mutation.current = true;
