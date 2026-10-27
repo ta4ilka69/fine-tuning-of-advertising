@@ -31,7 +31,7 @@ export function selectChecks(files: string[]): Checks {
   return {
     frontend,
     workflow: files.some((file) => file.startsWith('.github/workflows/') || file.startsWith('.github/actions/')),
-    compose: frontend || files.some((file) => file.startsWith('backend/') || /^(?:compose|docker-compose)(?:[.-][^/]*)?\.ya?ml$/.test(file) || ['.dockerignore', '.env.example'].includes(file)),
+    compose: frontend || files.some((file) => file.startsWith('backend/') || file.startsWith('infra/') || /^(?:compose|docker-compose)(?:[.-][^/]*)?\.ya?ml$/.test(file) || ['.dockerignore', '.env.example'].includes(file)),
   };
 }
 

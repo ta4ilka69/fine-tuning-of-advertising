@@ -67,6 +67,5 @@ test('клавиатура, фокус, ошибки и блокировка д�
 test('тестовая страница отсутствует в приложении', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Общие элементы' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Начать работу' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Начать работу' })).toHaveAccessibleDescription('Вход скоро появится');
+  await expect(page.getByRole('main').getByRole('button', { name: 'Начать работу' })).toBeEnabled();
 });
