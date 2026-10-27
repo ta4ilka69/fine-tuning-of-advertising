@@ -1,0 +1,113 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-lg);
+  padding: var(--mantine-spacing-lg);
+  background: var(--app-surface);
+  border-bottom: var(--app-border);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  min-width: 0;
+  margin-right: auto;
+  color: var(--app-ink);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 500;
+  line-height: var(--mantine-line-height-sm);
+  text-decoration: none;
+}
+
+.mark {
+  display: grid;
+  width: var(--mantine-spacing-xl);
+  height: var(--mantine-spacing-xl);
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: var(--mantine-radius-md);
+  color: var(--app-surface);
+  background: var(--app-brand);
+  font-size: var(--mantine-font-size-lg);
+  font-weight: 600;
+}
+
+.navigation {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-lg);
+}
+
+.navigation a {
+  min-height: var(--app-control-height);
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+}
+
+.navigation a[aria-current] {
+  text-decoration: underline;
+  text-underline-offset: var(--mantine-spacing-xs);
+}
+
+.account {
+  max-width: 16rem;
+}
+
+.userName {
+  display: block;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.desktopIcon {
+  margin-left: var(--mantine-spacing-sm);
+}
+
+.mobileIcon {
+  display: none;
+}
+
+.skip {
+  position: fixed;
+  top: var(--mantine-spacing-sm);
+  left: var(--mantine-spacing-sm);
+  z-index: 1000;
+  transform: translateY(-200%);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  background: var(--app-surface);
+  color: var(--app-primary);
+  border-radius: var(--mantine-radius-md);
+}
+
+.skip:focus {
+  transform: translateY(0);
+}
+
+@media (max-width: 43.75em) {
+  .header {
+    padding: var(--mantine-spacing-md);
+    gap: var(--mantine-spacing-sm);
+  }
+
+  .navigation,
+  .userName,
+  .desktopIcon,
+  .header .start {
+    display: none;
+  }
+
+  .account {
+    width: var(--app-control-height);
+    min-width: var(--app-control-height);
+    padding-inline: 0;
+  }
+
+  .mobileIcon {
+    display: inline;
+  }
+}

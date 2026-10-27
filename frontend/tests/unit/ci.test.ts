@@ -51,7 +51,7 @@ describe('выбор проверок', () => {
     expect(selectChecks([file])).toMatchObject({ frontend: true, compose: true });
   });
 
-  test.each(['compose.yaml', 'compose.override.yml', 'docker-compose.yml', '.env.example', '.dockerignore'])('%s запускает только Compose', (file) => {
+  test.each(['compose.yaml', 'compose.override.yml', 'docker-compose.yml', '.env.example', '.dockerignore', 'infra/db/001_schema.sql'])('%s запускает только Compose', (file) => {
     expect(selectChecks([file])).toEqual({ frontend: false, backend: false, workflow: false, compose: true });
   });
 

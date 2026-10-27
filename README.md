@@ -2,6 +2,8 @@
 
 Веб-сервис подготовки объявлений о недвижимости для Авито, ЦИАН и Telegram.
 
+[Страница проекта](https://ta4ilka69.github.io/fine-tuning-of-advertising/): состояние, сроки, задачи, риски и ссылки. Исходник — [site/index.html](site/index.html).
+
 ## Задачи на текущий спринт (до `23.10`)
 
 1. Согласовать модель данных
@@ -121,6 +123,14 @@ docker run --rm -v "$(pwd)/backend:/workspace" -v adtune-gradle-cache:/home/grad
    `Модель … вернула результат за … мс` в `docker logs backend-test`;
 
 После проверки: `docker rm -f backend-test`.
+
+## База данных
+
+[Модель данных, договорённости и пересоздание базы](infra/README.md).
+
+## Макеты
+
+[Макеты, состояния интерфейса и прототипы](frontend/design/README.md).
 
 ## Тесты
 

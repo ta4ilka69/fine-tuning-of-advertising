@@ -1,0 +1,11 @@
+.page {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  padding-block: var(--mantine-spacing-xl) var(--mantine-spacing-xxl);
+  overflow-wrap: anywhere;
+}

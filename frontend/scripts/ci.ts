@@ -30,11 +30,12 @@ const frontendWorkflows = new Set([
 export function selectChecks(files: string[]): Checks {
   const frontend = files.some((file) => file.startsWith('frontend/') || frontendWorkflows.has(file) || file.startsWith('.github/actions/'));
   const backend = files.some((file) => file.startsWith('backend/'));
+  const infra = files.some((file) => file.startsWith('infra/'));
   return {
     frontend,
     backend,
     workflow: files.some((file) => file.startsWith('.github/workflows/') || file.startsWith('.github/actions/')),
-    compose: frontend || backend || files.some((file) => /^(?:compose|docker-compose)(?:[.-][^/]*)?\.ya?ml$/.test(file) || ['.dockerignore', '.env.example'].includes(file)),
+    compose: frontend || backend || infra || files.some((file) => /^(?:compose|docker-compose)(?:[.-][^/]*)?\.ya?ml$/.test(file) || ['.dockerignore', '.env.example'].includes(file)),
   };
 }
 

@@ -1,11 +1,13 @@
-import { MantineProvider } from '@mantine/core';
-import { HomePage } from '../pages/home/HomePage';
-import { theme } from './theme';
+import { SessionProvider } from '../features/session/SessionProvider';
+import { AppRoutes } from './AppRoutes';
+import { AppProvider } from './AppProvider';
 
 export function App() {
   return (
-    <MantineProvider theme={theme} defaultColorScheme="light">
-      <HomePage />
-    </MantineProvider>
+    <AppProvider>
+      <SessionProvider>
+        <AppRoutes />
+      </SessionProvider>
+    </AppProvider>
   );
 }

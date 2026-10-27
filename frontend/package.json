@@ -27,7 +27,9 @@
     "prebuild": "node scripts/prepare-swagger.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "5.3.0",
     "@mantine/core": "9.7.3",
+    "@mantine/form": "9.7.3",
     "@mantine/hooks": "9.7.3",
     "react": "19.3.1",
     "react-dom": "19.3.1"
