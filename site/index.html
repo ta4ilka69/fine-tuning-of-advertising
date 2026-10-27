@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Докрутка объявления — проект</title>
+<meta name="description" content="Проект «Докрутка объявления»: сроки, состояние, команда, риски и ссылки.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F6F5F1; --surface: #FFFFFF; --surface-2: #FBFAF7; --line: #E7E4DC;
+    --text: #22211F; --muted: #6F6D66; --faint: #9A978E;
+    --brand: #0F6E56; --brand-bg: #E1F5EE;
+    --ok: #3B6D11; --ok-bg: #EAF3DE; --warn: #854F0B; --warn-bg: #FAEEDA; --bad: #A32D2D; --bad-bg: #FCEBEB;
+    --info: #185FA5; --info-bg: #E6F1FB; --idle: #5F5E5A; --idle-bg: #F1EFE8;
+    --shadow: 0 1px 2px rgba(40,35,20,.05), 0 6px 20px rgba(40,35,20,.06);
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 Inter, system-ui, "Segoe UI", sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  .page { max-width: 1240px; margin: 0 auto; padding: 22px 24px; display: grid; gap: 14px; }
+
+  header { display: flex; align-items: center; gap: 16px; }
+  .mark { flex: none; width: 44px; height: 44px; border-radius: 12px; background: var(--brand); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 18px; }
+  h1 { font-size: 26px; line-height: 1.15; letter-spacing: -.02em; margin: 0; }
+  header p { margin: 2px 0 0; color: var(--muted); }
+
+  .grid { display: grid; gap: 16px; grid-template-columns: 1fr 1fr 1fr; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 18px 20px; min-width: 0; }
+  h2 { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 0 0 12px; }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 1px 9px; border-radius: 999px; white-space: nowrap; }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .ok { color: var(--ok); background: var(--ok-bg); }
+  .warn { color: var(--warn); background: var(--warn-bg); }
+  .bad { color: var(--bad); background: var(--bad-bg); }
+  .info { color: var(--info); background: var(--info-bg); }
+  .idle { color: var(--idle); background: var(--idle-bg); }
+
+  .countdown { background: var(--brand-bg); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; }
+  .countdown b { display: block; font-size: 28px; line-height: 1.1; color: var(--brand); letter-spacing: -.02em; }
+  .countdown span { color: var(--muted); font-size: 13px; }
+  .iters { display: grid; gap: 4px; }
+  .iter { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 5px 10px; border-radius: 8px; color: var(--muted); }
+  .iter b { font-weight: 500; color: var(--text); }
+  .iter.done { color: var(--faint); }
+  .iter.done b { color: var(--faint); text-decoration: line-through; text-decoration-color: var(--line); }
+  .iter.current { background: var(--surface-2); outline: 1.5px solid var(--brand); outline-offset: -1.5px; }
+  .iter.current b { font-weight: 600; }
+
+  .rows { display: grid; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); }
+  .row:first-child { border-top: 0; padding-top: 0; }
+
+  .person { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
+  .person:first-of-type { border-top: 0; padding-top: 0; }
+  .avatar { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; }
+  .person b { display: block; font-weight: 600; }
+  .person span { color: var(--muted); font-size: 13px; }
+  .person a { margin-left: auto; color: var(--brand); font-size: 13px; }
+  .person a:hover { text-decoration: underline; }
+  .demo { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+  .demo b { color: var(--text); font-weight: 600; }
+
+  .bottom { display: grid; gap: 16px; grid-template-columns: 2fr 1fr; }
+  .links { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px 20px; }
+  .links h3 { font-size: 13px; font-weight: 600; margin: 0 0 4px; }
+  .links a { display: block; padding: 4px 0; color: var(--brand); }
+  .links a:hover { text-decoration: underline; }
+  .links small { display: block; color: var(--faint); font-size: 12px; margin-top: -3px; }
+  .risk { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--line); }
+  .risk:first-of-type { border-top: 0; padding-top: 0; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .risk span { color: var(--muted); font-size: 13px; }
+
+  footer { color: var(--faint); font-size: 12px; }
+
+  @media (max-width: 1000px) {
+    .grid, .bottom { grid-template-columns: 1fr 1fr; }
+    .links { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 680px) {
+    .page { padding: 20px 16px; }
+    .grid, .bottom, .links { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <header>
+    <div class="mark">д.</div>
+    <div>
+      <h1>Докрутка объявления</h1>
+      <p>Тексты объявлений о недвижимости для Авито, ЦИАН и Telegram — с оценкой и советами по фото.</p>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Сроки</h2>
+      <div class="countdown"><b id="days-to-demo">—</b><span>до минимального демо 13 ноября</span></div>
+      <div class="iters" id="iters">
+        <div class="iter" data-start="2026-10-12" data-end="2026-10-23"><b>Итерация 1</b><span>12–23 окт</span></div>
+        <div class="iter" data-start="2026-10-24" data-end="2026-11-13"><b>Итерация 2 · демо</b><span>24 окт – 13 ноя</span></div>
+        <div class="iter" data-start="2026-11-14" data-end="2026-11-27"><b>Итерация 3</b><span>14–27 ноя</span></div>
+        <div class="iter" data-start="2026-11-28" data-end="2026-12-11"><b>Итерация 4</b><span>28 ноя – 11 дек</span></div>
+        <div class="iter" data-start="2026-12-12" data-end="2026-12-25"><b>Итерация 5 · финал</b><span>12–25 дек</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Состояние</h2>
+      <div class="rows">
+        <div class="row">Макеты<span class="pill ok">Готово</span></div>
+        <div class="row">API-контракт<span class="pill ok">Черновик готов</span></div>
+        <div class="row">CI и тесты<span class="pill ok">Готово</span></div>
+        <div class="row">Модель данных и БД<span class="pill warn">На ревью</span></div>
+        <div class="row">Фронтенд<span class="pill info">В работе</span></div>
+        <div class="row">Бэкенд<span class="pill info">В работе</span></div>
+        <div class="row">Генерация и оценка фото<span class="pill info">В работе</span></div>
+        <div class="row">Хранилище фото<span class="pill idle">Позже</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Команда</h2>
+      <div class="person"><div class="avatar warn">Р</div><div><b>Руслан Шамухаметов</b><span>Руководитель проекта</span></div><a href="https://github.com/CaseyJohnson-RS">GitHub</a></div>
+      <div class="person"><div class="avatar info">З</div><div><b>Захар Брюханов</b><span>Фронтенд</span></div><a href="https://github.com/BrukhanovZahar">GitHub</a></div>
+      <div class="person"><div class="avatar ok">А</div><div><b>Артём Балин</b><span>Бэкенд</span></div><a href="https://github.com/ta4ilka69">GitHub</a></div>
+      <div class="demo"><b>Демо:</b> регистрация и вход → создание объявления → загрузка фото → генерация текстов.</div>
+    </section>
+  </div>
+
+  <div class="bottom">
+    <section class="card">
+      <h2>Ссылки</h2>
+      <div class="links">
+        <div>
+          <h3>Работа</h3>
+          <a href="https://github.com/users/ta4ilka69/projects/3">Доска задач</a>
+          <a href="https://github.com/ta4ilka69/fine-tuning-of-advertising/issues">Issues</a>
+          <a href="https://github.com/ta4ilka69/fine-tuning-of-advertising/pulls">Pull requests</a>
+          <a href="https://github.com/ta4ilka69/fine-tuning-of-advertising/actions">Проверки CI</a>
+        </div>
+        <div>
+          <h3>Код</h3>
+          <a href="https://github.com/ta4ilka69/fine-tuning-of-advertising">Репозиторий</a>
+          <a href="https://github.com/ta4ilka69/fine-tuning-of-advertising#запуск">Как запустить</a>
+          <a href="https://github.com/ta4ilka69/fine-tuning-of-advertising/blob/main/frontend/tests/README.md">Тесты</a>
+        </div>
+        <div>
+          <h3>Дизайн</h3>
+          <a href="https://www.figma.com/design/sRJKjBDE8UctvKwacFGybg">Макет в Figma</a>
+          <a href="https://www.figma.com/proto/sRJKjBDE8UctvKwacFGybg?node-id=18-170&amp;starting-point-node-id=18-170">Прототип</a>
+          <a href="https://www.figma.com/proto/sRJKjBDE8UctvKwacFGybg?node-id=20-897&amp;starting-point-node-id=20-897">Мобильный прототип</a>
+          <a href="https://github.com/ta4ilka69/fine-tuning-of-advertising/blob/main/frontend/design/README.md">Карта экранов</a>
+        </div>
+        <div>
+          <h3>API и данные</h3>
+          <a href="https://github.com/ta4ilka69/fine-tuning-of-advertising/blob/main/frontend/public/docs/openapi.json">API-контракт</a>
+          <small>Swagger: localhost:8088/docs/</small>
+          <a href="https://github.com/ta4ilka69/fine-tuning-of-advertising/pull/30">Модель данных</a>
+          <small>схема и решения, PR № 30</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Риски</h2>
+      <div class="risk"><i class="dot" style="background:var(--bad)"></i><div>Нейросеть выдумывает факты<br><span>запрет в промпте, чеклист, лимиты</span></div></div>
+      <div class="risk"><i class="dot" style="background:var(--warn)"></i><div>Доступ и оплата API нейросети<br><span>проверить заранее, запасной сервис</span></div></div>
+      <div class="risk"><i class="dot" style="background:var(--warn)"></i><div>Стоимость анализа фото<br><span>оценка один раз, лимит числа фото</span></div></div>
+      <div class="risk"><i class="dot" style="background:var(--warn)"></i><div>Каждая часть на одном человеке<br><span>перекрёстное ревью, описания в репо</span></div></div>
+    </section>
+  </div>
+
+  <footer>Обновлено 27 октября 2026 года · исходник — <code>site/index.html</code></footer>
+</main>
+
+<script>
+  const day = 864e5;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const local = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+  const left = Math.round((local('2026-11-13') - today) / day);
+  const plural = (n) => n % 10 === 1 && n % 100 !== 11 ? 'день' : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? 'дня' : 'дней';
+  document.getElementById('days-to-demo').textContent = left > 0 ? `${left} ${plural(left)}` : left === 0 ? 'Сегодня' : 'Демо прошло';
+  for (const el of document.querySelectorAll('.iter')) {
+    const s = local(el.dataset.start), e = local(el.dataset.end);
+    el.classList.toggle('done', today > e);
+    el.classList.toggle('current', today >= s && today <= e);
+  }
+</script>
+</body>
+</html>
