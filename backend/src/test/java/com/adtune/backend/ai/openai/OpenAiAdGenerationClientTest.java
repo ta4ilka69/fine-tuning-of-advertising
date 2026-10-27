@@ -34,6 +34,7 @@ class OpenAiAdGenerationClientTest {
   private final ObjectMapper plainMapper = new ObjectMapper();
   private final ObjectMapper wireMapper = JsonMapper.builder()
       .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+      .disable(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
       .build();
 
   private RestClient.Builder restClientBuilder;
@@ -63,14 +64,33 @@ class OpenAiAdGenerationClientTest {
         null);
   }
 
+  /** Ответ с реалистичным набором полей Chat Completions, включая неизвестные клиенту. */
   private String chatResponseWithContent(String content) throws Exception {
     var message = plainMapper.createObjectNode();
     message.put("role", "assistant");
     message.put("content", content);
+    message.putNull("refusal");
+    message.putArray("annotations");
     var choice = plainMapper.createObjectNode();
+    choice.put("index", 0);
     choice.set("message", message);
+    choice.putNull("logprobs");
+    choice.put("finish_reason", "stop");
+    var usage = plainMapper.createObjectNode();
+    usage.put("prompt_tokens", 1500);
+    usage.put("completion_tokens", 400);
+    usage.put("total_tokens", 1900);
+    usage.putObject("prompt_tokens_details").put("cached_tokens", 0);
+    usage.putObject("completion_tokens_details").put("reasoning_tokens", 0);
     var root = plainMapper.createObjectNode();
+    root.put("id", "chatcmpl-test123");
+    root.put("object", "chat.completion");
+    root.put("created", 1760000000);
+    root.put("model", "gpt-test");
     root.set("choices", plainMapper.createArrayNode().add(choice));
+    root.set("usage", usage);
+    root.put("service_tier", "default");
+    root.put("system_fingerprint", "fp_test");
     return plainMapper.writeValueAsString(root);
   }
 
@@ -137,6 +157,28 @@ class OpenAiAdGenerationClientTest {
     assertThatThrownBy(() -> client.generate(sampleRequest()))
         .isInstanceOf(AiClientException.class)
         .hasMessageContaining("HTTP 500");
+    server.verify();
+  }
+
+  @Test
+  void reportsClearErrorWhenBodyIsNotChatCompletionsJson() throws Exception {
+    server.expect(requestTo(BASE_URL + "/chat/completions"))
+        .andRespond(withSuccess("не JSON вообще", MediaType.APPLICATION_JSON));
+
+    assertThatThrownBy(() -> client.generate(sampleRequest()))
+        .isInstanceOf(AiClientException.class)
+        .hasMessageContaining("неожиданном формате");
+    server.verify();
+  }
+
+  @Test
+  void reportsClearErrorWhenBodyIsEmpty() throws Exception {
+    server.expect(requestTo(BASE_URL + "/chat/completions"))
+        .andRespond(withSuccess("", MediaType.APPLICATION_JSON));
+
+    assertThatThrownBy(() -> client.generate(sampleRequest()))
+        .isInstanceOf(AiClientException.class)
+        .hasMessageContaining("пустой ответ");
     server.verify();
   }
 

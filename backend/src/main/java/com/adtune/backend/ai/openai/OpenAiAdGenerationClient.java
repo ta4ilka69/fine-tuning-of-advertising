@@ -4,20 +4,24 @@ import com.adtune.backend.ai.AdGenerationClient;
 import com.adtune.backend.ai.AdGenerationRequest;
 import com.adtune.backend.ai.AdGenerationResult;
 import com.adtune.backend.ai.AiClientException;
+import com.adtune.backend.ai.ChannelAiInput;
 import com.adtune.backend.ai.SystemPromptBuilder;
 import com.adtune.backend.config.AiProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
+import org.springframework.core.NestedExceptionUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
-import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
@@ -148,6 +152,12 @@ public class OpenAiAdGenerationClient implements AdGenerationClient {
       throw new IllegalArgumentException("Запрос не содержит ни одной площадки для генерации.");
     }
 
+    log.info("Запуск генерации: модель={}, площадки={}, фото={} шт., полей в params={}",
+        settings.model(),
+        request.channels().stream().map(ChannelAiInput::channelId).toList(),
+        request.photos().size(),
+        request.params() == null ? 0 : request.params().size());
+
     ChatRequest chatRequest = new ChatRequest(
         settings.model(),
         List.of(
@@ -160,32 +170,49 @@ public class OpenAiAdGenerationClient implements AdGenerationClient {
     ChatResponse response = callModel(chatRequest);
     String content = extractContent(response);
     AdGenerationResult result = parseResult(content);
-    log.info("Модель {} вернула результат за {} мс: score={}, площадок={}",
+    log.info("Модель {} вернула результат за {} мс: score={}, площадок={}, токенов={}",
         settings.model(), (System.nanoTime() - startedAt) / 1_000_000,
-        result.score(), result.channels().size());
+        result.score(), result.channels().size(),
+        response.usage() == null ? "?" : response.usage().totalTokens());
     return result;
   }
 
+  /**
+   * Ответ читается байтами и парсится вручную: при проблемах формата в лог
+   * попадает само тело ответа, а не безликая ошибка конвертера, а UTF-8
+   * определяется корректно (String-конвертер декодировал бы как ISO-8859-1).
+   */
   private ChatResponse callModel(ChatRequest chatRequest) {
+    byte[] rawBody;
     try {
-      ChatResponse response = restClient.post()
+      rawBody = restClient.post()
           .uri("/chat/completions")
           .body(chatRequest)
           .retrieve()
-          .body(ChatResponse.class);
-      if (response == null) {
-        throw new AiClientException(AiClientException.BAD_RESPONSE,
-            "Модель вернула пустой ответ.");
-      }
-      return response;
+          .body(byte[].class);
     } catch (RestClientResponseException e) {
       String body = e.getResponseBodyAsString();
-      String summary = body.length() > 500 ? body.substring(0, 500) + "…" : body;
+      log.error("Модель вернула HTTP {}: {}", e.getStatusCode().value(), truncate(body, 2000), e);
       throw new AiClientException(AiClientException.REQUEST_FAILED,
-          "Модель вернула ошибку HTTP " + e.getStatusCode().value() + ": " + summary, e);
-    } catch (RestClientException | IllegalStateException e) {
+          "Модель вернула ошибку HTTP " + e.getStatusCode().value() + ": " + truncate(body, 500), e);
+    } catch (RestClientException e) {
+      Throwable root = NestedExceptionUtils.getMostSpecificCause(e);
+      log.error("Не удалось обратиться к модели: {}", root.getMessage(), e);
       throw new AiClientException(AiClientException.REQUEST_FAILED,
-          "Не удалось обратиться к модели: " + e.getMessage(), e);
+          "Не удалось обратиться к модели: " + root.getMessage(), e);
+    }
+    if (rawBody == null || rawBody.length == 0) {
+      log.error("Модель вернула пустое тело ответа (HTTP 200)");
+      throw new AiClientException(AiClientException.BAD_RESPONSE,
+          "Модель вернула пустой ответ.");
+    }
+    try {
+      return jsonMapper.readValue(rawBody, ChatResponse.class);
+    } catch (IOException e) {
+      log.error("Ответ модели не соответствует формату Chat Completions: {}. Тело ответа: {}",
+          e.getMessage(), truncate(new String(rawBody, StandardCharsets.UTF_8), 2000), e);
+      throw new AiClientException(AiClientException.BAD_RESPONSE,
+          "Модель вернула ответ в неожиданном формате: " + e.getMessage(), e);
     }
   }
 
@@ -204,10 +231,19 @@ public class OpenAiAdGenerationClient implements AdGenerationClient {
     try {
       return jsonMapper.readValue(content, AdGenerationResult.class);
     } catch (JsonProcessingException e) {
-      log.debug("Нечитаемый ответ модели: {}", content);
+      log.error("Содержимое модели не разобрать как JSON результата: {}. Содержимое: {}",
+          e.getOriginalMessage(), truncate(content, 2000), e);
       throw new AiClientException(AiClientException.BAD_RESPONSE,
-          "Модель вернула ответ, который не удалось разобрать как JSON результата.", e);
+          "Модель вернула ответ, который не удалось разобрать как JSON результата: "
+              + e.getOriginalMessage(), e);
     }
+  }
+
+  private static String truncate(String text, int limit) {
+    if (text == null) {
+      return "";
+    }
+    return text.length() <= limit ? text : text.substring(0, limit) + "…";
   }
 
   // ----- wire-формат OpenAI; сериализуется ObjectMapper'ом в snake_case -----

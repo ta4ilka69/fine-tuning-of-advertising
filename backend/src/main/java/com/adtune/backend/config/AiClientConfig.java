@@ -3,6 +3,7 @@ package com.adtune.backend.config;
 import com.adtune.backend.ai.AdGenerationClient;
 import com.adtune.backend.ai.SystemPromptBuilder;
 import com.adtune.backend.ai.openai.OpenAiAdGenerationClient;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -34,6 +35,9 @@ public class AiClientConfig {
     AiProperties.OpenAi openAi = properties.openai();
     ObjectMapper wireMapper = JsonMapper.builder()
         .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+        // Ответ OpenAI содержит много полей, которые нам не нужны (id, usage-детали,
+        // system_fingerprint и т.п.) — падать на них нельзя.
+        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
         .build();
     RestClient restClient = OpenAiAdGenerationClient.configureRestClient(
             restClientBuilder, openAi.baseUrl(), openAi.apiKey(),
