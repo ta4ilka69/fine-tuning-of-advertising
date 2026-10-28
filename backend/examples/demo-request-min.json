@@ -1,0 +1,24 @@
+{
+  "params": {
+    "deal": "sale",
+    "price": 14500000,
+    "rooms": 2,
+    "area": { "total": 54 },
+    "floor": 7,
+    "floors": 9,
+    "address": "г. Москва, ул. Примерная, 12",
+    "metro": "Полежаевская",
+    "metro_min": 8,
+    "comment": "Окна во двор, тихо."
+  },
+  "channels": [
+    {
+      "channel_id": "avito-test",
+      "name": "Авито",
+      "instruction": "Деловой стиль, короткий текст до 500 символов.",
+      "checklist": ["Указана цена", "Указана площадь"],
+      "title_limit": 50,
+      "text_limit": 500
+    }
+  ]
+}

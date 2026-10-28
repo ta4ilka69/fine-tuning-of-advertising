@@ -1,0 +1,15 @@
+# Секреты не должны попадать в образ
+.env
+*.env
+
+# Сборочные артефакты и локальные файлы
+.gradle
+build
+out
+
+# Общие
+.git
+.gitignore
+README.md
+Dockerfile
+.dockerignore

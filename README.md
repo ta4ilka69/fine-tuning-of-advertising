@@ -79,6 +79,51 @@ API_PROXY_TARGET=http://127.0.0.1:8089 npm run dev
 npm run build
 ```
 
+## Разработка бэкенда
+
+Стек: Java 21, Spring Boot, Gradle. Локально устанавливать ничего не нужно —
+сборка и тесты запускаются в Docker.
+
+Ключи и настройки модели — в `backend/.env` (шаблон — `backend/.env.example`).
+
+Тесты:
+
+```sh
+docker run --rm -v "$(pwd)/backend:/workspace" -v adtune-gradle-cache:/home/gradle/.gradle -w /workspace gradle:8.14.3-jdk21 gradle --no-daemon test
+```
+
+(в PowerShell вместо `$(pwd)` — `${PWD}`.)
+
+Полный запуск вместе с фронтендом — как описано выше, `docker compose up --build -d --wait`;
+бэкенд собирается из `./backend` и слушает внутренний порт `8000` за прокси фронтенда.
+Демо-эндпоинт генерации: `POST http://localhost:8088/api/ai/demo`.
+
+### Один реальный запрос к модели
+
+Каждый вызов демо-эндпоинта — ровно один запрос к OpenAI API, токены тратятся.
+Пример с минимальным расходом (одна площадка, короткий лимит текста) —
+`backend/examples/demo-request-min.json`.
+
+1. Запустить только бэкенд с опубликованным портом:
+
+   ```sh
+   docker run --rm -d --name backend-test -p 127.0.0.1:8009:8000 \
+     --env-file backend/.env fine-tuning-of-advertising-backend
+   ```
+
+2. Один запрос:
+
+   ```sh
+   curl -s -X POST http://127.0.0.1:8009/api/ai/demo \
+     -H "Content-Type: application/json; charset=utf-8" \
+     --data-binary @backend/examples/demo-request-min.json
+   ```
+
+3. Подтверждение: `200` и сгенерированные тексты в ответе; строка
+   `Модель … вернула результат за … мс` в `docker logs backend-test`;
+
+После проверки: `docker rm -f backend-test`.
+
 ## База данных
 
 [Модель данных, договорённости и пересоздание базы](infra/README.md).

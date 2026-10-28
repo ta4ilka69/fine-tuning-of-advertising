@@ -1,0 +1,24 @@
+server:
+  port: 8000
+  servlet:
+    context-path: /api
+  shutdown: graceful
+
+spring:
+  application:
+    name: adtune-backend
+
+adtune:
+  ai:
+    provider: ${AI_PROVIDER:openai}
+    timeout: ${AI_TIMEOUT:50s}
+    openai:
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      api-key: ${OPENAI_API_KEY:}
+      model: ${OPENAI_MODEL:gpt-5-mini}
+      # Глубина «размышлений» gpt-5: меньше — быстрее и дешевле. Пусто = не отправлять.
+      reasoning-effort: ${OPENAI_REASONING_EFFORT:low}
+
+logging:
+  level:
+    com.adtune: INFO

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 export interface Checks {
   frontend: boolean;
+  backend: boolean;
   workflow: boolean;
   compose: boolean;
 }
@@ -28,10 +29,13 @@ const frontendWorkflows = new Set([
 
 export function selectChecks(files: string[]): Checks {
   const frontend = files.some((file) => file.startsWith('frontend/') || frontendWorkflows.has(file) || file.startsWith('.github/actions/'));
+  const backend = files.some((file) => file.startsWith('backend/'));
+  const infra = files.some((file) => file.startsWith('infra/'));
   return {
     frontend,
+    backend,
     workflow: files.some((file) => file.startsWith('.github/workflows/') || file.startsWith('.github/actions/')),
-    compose: frontend || files.some((file) => file.startsWith('backend/') || file.startsWith('infra/') || /^(?:compose|docker-compose)(?:[.-][^/]*)?\.ya?ml$/.test(file) || ['.dockerignore', '.env.example'].includes(file)),
+    compose: frontend || backend || infra || files.some((file) => /^(?:compose|docker-compose)(?:[.-][^/]*)?\.ya?ml$/.test(file) || ['.dockerignore', '.env.example'].includes(file)),
   };
 }
 
@@ -41,14 +45,14 @@ function commit(value: string | undefined): string {
 }
 
 export function detectChecks(eventName: string, event: Event, cwd: string): Checks {
-  if (eventName === 'workflow_dispatch') return { frontend: true, workflow: true, compose: true };
+  if (eventName === 'workflow_dispatch') return { frontend: true, backend: true, workflow: true, compose: true };
   let range: string;
   if (eventName === 'pull_request') {
     range = `${commit(event.pull_request?.base.sha)}...${commit(event.pull_request?.head.sha)}`;
   } else if (eventName === 'push') {
     const before = commit(event.before);
     const after = commit(event.after);
-    if ([before, after].includes('0'.repeat(40))) return { frontend: true, workflow: true, compose: true };
+    if ([before, after].includes('0'.repeat(40))) return { frontend: true, backend: true, workflow: true, compose: true };
     range = `${before}..${after}`;
   } else {
     throw new Error(`Неизвестное событие ${eventName}`);
@@ -66,10 +70,10 @@ export function detectChecks(eventName: string, event: Event, cwd: string): Chec
 export function validateResults(needs: Record<string, Job>) {
   if (needs.changes?.result !== 'success') throw new Error('Не удалось определить изменённые части проекта');
   const outputs = needs.changes.outputs;
-  for (const name of ['frontend', 'workflow', 'compose']) {
+  for (const name of ['frontend', 'backend', 'workflow', 'compose']) {
     if (!['true', 'false'].includes(outputs?.[name] ?? '')) throw new Error(`Отсутствует условие запуска ${name}`);
   }
-  for (const [name, condition] of Object.entries({ frontend: 'frontend', browser: 'frontend', workflow: 'workflow', compose: 'compose' })) {
+  for (const [name, condition] of Object.entries({ frontend: 'frontend', backend: 'backend', browser: 'frontend', workflow: 'workflow', compose: 'compose' })) {
     const result = needs[name]?.result;
     if (result !== 'success' && !(outputs?.[condition] === 'false' && result === 'skipped')) {
       throw new Error(`Проверка ${name}: ${result ?? 'отсутствует'}`);
