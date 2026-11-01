@@ -1,5 +1,5 @@
 -- Схема базы. Применяется только при первом запуске на пустом томе.
--- Модель и принятые решения описаны в infra/README.md, требования — в docs/requirements.md.
+-- Модель и принятые решения описаны в infra/README.md, требования к MVP — в docs/requirements.md.
 
 CREATE TYPE user_role AS ENUM ('agent', 'admin');
 CREATE TYPE listing_status AS ENUM ('draft', 'generating', 'ready', 'failed');
