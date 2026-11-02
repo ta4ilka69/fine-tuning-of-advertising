@@ -57,16 +57,21 @@ describe('примеры OpenAPI', () => {
   });
 });
 
-test('последний успешный результат принимает только успех или null', () => {
+test('сохранённый результат и ошибка соответствуют состоянию объявления', () => {
   const validate = validator({ $ref: '#/components/schemas/Listing' });
   const example = examples.find(({ name }) => name.includes('failedRetryWithPreviousResult'));
   expect(example).toBeDefined();
   const listing = structuredClone(example!.value) as Record<string, unknown>;
   expect(validate(listing)).toBe(true);
-  listing.lastSuccessfulGeneration = null;
+  listing.result = null;
   expect(validate(listing)).toBe(true);
-  delete listing.lastSuccessfulGeneration;
+  listing.status = 'ready';
+  listing.generationError = null;
   expect(validate(listing)).toBe(false);
-  listing.lastSuccessfulGeneration = listing.latestGeneration;
+  listing.result = structuredClone((example!.value as Record<string, unknown>).result);
+  expect(validate(listing)).toBe(true);
+  listing.result = { channels: [] };
+  expect(validate(listing)).toBe(false);
+  delete listing.result;
   expect(validate(listing)).toBe(false);
 });

@@ -34,17 +34,18 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllGlobals(); fetchMock.mockReset(); window.history.replaceState(null, '', '/'); });
 
-test('список показывает API, четыре типа, сделки, null и независимые статусы', async () => {
+test('список показывает API, типы объектов, сделки, null и состояния результата', async () => {
   await open();
   const list = await screen.findByRole('list', { name: 'Мои объявления' });
   expect(within(list).getAllByRole('listitem')).toHaveLength(5);
   expect(list).toHaveTextContent('Квартира · Продажа');
   expect(list).toHaveTextContent('Комната · Посуточная аренда');
   expect(list).toHaveTextContent('Дом · Продажа');
-  expect(list).toHaveTextContent('Апартаменты · Длительная аренда');
+  expect(list).toHaveTextContent('Квартира · Длительная аренда');
   expect(list).toHaveTextContent('Тип объекта не указан · Тип сделки не указан');
   const failed = within(list).getAllByRole('listitem')[3]!;
-  expect(failed).toHaveTextContent('Результат готов');
+  expect(failed).toHaveTextContent('Сохранённый результат');
+  expect(failed).not.toHaveTextContent('Результат готов');
   expect(failed).toHaveTextContent('Последний запуск: ошибка');
   expect(await screen.findByText('Все объявления загружены')).toBeVisible();
   expect(screen.queryByRole('button', { name: 'Показать ещё' })).not.toBeInTheDocument();
@@ -223,3 +224,11 @@ for (const destination of ['/app', `/app/listings/${listing().id}`]) {
     expect(window.location.pathname).toBe('/login');
   });
 }
+
+
+test('апартаменты в карточке определяются по признаку квартиры', async () => {
+  const item = listingDetails();
+  detail = async () => json({ ...item, data: { ...item.data, object: { type: 'flat', isApartments: true } } });
+  await open(`/app/listings/${item.id}`);
+  expect(await screen.findByText('Апартаменты · Продажа')).toBeVisible();
+});

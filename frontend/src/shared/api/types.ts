@@ -8,18 +8,22 @@ export type Session = { user: User };
 export type LoginRequest = { login: string; password: string };
 export type RegisterRequest = { login: string; password: string };
 
+export type ListingStatus = 'draft' | 'generating' | 'ready' | 'failed';
+
 export type ListingSummary = {
   id: string;
   version: number;
   address: string | null;
-  dealType: 'sale' | 'long_term_rent' | 'short_term_rent' | null;
-  propertyType: 'flat' | 'room' | 'house' | 'apartments' | null;
-  price: { amount: string; currency: 'RUB' } | null;
-  latestGenerationStatus: 'queued' | 'running' | 'succeeded' | 'failed' | null;
-  generatedForVersion: number | null;
+  dealType: 'sale' | 'rent' | 'daily_rent' | null;
+  objectType: 'flat' | 'room' | 'house' | null;
+  price: number | null;
+  status: ListingStatus;
+  hasResult: boolean;
   createdAt: string;
   updatedAt: string;
 };
+
+export type ListingOverview = ListingSummary & { isApartments: boolean };
 
 export type ListingPage = { items: ListingSummary[]; nextCursor: string | null };
 

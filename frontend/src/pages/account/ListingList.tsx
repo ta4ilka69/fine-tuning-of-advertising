@@ -10,7 +10,7 @@ import { dealNames, formatDate, formatPrice, generationLabels, propertyNames } f
 import classes from './Listings.module.css';
 import { navigate } from '../../app/navigation';
 
-export function ListingCard({ item, linked = true }: { item: ListingSummary; linked?: boolean }) {
+export function ListingCard({ item, linked = true, isApartments = false }: { item: ListingSummary; linked?: boolean; isApartments?: boolean }) {
   return (
     <li className={classes.card}>
       <div className={classes.object}>
@@ -19,7 +19,7 @@ export function ListingCard({ item, linked = true }: { item: ListingSummary; lin
             event.preventDefault(); navigate(`/app/listings/${item.id}`);
           }
         }}>{item.address?.trim() || 'Новый черновик'}</a> : item.address?.trim() || 'Новый черновик'}</Title>
-        <Text size="sm" c="dimmed">{item.propertyType ? propertyNames[item.propertyType] : 'Тип объекта не указан'} · {item.dealType ? dealNames[item.dealType] : 'Тип сделки не указан'}</Text>
+        <Text size="sm" c="dimmed">{isApartments ? 'Апартаменты' : item.objectType ? propertyNames[item.objectType] : 'Тип объекта не указан'} · {item.dealType ? dealNames[item.dealType] : 'Тип сделки не указан'}</Text>
       </div>
       <Text fw={600} className={classes.price}>{formatPrice(item)}</Text>
       <div className={classes.dates}>

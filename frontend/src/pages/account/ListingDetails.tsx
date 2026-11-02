@@ -2,7 +2,7 @@ import { Stack, Text } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { listings } from '../../shared/api/listings';
 import { RequestError } from '../../shared/api/errors';
-import type { ListingSummary } from '../../shared/api/types';
+import type { ListingOverview } from '../../shared/api/types';
 import { AppButton } from '../../shared/ui/AppButton';
 import { AppNotice } from '../../shared/ui/AppNotice';
 import { LoadingState } from '../../shared/ui/LoadingState';
@@ -10,7 +10,7 @@ import { ListingCard } from './ListingList';
 import classes from './Listings.module.css';
 
 export function ListingDetails({ id, recheck }: { id: string; recheck: (unauthorized: boolean) => void }) {
-  const [item, setItem] = useState<ListingSummary>();
+  const [item, setItem] = useState<ListingOverview>();
   const [error, setError] = useState<string>();
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
@@ -26,7 +26,7 @@ export function ListingDetails({ id, recheck }: { id: string; recheck: (unauthor
     return () => controller.abort();
   }, [id, recheck, attempt]);
   return <Stack gap="lg">
-    {item ? <><ul className={classes.items}><ListingCard item={item} linked={false} /></ul><Text c="dimmed">Здесь доступны основные данные объекта. Форма и редактирование появятся позже.</Text></>
+    {item ? <><ul className={classes.items}><ListingCard item={item} linked={false} isApartments={item.isApartments} /></ul><Text c="dimmed">Здесь доступны основные данные объекта. Форма и редактирование появятся позже.</Text></>
       : error ? <AppNotice tone="error" title="Не удалось загрузить объявление"><p>{error}</p><AppButton onClick={() => { recheck(false); setError(undefined); setAttempt((value) => value + 1); }}>Повторить</AppButton></AppNotice>
         : <LoadingState label="Загружаем объявление" />}
   </Stack>;
