@@ -1,6 +1,6 @@
 import { request } from './client';
 import { isRecord, parseProblem } from './errors';
-import type { ListingPage, ListingSummary } from './types';
+import type { ListingOverview, ListingPage, ListingSummary } from './types';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const positiveInteger = (value: unknown): value is number => Number.isSafeInteger(value) && Number(value) > 0;
@@ -20,23 +20,20 @@ function parseSummary(value: unknown): ListingSummary {
   if (!isRecord(value) || typeof value.id !== 'string' || !uuid.test(value.id)
     || !positiveInteger(value.version)
     || !(value.address === null || typeof value.address === 'string')
-    || ![null, 'sale', 'long_term_rent', 'short_term_rent'].includes(value.dealType as string | null)
-    || ![null, 'flat', 'room', 'house', 'apartments'].includes(value.propertyType as string | null)
-    || ![null, 'queued', 'running', 'succeeded', 'failed'].includes(value.latestGenerationStatus as string | null)
-    || !(value.generatedForVersion === null || positiveInteger(value.generatedForVersion))
+    || ![null, 'sale', 'rent', 'daily_rent'].includes(value.dealType as string | null)
+    || ![null, 'flat', 'room', 'house'].includes(value.objectType as string | null)
+    || !['draft', 'generating', 'ready', 'failed'].includes(value.status as string)
+    || typeof value.hasResult !== 'boolean' || (value.status === 'ready' && !value.hasResult)
     || !timestamp(value.createdAt) || !timestamp(value.updatedAt)
-    || !(value.price === null || (isRecord(value.price) && value.price.currency === 'RUB'
-      && typeof value.price.amount === 'string' && /^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,2})?$/.test(value.price.amount)
-      && !/^0(?:\.0{1,2})?$/.test(value.price.amount)))) {
+    || !(value.price === null || positiveInteger(value.price))) {
     throw new TypeError('Некорректное объявление');
   }
   return {
     id: value.id, version: value.version, address: value.address,
     dealType: value.dealType as ListingSummary['dealType'],
-    propertyType: value.propertyType as ListingSummary['propertyType'],
-    price: value.price === null ? null : { amount: (value.price as { amount: string }).amount, currency: 'RUB' },
-    latestGenerationStatus: value.latestGenerationStatus as ListingSummary['latestGenerationStatus'],
-    generatedForVersion: value.generatedForVersion, createdAt: value.createdAt, updatedAt: value.updatedAt,
+    objectType: value.objectType as ListingSummary['objectType'],
+    price: value.price, status: value.status as ListingSummary['status'],
+    hasResult: value.hasResult, createdAt: value.createdAt, updatedAt: value.updatedAt,
   };
 }
 
@@ -51,60 +48,51 @@ function parsePage(value: unknown): ListingPage {
 const hasText = (value: unknown): value is string => typeof value === 'string' && /\S/.test(value);
 const isUUID = (value: unknown): value is string => typeof value === 'string' && uuid.test(value);
 
-function isGenerationResult(value: unknown, channelIds: string[]) {
-  if (!isRecord(value) || !Array.isArray(value.channelResults) || value.channelResults.length !== channelIds.length
-    || !value.channelResults.every((channel) => isRecord(channel) && isUUID(channel.channelId)
-      && channelIds.includes(channel.channelId) && positiveInteger(channel.channelRevision)
-      && hasText(channel.title) && hasText(channel.text))
-    || new Set(value.channelResults.map((channel: Record<string, unknown>) => channel.channelId)).size !== channelIds.length
-    || !isRecord(value.assessment) || !Number.isInteger(value.assessment.score)
-    || Number(value.assessment.score) < 0 || Number(value.assessment.score) > 100
-    || !Array.isArray(value.assessment.reasons) || value.assessment.reasons.length < 3 || !value.assessment.reasons.every(hasText)) return false;
-  const photos = value.photoRecommendations;
-  return Array.isArray(photos) && photos.length >= 1 && photos.length <= 3
-    && photos.every((photo) => isRecord(photo) && isUUID(photo.photoId)
-      && positiveInteger(photo.rank) && photo.rank <= photos.length && hasText(photo.reason))
-    && new Set(photos.map((photo: Record<string, unknown>) => photo.photoId)).size === photos.length
-    && new Set(photos.map((photo: Record<string, unknown>) => photo.rank)).size === photos.length;
+function isGenerationResult(value: unknown) {
+  if (!isRecord(value) || !Array.isArray(value.channels) || value.channels.length < 1) return false;
+  const channelIds = new Set<string>();
+  return value.channels.every((channel) => {
+    if (!isRecord(channel) || !isUUID(channel.channelVersionId)
+      || !isRecord(channel.channel) || !isUUID(channel.channel.id) || !hasText(channel.channel.name)
+      || channelIds.has(channel.channel.id) || !hasText(channel.title) || !hasText(channel.text)
+      || !Number.isInteger(channel.score) || Number(channel.score) < 0 || Number(channel.score) > 100
+      || !hasText(channel.scoreReason) || !Array.isArray(channel.photoIds) || channel.photoIds.length > 3
+      || !channel.photoIds.every(isUUID) || new Set(channel.photoIds).size !== channel.photoIds.length) return false;
+    channelIds.add(channel.channel.id);
+    return true;
+  });
 }
 
-function isGeneration(value: Record<string, unknown>, listingId: string) {
-  if (!isUUID(value.id) || value.listingId !== listingId || !positiveInteger(value.sourceVersion)
-    || !timestamp(value.createdAt) || !Array.isArray(value.channelIds) || value.channelIds.length < 1
-    || !value.channelIds.every(isUUID) || new Set(value.channelIds).size !== value.channelIds.length) return false;
-  if (value.status === 'succeeded') {
-    return timestamp(value.completedAt) && value.error === null && isGenerationResult(value.result, value.channelIds);
-  }
-  if (value.status === 'queued' || value.status === 'running') {
-    return value.completedAt === null && value.result === null && value.error === null;
-  }
-  return value.status === 'failed' && timestamp(value.completedAt) && value.result === null
-    && isRecord(value.error) && typeof value.error.status === 'number'
-    && Boolean(parseProblem(value.error, value.error.status));
+function dataField(block: Record<string, unknown> | undefined, key: string) {
+  const value = block?.[key];
+  if (value === null) throw new TypeError('Некорректные данные объекта');
+  return value ?? null;
 }
 
-function parseListing(value: unknown): ListingSummary {
-  if (!isRecord(value) || !isRecord(value.data)
-    || !(value.latestGeneration === null || isRecord(value.latestGeneration))
-    || !(value.lastSuccessfulGeneration === null || isRecord(value.lastSuccessfulGeneration))) {
+function parseListing(value: unknown): ListingOverview {
+  if (!isRecord(value) || !isRecord(value.data) || !Array.isArray(value.photos)
+    || !(value.result === null || isGenerationResult(value.result))
+    || (value.status === 'failed' ? !isRecord(value.generationError)
+      || typeof value.generationError.status !== 'number'
+      || !parseProblem(value.generationError, value.generationError.status) : value.generationError !== null)) {
     throw new TypeError('Некорректное объявление');
   }
-  if (typeof value.id !== 'string'
-    || (value.latestGeneration !== null && !isGeneration(value.latestGeneration, value.id))
-    || (value.lastSuccessfulGeneration !== null && (value.lastSuccessfulGeneration.status !== 'succeeded'
-      || !isGeneration(value.lastSuccessfulGeneration, value.id)))) throw new TypeError('Некорректный результат генерации');
-  const { deal, property, location } = value.data;
-  if ((deal !== undefined && !isRecord(deal)) || (property !== undefined && !isRecord(property))
-    || (location !== undefined && !isRecord(location))) throw new TypeError('Некорректные данные объекта');
-  return parseSummary({
-    id: value.id, version: value.version, createdAt: value.createdAt, updatedAt: value.updatedAt,
-    address: isRecord(location) ? location.address ?? null : null,
-    dealType: isRecord(deal) ? deal.type ?? null : null,
-    propertyType: isRecord(property) ? property.type ?? null : null,
-    price: isRecord(deal) ? deal.price ?? null : null,
-    latestGenerationStatus: value.latestGeneration === null ? null : value.latestGeneration.status,
-    generatedForVersion: value.lastSuccessfulGeneration === null ? null : value.lastSuccessfulGeneration.sourceVersion,
-  });
+  const { deal, object, location } = value.data;
+  if ((deal !== undefined && !isRecord(deal)) || (object !== undefined && !isRecord(object))
+    || (location !== undefined && !isRecord(location))
+    || (isRecord(object) && object.isApartments !== undefined
+      && (typeof object.isApartments !== 'boolean' || (object.type !== undefined && object.type !== 'flat')))) {
+    throw new TypeError('Некорректные данные объекта');
+  }
+  return {
+    ...parseSummary({
+      id: value.id, version: value.version, createdAt: value.createdAt, updatedAt: value.updatedAt,
+      address: dataField(location, 'address'), dealType: dataField(deal, 'type'),
+      objectType: dataField(object, 'type'), price: dataField(deal, 'price'),
+      status: value.status, hasResult: value.result !== null,
+    }),
+    isApartments: isRecord(object) && object.type === 'flat' && object.isApartments === true,
+  };
 }
 
 export const listings = {

@@ -329,7 +329,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Ответ без systemPrompt и checklist. ID не зашиты во фронтенд."
+        "description": "Только включённые площадки. Ответ без instruction и checklist. ID не зашиты во фронтенд."
       }
     },
     "/listings": {
@@ -366,7 +366,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Только свои записи; сортировка createdAt DESC, id DESC. nextCursor=null — конец. При изменении фильтра курсор сбрасывается.",
+        "description": "Только свои записи; сортировка updatedAt DESC, id DESC. nextCursor=null — конец. При изменении фильтра курсор сбрасывается.",
         "parameters": [
           {
             "name": "q",
@@ -431,16 +431,30 @@
                 },
                 "examples": {
                   "example2": {
-                    "summary": "Создание пустого черновика",
+                    "summary": "Созданный черновик",
                     "value": {
                       "id": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
                       "version": 1,
-                      "data": {},
+                      "status": "draft",
+                      "data": {
+                        "deal": {
+                          "type": "sale",
+                          "price": 9800000
+                        },
+                        "object": {
+                          "type": "flat",
+                          "roomsCount": 2,
+                          "totalArea": 54
+                        },
+                        "location": {
+                          "address": "Санкт-Петербург, Лесной проспект, 10"
+                        }
+                      },
                       "photos": [],
-                      "latestGeneration": null,
+                      "result": null,
+                      "generationError": null,
                       "createdAt": "2026-10-21T12:00:00Z",
-                      "updatedAt": "2026-10-21T12:00:00Z",
-                      "lastSuccessfulGeneration": null
+                      "updatedAt": "2026-10-21T12:00:00Z"
                     }
                   }
                 }
@@ -469,7 +483,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "data={} допустим. ownerId определяется сессией, начальная version=1.",
+        "description": "data={} допустим. Владелец определяется сессией, начальная version=1, status=draft.",
         "parameters": [
           {
             "name": "Origin",
@@ -492,9 +506,22 @@
               },
               "examples": {
                 "example2": {
-                  "summary": "Создание пустого черновика",
+                  "summary": "Черновик продажи квартиры",
                   "value": {
-                    "data": {}
+                    "data": {
+                      "deal": {
+                        "type": "sale",
+                        "price": 9800000
+                      },
+                      "object": {
+                        "type": "flat",
+                        "roomsCount": 2,
+                        "totalArea": 54
+                      },
+                      "location": {
+                        "address": "Санкт-Петербург, Лесной проспект, 10"
+                      }
+                    }
                   }
                 }
               }
@@ -520,108 +547,214 @@
                 },
                 "examples": {
                   "failedRetryWithPreviousResult": {
-                    "summary": "Повторный запуск не удался, предыдущий успешный результат доступен",
+                    "summary": "Повторная генерация не удалась, предыдущий результат доступен",
                     "value": {
                       "id": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
                       "version": 4,
+                      "status": "failed",
                       "data": {
                         "deal": {
                           "type": "sale",
-                          "price": {
-                            "amount": "9800000",
-                            "currency": "RUB"
-                          }
+                          "price": 9800000,
+                          "saleType": "free",
+                          "mortgageAllowed": true
                         },
-                        "property": {
+                        "object": {
                           "type": "flat",
-                          "rooms": 2,
-                          "totalArea": 54
+                          "roomsCount": 2,
+                          "roomType": "separate",
+                          "totalArea": 54,
+                          "livingArea": 30,
+                          "kitchenArea": 10,
+                          "floor": 7,
+                          "repairType": "euro"
+                        },
+                        "building": {
+                          "floorsCount": 12,
+                          "buildYear": 2008,
+                          "materialType": "brick"
                         },
                         "location": {
-                          "address": "Санкт-Петербург, Лесной проспект, 10"
+                          "address": "Санкт-Петербург, Лесной проспект, 10",
+                          "undergrounds": [
+                            {
+                              "name": "Лесная",
+                              "minutes": 7,
+                              "transportType": "walk"
+                            }
+                          ]
                         }
                       },
                       "photos": [
                         {
                           "id": "34b5feac-b144-489c-92d0-f8c621e94f3f",
                           "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
-                          "fileName": "room.heic",
-                          "mimeType": "image/heic",
+                          "fileName": "room.jpg",
+                          "mimeType": "image/jpeg",
                           "sizeBytes": 3200000,
-                          "position": 0,
                           "status": "ready",
                           "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/content",
                           "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/thumbnail",
                           "error": null
+                        },
+                        {
+                          "id": "7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10",
+                          "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                          "fileName": "kitchen.jpg",
+                          "mimeType": "image/jpeg",
+                          "sizeBytes": 3200000,
+                          "status": "ready",
+                          "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/content",
+                          "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/thumbnail",
+                          "error": null
                         }
                       ],
-                      "latestGeneration": {
-                        "id": "8ce589a3-9f18-431d-80db-f013504f1947",
-                        "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
-                        "sourceVersion": 4,
-                        "channelIds": [
-                          "c356513a-7633-4fb5-bd6c-f908d83c136e",
-                          "ae249257-b465-44ee-8f00-f598de20f69b"
-                        ],
-                        "status": "failed",
-                        "createdAt": "2026-10-21T12:06:00Z",
-                        "completedAt": "2026-10-21T12:06:30Z",
-                        "result": null,
-                        "error": {
-                          "type": "about:blank",
-                          "title": "Не удалось подготовить результат",
-                          "status": 504,
-                          "code": "GENERATION_TIMEOUT",
-                          "detail": "Превышено время ожидания",
-                          "requestId": "b7064c09-52c9-4459-af95-5796e62cb5c1"
-                        }
-                      },
-                      "lastSuccessfulGeneration": {
-                        "id": "56b8ff15-6ce3-49f3-9b4d-0af54afc69de",
-                        "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
-                        "sourceVersion": 4,
-                        "channelIds": [
-                          "c356513a-7633-4fb5-bd6c-f908d83c136e",
-                          "ae249257-b465-44ee-8f00-f598de20f69b"
-                        ],
-                        "status": "succeeded",
-                        "createdAt": "2026-10-21T12:05:00Z",
-                        "completedAt": "2026-10-21T12:05:18Z",
-                        "result": {
-                          "channelResults": [
-                            {
-                              "channelId": "c356513a-7633-4fb5-bd6c-f908d83c136e",
-                              "channelRevision": 1,
-                              "title": "Двухкомнатная квартира 54 м² на Лесном проспекте",
-                              "text": "Продаётся двухкомнатная квартира площадью 54 м². Адрес: Санкт-Петербург, Лесной проспект, 10. Цена — 9 800 000 ₽."
+                      "result": {
+                        "channels": [
+                          {
+                            "channelVersionId": "0f3a9e52-6d1b-4c7e-8a24-5b9c1d7e3f60",
+                            "channel": {
+                              "id": "c356513a-7633-4fb5-bd6c-f908d83c136e",
+                              "name": "Авито"
                             },
-                            {
-                              "channelId": "ae249257-b465-44ee-8f00-f598de20f69b",
-                              "channelRevision": 2,
-                              "title": "54 м² на Лесном проспекте",
-                              "text": "Санкт-Петербург, Лесной проспект, 10. В продаже двухкомнатная квартира площадью 54 м² за 9 800 000 ₽."
-                            }
-                          ],
-                          "assessment": {
-                            "score": 68,
-                            "reasons": [
-                              "Указаны цена, площадь и число комнат",
-                              "Есть точный адрес объекта",
-                              "Не указаны состояние квартиры и этаж, поэтому описание пока неполное"
+                            "title": "Двухкомнатная квартира 54 м² у метро Лесная",
+                            "text": "Продаётся двухкомнатная квартира 54 м² с евроремонтом, 7 минут пешком до метро Лесная. Адрес: Санкт-Петербург, Лесной проспект, 10. Цена — 9 800 000 ₽.",
+                            "score": 74,
+                            "scoreReason": "Указаны цена, площадь, ремонт и транспорт; не хватает фото кухни",
+                            "photoIds": [
+                              "7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10",
+                              "34b5feac-b144-489c-92d0-f8c621e94f3f"
                             ]
                           },
-                          "photoRecommendations": [
-                            {
-                              "photoId": "34b5feac-b144-489c-92d0-f8c621e94f3f",
-                              "rank": 1,
-                              "reason": "Единственный загруженный снимок показывает комнату; его можно использовать первым"
-                            }
-                          ]
-                        },
-                        "error": null
+                          {
+                            "channelVersionId": "9b2e4d71-3c5a-4f8e-b061-7d2a9c4e5f18",
+                            "channel": {
+                              "id": "ae249257-b465-44ee-8f00-f598de20f69b",
+                              "name": "ЦИАН"
+                            },
+                            "title": "2-комн. квартира, 54 м², Лесной проспект",
+                            "text": "Санкт-Петербург, Лесной проспект, 10. Двухкомнатная квартира 54 м², изолированные комнаты, кухня 10 м², 7-й этаж 12-этажного кирпичного дома 2008 года. Цена — 9 800 000 ₽, возможна ипотека.",
+                            "score": 70,
+                            "scoreReason": "Полные характеристики дома и квартиры; описание короткое",
+                            "photoIds": [
+                              "34b5feac-b144-489c-92d0-f8c621e94f3f",
+                              "7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10"
+                            ]
+                          }
+                        ]
+                      },
+                      "generationError": {
+                        "type": "about:blank",
+                        "title": "Не удалось подготовить результат",
+                        "status": 504,
+                        "code": "GENERATION_TIMEOUT",
+                        "requestId": "e3b614ec-87d1-4f10-8f83-1099151b273c",
+                        "detail": "Превышено время ожидания"
                       },
                       "createdAt": "2026-10-21T12:00:00Z",
                       "updatedAt": "2026-10-21T12:04:00Z"
+                    }
+                  },
+                  "staleResult": {
+                    "summary": "Данные изменились после генерации, результат устарел",
+                    "value": {
+                      "id": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                      "version": 5,
+                      "status": "draft",
+                      "data": {
+                        "deal": {
+                          "type": "sale",
+                          "price": 9500000,
+                          "saleType": "free",
+                          "mortgageAllowed": true
+                        },
+                        "object": {
+                          "type": "flat",
+                          "roomsCount": 2,
+                          "roomType": "separate",
+                          "totalArea": 54,
+                          "livingArea": 30,
+                          "kitchenArea": 10,
+                          "floor": 7,
+                          "repairType": "euro"
+                        },
+                        "building": {
+                          "floorsCount": 12,
+                          "buildYear": 2008,
+                          "materialType": "brick"
+                        },
+                        "location": {
+                          "address": "Санкт-Петербург, Лесной проспект, 10",
+                          "undergrounds": [
+                            {
+                              "name": "Лесная",
+                              "minutes": 7,
+                              "transportType": "walk"
+                            }
+                          ]
+                        }
+                      },
+                      "photos": [
+                        {
+                          "id": "34b5feac-b144-489c-92d0-f8c621e94f3f",
+                          "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                          "fileName": "room.jpg",
+                          "mimeType": "image/jpeg",
+                          "sizeBytes": 3200000,
+                          "status": "ready",
+                          "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/content",
+                          "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/thumbnail",
+                          "error": null
+                        },
+                        {
+                          "id": "7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10",
+                          "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                          "fileName": "kitchen.jpg",
+                          "mimeType": "image/jpeg",
+                          "sizeBytes": 3200000,
+                          "status": "ready",
+                          "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/content",
+                          "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/thumbnail",
+                          "error": null
+                        }
+                      ],
+                      "result": {
+                        "channels": [
+                          {
+                            "channelVersionId": "0f3a9e52-6d1b-4c7e-8a24-5b9c1d7e3f60",
+                            "channel": {
+                              "id": "c356513a-7633-4fb5-bd6c-f908d83c136e",
+                              "name": "Авито"
+                            },
+                            "title": "Двухкомнатная квартира 54 м² у метро Лесная",
+                            "text": "Продаётся двухкомнатная квартира 54 м² с евроремонтом, 7 минут пешком до метро Лесная. Адрес: Санкт-Петербург, Лесной проспект, 10. Цена — 9 800 000 ₽.",
+                            "score": 74,
+                            "scoreReason": "Указаны цена, площадь, ремонт и транспорт; не хватает фото кухни",
+                            "photoIds": [
+                              "7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10",
+                              "34b5feac-b144-489c-92d0-f8c621e94f3f"
+                            ]
+                          },
+                          {
+                            "channelVersionId": "9b2e4d71-3c5a-4f8e-b061-7d2a9c4e5f18",
+                            "channel": {
+                              "id": "ae249257-b465-44ee-8f00-f598de20f69b",
+                              "name": "ЦИАН"
+                            },
+                            "title": "2-комн. квартира, 54 м², Лесной проспект",
+                            "text": "Санкт-Петербург, Лесной проспект, 10. Двухкомнатная квартира 54 м², изолированные комнаты, кухня 10 м², 7-й этаж 12-этажного кирпичного дома 2008 года. Цена — 9 800 000 ₽, возможна ипотека.",
+                            "score": 70,
+                            "scoreReason": "Полные характеристики дома и квартиры; описание короткое",
+                            "photoIds": [
+                              "34b5feac-b144-489c-92d0-f8c621e94f3f",
+                              "7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10"
+                            ]
+                          }
+                        ]
+                      },
+                      "generationError": null,
+                      "createdAt": "2026-10-21T12:00:00Z",
+                      "updatedAt": "2026-10-21T12:10:00Z"
                     }
                   }
                 }
@@ -641,7 +774,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Возвращает исходные данные, фото, последний созданный запуск latestGeneration и последний успешный запуск lastSuccessfulGeneration. Незавершённый или неудачный повторный запуск не скрывает предыдущий успешный результат, в том числе после перезагрузки страницы. Актуальность успешного результата определяется сравнением его sourceVersion с version объявления.",
+        "description": "Возвращает данные, фото, состояние генерации (status, generationError) и последний успешный результат result. Ход генерации отслеживается опросом этого запроса раз в 2 секунды, пока status=generating. Неудачная генерация и правка данных не стирают result: при status=draft непустой result считается устаревшим.",
         "parameters": [
           {
             "$ref": "#/components/parameters/id"
@@ -664,61 +797,207 @@
                 },
                 "examples": {
                   "changed": {
-                    "summary": "Данные изменены, версия увеличена с 1 до 2",
+                    "summary": "Данные изменились, результат устарел",
                     "value": {
                       "id": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
-                      "version": 2,
+                      "version": 5,
+                      "status": "draft",
                       "data": {
                         "deal": {
                           "type": "sale",
-                          "price": {
-                            "amount": "9800000",
-                            "currency": "RUB"
-                          }
+                          "price": 9500000,
+                          "saleType": "free",
+                          "mortgageAllowed": true
                         },
-                        "property": {
+                        "object": {
                           "type": "flat",
-                          "rooms": 2,
-                          "totalArea": 54
+                          "roomsCount": 2,
+                          "roomType": "separate",
+                          "totalArea": 54,
+                          "livingArea": 30,
+                          "kitchenArea": 10,
+                          "floor": 7,
+                          "repairType": "euro"
+                        },
+                        "building": {
+                          "floorsCount": 12,
+                          "buildYear": 2008,
+                          "materialType": "brick"
                         },
                         "location": {
-                          "address": "Санкт-Петербург, Лесной проспект, 10"
+                          "address": "Санкт-Петербург, Лесной проспект, 10",
+                          "undergrounds": [
+                            {
+                              "name": "Лесная",
+                              "minutes": 7,
+                              "transportType": "walk"
+                            }
+                          ]
                         }
                       },
-                      "photos": [],
-                      "latestGeneration": null,
+                      "photos": [
+                        {
+                          "id": "34b5feac-b144-489c-92d0-f8c621e94f3f",
+                          "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                          "fileName": "room.jpg",
+                          "mimeType": "image/jpeg",
+                          "sizeBytes": 3200000,
+                          "status": "ready",
+                          "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/content",
+                          "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/thumbnail",
+                          "error": null
+                        },
+                        {
+                          "id": "7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10",
+                          "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                          "fileName": "kitchen.jpg",
+                          "mimeType": "image/jpeg",
+                          "sizeBytes": 3200000,
+                          "status": "ready",
+                          "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/content",
+                          "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/thumbnail",
+                          "error": null
+                        }
+                      ],
+                      "result": {
+                        "channels": [
+                          {
+                            "channelVersionId": "0f3a9e52-6d1b-4c7e-8a24-5b9c1d7e3f60",
+                            "channel": {
+                              "id": "c356513a-7633-4fb5-bd6c-f908d83c136e",
+                              "name": "Авито"
+                            },
+                            "title": "Двухкомнатная квартира 54 м² у метро Лесная",
+                            "text": "Продаётся двухкомнатная квартира 54 м² с евроремонтом, 7 минут пешком до метро Лесная. Адрес: Санкт-Петербург, Лесной проспект, 10. Цена — 9 800 000 ₽.",
+                            "score": 74,
+                            "scoreReason": "Указаны цена, площадь, ремонт и транспорт; не хватает фото кухни",
+                            "photoIds": [
+                              "7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10",
+                              "34b5feac-b144-489c-92d0-f8c621e94f3f"
+                            ]
+                          },
+                          {
+                            "channelVersionId": "9b2e4d71-3c5a-4f8e-b061-7d2a9c4e5f18",
+                            "channel": {
+                              "id": "ae249257-b465-44ee-8f00-f598de20f69b",
+                              "name": "ЦИАН"
+                            },
+                            "title": "2-комн. квартира, 54 м², Лесной проспект",
+                            "text": "Санкт-Петербург, Лесной проспект, 10. Двухкомнатная квартира 54 м², изолированные комнаты, кухня 10 м², 7-й этаж 12-этажного кирпичного дома 2008 года. Цена — 9 800 000 ₽, возможна ипотека.",
+                            "score": 70,
+                            "scoreReason": "Полные характеристики дома и квартиры; описание короткое",
+                            "photoIds": [
+                              "34b5feac-b144-489c-92d0-f8c621e94f3f",
+                              "7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10"
+                            ]
+                          }
+                        ]
+                      },
+                      "generationError": null,
                       "createdAt": "2026-10-21T12:00:00Z",
-                      "updatedAt": "2026-10-21T12:01:00Z",
-                      "lastSuccessfulGeneration": null
+                      "updatedAt": "2026-10-21T12:10:00Z"
                     }
                   },
                   "unchanged": {
-                    "summary": "Данные не изменились, версия 2 и updatedAt сохранены",
+                    "summary": "Данные те же, версия и статус не изменились",
                     "value": {
                       "id": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
-                      "version": 2,
+                      "version": 4,
+                      "status": "ready",
                       "data": {
                         "deal": {
                           "type": "sale",
-                          "price": {
-                            "amount": "9800000",
-                            "currency": "RUB"
-                          }
+                          "price": 9800000,
+                          "saleType": "free",
+                          "mortgageAllowed": true
                         },
-                        "property": {
+                        "object": {
                           "type": "flat",
-                          "rooms": 2,
-                          "totalArea": 54
+                          "roomsCount": 2,
+                          "roomType": "separate",
+                          "totalArea": 54,
+                          "livingArea": 30,
+                          "kitchenArea": 10,
+                          "floor": 7,
+                          "repairType": "euro"
+                        },
+                        "building": {
+                          "floorsCount": 12,
+                          "buildYear": 2008,
+                          "materialType": "brick"
                         },
                         "location": {
-                          "address": "Санкт-Петербург, Лесной проспект, 10"
+                          "address": "Санкт-Петербург, Лесной проспект, 10",
+                          "undergrounds": [
+                            {
+                              "name": "Лесная",
+                              "minutes": 7,
+                              "transportType": "walk"
+                            }
+                          ]
                         }
                       },
-                      "photos": [],
-                      "latestGeneration": null,
+                      "photos": [
+                        {
+                          "id": "34b5feac-b144-489c-92d0-f8c621e94f3f",
+                          "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                          "fileName": "room.jpg",
+                          "mimeType": "image/jpeg",
+                          "sizeBytes": 3200000,
+                          "status": "ready",
+                          "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/content",
+                          "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/thumbnail",
+                          "error": null
+                        },
+                        {
+                          "id": "7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10",
+                          "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                          "fileName": "kitchen.jpg",
+                          "mimeType": "image/jpeg",
+                          "sizeBytes": 3200000,
+                          "status": "ready",
+                          "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/content",
+                          "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/thumbnail",
+                          "error": null
+                        }
+                      ],
+                      "result": {
+                        "channels": [
+                          {
+                            "channelVersionId": "0f3a9e52-6d1b-4c7e-8a24-5b9c1d7e3f60",
+                            "channel": {
+                              "id": "c356513a-7633-4fb5-bd6c-f908d83c136e",
+                              "name": "Авито"
+                            },
+                            "title": "Двухкомнатная квартира 54 м² у метро Лесная",
+                            "text": "Продаётся двухкомнатная квартира 54 м² с евроремонтом, 7 минут пешком до метро Лесная. Адрес: Санкт-Петербург, Лесной проспект, 10. Цена — 9 800 000 ₽.",
+                            "score": 74,
+                            "scoreReason": "Указаны цена, площадь, ремонт и транспорт; не хватает фото кухни",
+                            "photoIds": [
+                              "7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10",
+                              "34b5feac-b144-489c-92d0-f8c621e94f3f"
+                            ]
+                          },
+                          {
+                            "channelVersionId": "9b2e4d71-3c5a-4f8e-b061-7d2a9c4e5f18",
+                            "channel": {
+                              "id": "ae249257-b465-44ee-8f00-f598de20f69b",
+                              "name": "ЦИАН"
+                            },
+                            "title": "2-комн. квартира, 54 м², Лесной проспект",
+                            "text": "Санкт-Петербург, Лесной проспект, 10. Двухкомнатная квартира 54 м², изолированные комнаты, кухня 10 м², 7-й этаж 12-этажного кирпичного дома 2008 года. Цена — 9 800 000 ₽, возможна ипотека.",
+                            "score": 70,
+                            "scoreReason": "Полные характеристики дома и квартиры; описание короткое",
+                            "photoIds": [
+                              "34b5feac-b144-489c-92d0-f8c621e94f3f",
+                              "7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10"
+                            ]
+                          }
+                        ]
+                      },
+                      "generationError": null,
                       "createdAt": "2026-10-21T12:00:00Z",
-                      "updatedAt": "2026-10-21T12:01:00Z",
-                      "lastSuccessfulGeneration": null
+                      "updatedAt": "2026-10-21T12:04:00Z"
                     }
                   }
                 }
@@ -753,7 +1032,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Заменяет data целиком. Сначала проверяет expectedVersion; устаревшая версия возвращает 409 даже при неизменённых данных. Во время queued/running возвращается 409 LISTING_BUSY. После этих проверок сравнивает переданный data с сохранённым: при одинаковых значениях возвращает 200 с тем же объявлением, version и updatedAt не изменяются. Порядок ключей объектов при сравнении не учитывается; порядок элементов массивов учитывается. Только фактическое изменение data увеличивает version на 1 и обновляет updatedAt. Неполные данные допустимы; неверные типы и неприменимые непустые поля отклоняются. Проверка версии, сравнение и запись атомарны.",
+        "description": "Заменяет data целиком. Сначала проверяет expectedVersion: устаревшая версия возвращает 409 VERSION_CONFLICT даже при неизменённых данных. Во время генерации (status=generating) возвращается 409 LISTING_BUSY. Затем сравнивает переданный data с сохранённым: при одинаковых значениях возвращает 200 с тем же объявлением, version и updatedAt не изменяются. Порядок ключей объектов при сравнении не учитывается; порядок элементов массивов учитывается. Фактическое изменение увеличивает version на 1, обновляет updatedAt и переводит status в draft; result сохраняется и считается устаревшим. Неполные данные допустимы; неверные типы и неприменимые поля отклоняются. Проверка версии, сравнение и запись атомарны.",
         "parameters": [
           {
             "$ref": "#/components/parameters/Origin"
@@ -771,49 +1050,81 @@
               },
               "examples": {
                 "changed": {
-                  "summary": "Изменить данные черновика версии 1",
+                  "summary": "Изменить цену в объявлении версии 4",
                   "value": {
                     "data": {
                       "deal": {
                         "type": "sale",
-                        "price": {
-                          "amount": "9800000",
-                          "currency": "RUB"
-                        }
+                        "price": 9500000,
+                        "saleType": "free",
+                        "mortgageAllowed": true
                       },
-                      "property": {
+                      "object": {
                         "type": "flat",
-                        "rooms": 2,
-                        "totalArea": 54
+                        "roomsCount": 2,
+                        "roomType": "separate",
+                        "totalArea": 54,
+                        "livingArea": 30,
+                        "kitchenArea": 10,
+                        "floor": 7,
+                        "repairType": "euro"
+                      },
+                      "building": {
+                        "floorsCount": 12,
+                        "buildYear": 2008,
+                        "materialType": "brick"
                       },
                       "location": {
-                        "address": "Санкт-Петербург, Лесной проспект, 10"
+                        "address": "Санкт-Петербург, Лесной проспект, 10",
+                        "undergrounds": [
+                          {
+                            "name": "Лесная",
+                            "minutes": 7,
+                            "transportType": "walk"
+                          }
+                        ]
                       }
                     },
-                    "expectedVersion": 1
+                    "expectedVersion": 4
                   }
                 },
                 "unchanged": {
-                  "summary": "Сохранить те же данные объявления версии 2",
+                  "summary": "Сохранить те же данные объявления версии 4",
                   "value": {
                     "data": {
                       "deal": {
                         "type": "sale",
-                        "price": {
-                          "amount": "9800000",
-                          "currency": "RUB"
-                        }
+                        "price": 9800000,
+                        "saleType": "free",
+                        "mortgageAllowed": true
                       },
-                      "property": {
+                      "object": {
                         "type": "flat",
-                        "rooms": 2,
-                        "totalArea": 54
+                        "roomsCount": 2,
+                        "roomType": "separate",
+                        "totalArea": 54,
+                        "livingArea": 30,
+                        "kitchenArea": 10,
+                        "floor": 7,
+                        "repairType": "euro"
+                      },
+                      "building": {
+                        "floorsCount": 12,
+                        "buildYear": 2008,
+                        "materialType": "brick"
                       },
                       "location": {
-                        "address": "Санкт-Петербург, Лесной проспект, 10"
+                        "address": "Санкт-Петербург, Лесной проспект, 10",
+                        "undergrounds": [
+                          {
+                            "name": "Лесная",
+                            "minutes": 7,
+                            "transportType": "walk"
+                          }
+                        ]
                       }
                     },
-                    "expectedVersion": 2
+                    "expectedVersion": 4
                   }
                 }
               }
@@ -853,7 +1164,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Удаляет доступ к объявлению, фото и генерациям. 409 для старой версии или queued/running. Пользовательское подтверждение выполняет фронтенд.",
+        "description": "Удаляет объявление вместе с фото. 409 для старой версии или во время генерации (LISTING_BUSY). Пользовательское подтверждение выполняет фронтенд.",
         "parameters": [
           {
             "$ref": "#/components/parameters/Origin"
@@ -884,16 +1195,15 @@
                 },
                 "examples": {
                   "example6": {
-                    "summary": "Загрузка HEIC с последующей обработкой на сервере",
+                    "summary": "Загрузка JPEG с последующей обработкой на сервере",
                     "value": {
                       "version": 4,
                       "photo": {
                         "id": "34b5feac-b144-489c-92d0-f8c621e94f3f",
                         "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
-                        "fileName": "room.heic",
-                        "mimeType": "image/heic",
+                        "fileName": "room.jpg",
+                        "mimeType": "image/jpeg",
                         "sizeBytes": 3200000,
-                        "position": 0,
                         "status": "processing",
                         "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/content",
                         "thumbnailUrl": null,
@@ -939,7 +1249,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Один файл за запрос. Проверка лимита 20 и изменение version атомарны. Загрузки клиента последовательные, каждая использует version предыдущего ответа. processing/ready/failed обновляются в GET объявления. Переход статуса обработки не меняет version, поскольку исходный файл не изменяется. При активном запуске 409. Лимит файла относится к байтам файла, не к multipart-обрамлению.",
+        "description": "Один файл за запрос. Проверка лимита 20 и изменение version атомарны. Загрузки клиента последовательные, каждая использует version предыдущего ответа. processing/ready/failed обновляются в GET объявления. Переход статуса обработки не меняет version, поскольку исходный файл не изменяется. Загрузка переводит status объявления в draft, если он был ready или failed. Во время генерации 409 LISTING_BUSY. Лимит файла относится к байтам файла, не к multipart-обрамлению.",
         "parameters": [
           {
             "name": "Origin",
@@ -965,15 +1275,15 @@
               },
               "encoding": {
                 "file": {
-                  "contentType": "image/jpeg, image/png, image/heic"
+                  "contentType": "image/jpeg, image/png"
                 }
               },
               "examples": {
                 "example6": {
-                  "summary": "Загрузка HEIC с последующей обработкой на сервере",
+                  "summary": "Загрузка JPEG с последующей обработкой на сервере",
                   "value": {
                     "expectedVersion": 3,
-                    "file": "<байты HEIC>"
+                    "file": "<байты JPEG>"
                   }
                 }
               }
@@ -1032,7 +1342,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Возвращает новую version; использует проверку владельца и принадлежности фото объявлению. Во время запуска 409. Удаление увеличивает version.",
+        "description": "Возвращает новую version; проверяет владельца и принадлежность фото объявлению. Удаление увеличивает version и переводит status объявления в draft, если он был ready или failed. Во время генерации 409 LISTING_BUSY.",
         "parameters": [
           {
             "$ref": "#/components/parameters/Origin"
@@ -1067,12 +1377,6 @@
                 }
               },
               "image/png": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              },
-              "image/heic": {
                 "schema": {
                   "type": "string",
                   "format": "binary"
@@ -1273,41 +1577,116 @@
         ],
         "responses": {
           "202": {
-            "description": "Успешно",
+            "description": "Генерация запущена",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Generation"
+                  "$ref": "#/components/schemas/Listing"
                 },
                 "examples": {
                   "example4": {
                     "summary": "Запуск для двух площадок",
                     "value": {
-                      "id": "56b8ff15-6ce3-49f3-9b4d-0af54afc69de",
-                      "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
-                      "sourceVersion": 4,
-                      "channelIds": [
-                        "c356513a-7633-4fb5-bd6c-f908d83c136e",
-                        "ae249257-b465-44ee-8f00-f598de20f69b"
+                      "id": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                      "version": 4,
+                      "status": "generating",
+                      "data": {
+                        "deal": {
+                          "type": "sale",
+                          "price": 9800000,
+                          "saleType": "free",
+                          "mortgageAllowed": true
+                        },
+                        "object": {
+                          "type": "flat",
+                          "roomsCount": 2,
+                          "roomType": "separate",
+                          "totalArea": 54,
+                          "livingArea": 30,
+                          "kitchenArea": 10,
+                          "floor": 7,
+                          "repairType": "euro"
+                        },
+                        "building": {
+                          "floorsCount": 12,
+                          "buildYear": 2008,
+                          "materialType": "brick"
+                        },
+                        "location": {
+                          "address": "Санкт-Петербург, Лесной проспект, 10",
+                          "undergrounds": [
+                            {
+                              "name": "Лесная",
+                              "minutes": 7,
+                              "transportType": "walk"
+                            }
+                          ]
+                        }
+                      },
+                      "photos": [
+                        {
+                          "id": "34b5feac-b144-489c-92d0-f8c621e94f3f",
+                          "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                          "fileName": "room.jpg",
+                          "mimeType": "image/jpeg",
+                          "sizeBytes": 3200000,
+                          "status": "ready",
+                          "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/content",
+                          "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/thumbnail",
+                          "error": null
+                        },
+                        {
+                          "id": "7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10",
+                          "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
+                          "fileName": "kitchen.jpg",
+                          "mimeType": "image/jpeg",
+                          "sizeBytes": 3200000,
+                          "status": "ready",
+                          "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/content",
+                          "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/thumbnail",
+                          "error": null
+                        }
                       ],
-                      "status": "queued",
-                      "createdAt": "2026-10-21T12:05:00Z",
-                      "completedAt": null,
-                      "result": null,
-                      "error": null
+                      "result": {
+                        "channels": [
+                          {
+                            "channelVersionId": "0f3a9e52-6d1b-4c7e-8a24-5b9c1d7e3f60",
+                            "channel": {
+                              "id": "c356513a-7633-4fb5-bd6c-f908d83c136e",
+                              "name": "Авито"
+                            },
+                            "title": "Двухкомнатная квартира 54 м² у метро Лесная",
+                            "text": "Продаётся двухкомнатная квартира 54 м² с евроремонтом, 7 минут пешком до метро Лесная. Адрес: Санкт-Петербург, Лесной проспект, 10. Цена — 9 800 000 ₽.",
+                            "score": 74,
+                            "scoreReason": "Указаны цена, площадь, ремонт и транспорт; не хватает фото кухни",
+                            "photoIds": [
+                              "7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10",
+                              "34b5feac-b144-489c-92d0-f8c621e94f3f"
+                            ]
+                          },
+                          {
+                            "channelVersionId": "9b2e4d71-3c5a-4f8e-b061-7d2a9c4e5f18",
+                            "channel": {
+                              "id": "ae249257-b465-44ee-8f00-f598de20f69b",
+                              "name": "ЦИАН"
+                            },
+                            "title": "2-комн. квартира, 54 м², Лесной проспект",
+                            "text": "Санкт-Петербург, Лесной проспект, 10. Двухкомнатная квартира 54 м², изолированные комнаты, кухня 10 м², 7-й этаж 12-этажного кирпичного дома 2008 года. Цена — 9 800 000 ₽, возможна ипотека.",
+                            "score": 70,
+                            "scoreReason": "Полные характеристики дома и квартиры; описание короткое",
+                            "photoIds": [
+                              "34b5feac-b144-489c-92d0-f8c621e94f3f",
+                              "7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10"
+                            ]
+                          }
+                        ]
+                      },
+                      "generationError": null,
+                      "createdAt": "2026-10-21T12:00:00Z",
+                      "updatedAt": "2026-10-21T12:04:00Z"
                     }
                   }
                 }
-              }
-            },
-            "headers": {
-              "Location": {
-                "required": true,
-                "schema": {
-                  "type": "string",
-                  "format": "uri-reference"
-                },
-                "description": "Путь к GET созданного запуска"
               }
             }
           },
@@ -1337,10 +1716,21 @@
                       "type": "about:blank",
                       "title": "Данные изменились",
                       "status": 409,
-                      "detail": "Обновите объявление перед запуском",
                       "code": "VERSION_CONFLICT",
-                      "currentVersion": 4,
-                      "requestId": "e3b614ec-87d1-4f10-8f83-1099151b273c"
+                      "requestId": "e3b614ec-87d1-4f10-8f83-1099151b273c",
+                      "detail": "Обновите объявление перед запуском",
+                      "currentVersion": 4
+                    }
+                  },
+                  "listingBusy": {
+                    "summary": "Генерация уже идёт",
+                    "value": {
+                      "type": "about:blank",
+                      "title": "Идёт генерация",
+                      "status": 409,
+                      "code": "LISTING_BUSY",
+                      "requestId": "e3b614ec-87d1-4f10-8f83-1099151b273c",
+                      "detail": "Дождитесь окончания генерации"
                     }
                   }
                 }
@@ -1363,7 +1753,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Непустой уникальный набор доступных channelIds. Сохраняется неизменяемый снимок данных, фото и ревизий каналов; sourceVersion=expectedVersion. Новый запуск не меняет Listing.version. Один активный запуск на объявление. Для нового запуска ошибки данных дают 422 с fieldErrors. Повтор Idempotency-Key возвращает 202 и прежний запуск. Результат ожидается до 30 секунд с приёма, включая очередь; при невозможности принять — 429 с Retry-After. По истечении срока запуск failed с GENERATION_TIMEOUT; поздний ответ не переводит его в succeeded. Частичный результат не считается успешным.",
+        "description": "Непустой уникальный набор включённых channelIds. Запуск атомарный: переводит объявление в status=generating, только если генерация ещё не идёт; иначе 409 LISTING_BUSY. Версия устарела — 409 VERSION_CONFLICT. Ошибки данных дают 422 с fieldErrors. Запуск не меняет version. Ответ — объявление в состоянии generating; дальше клиент опрашивает GET /listings/{id}. Генерация, не завершившаяся за 50 секунд, переводит объявление в failed с GENERATION_TIMEOUT; поздний ответ отбрасывается. Частичный результат не считается успешным: успех заменяет result целиком, неудача оставляет прежний.",
         "parameters": [
           {
             "name": "Origin",
@@ -1378,17 +1768,6 @@
           },
           {
             "$ref": "#/components/parameters/id"
-          },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "Ключ одного намерения запуска. Область: пользователь и объявление; хранение минимум 24 часа с приёма. Тот же ключ и тело возвращают прежний запуск, даже если он завершился; другое тело с тем же ключом — 409 IDEMPOTENCY_CONFLICT. Проверка повтора предшествует проверке текущей версии. Новая попытка после ошибки — новый ключ.",
-            "example": "d780ebda-52d2-4c46-b37a-4fc184d5ed02"
           }
         ],
         "requestBody": {
@@ -1422,124 +1801,6 @@
             }
           }
         }
-      }
-    },
-    "/listings/{id}/generations/{generationId}": {
-      "get": {
-        "operationId": "getGeneration",
-        "summary": "Состояние и результат запуска",
-        "tags": [
-          "Генерация"
-        ],
-        "responses": {
-          "200": {
-            "description": "Успешно",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Generation"
-                },
-                "examples": {
-                  "example7": {
-                    "summary": "Полный результат для двух площадок и одной фотографии",
-                    "value": {
-                      "id": "56b8ff15-6ce3-49f3-9b4d-0af54afc69de",
-                      "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
-                      "sourceVersion": 4,
-                      "channelIds": [
-                        "c356513a-7633-4fb5-bd6c-f908d83c136e",
-                        "ae249257-b465-44ee-8f00-f598de20f69b"
-                      ],
-                      "status": "succeeded",
-                      "createdAt": "2026-10-21T12:05:00Z",
-                      "completedAt": "2026-10-21T12:05:18Z",
-                      "result": {
-                        "channelResults": [
-                          {
-                            "channelId": "c356513a-7633-4fb5-bd6c-f908d83c136e",
-                            "channelRevision": 1,
-                            "title": "Двухкомнатная квартира 54 м² на Лесном проспекте",
-                            "text": "Продаётся двухкомнатная квартира площадью 54 м². Адрес: Санкт-Петербург, Лесной проспект, 10. Цена — 9 800 000 ₽."
-                          },
-                          {
-                            "channelId": "ae249257-b465-44ee-8f00-f598de20f69b",
-                            "channelRevision": 2,
-                            "title": "54 м² на Лесном проспекте",
-                            "text": "Санкт-Петербург, Лесной проспект, 10. В продаже двухкомнатная квартира площадью 54 м² за 9 800 000 ₽."
-                          }
-                        ],
-                        "assessment": {
-                          "score": 68,
-                          "reasons": [
-                            "Указаны цена, площадь и число комнат",
-                            "Есть точный адрес объекта",
-                            "Не указаны состояние квартиры и этаж, поэтому описание пока неполное"
-                          ]
-                        },
-                        "photoRecommendations": [
-                          {
-                            "photoId": "34b5feac-b144-489c-92d0-f8c621e94f3f",
-                            "rank": 1,
-                            "reason": "Единственный загруженный снимок показывает комнату; его можно использовать первым"
-                          }
-                        ]
-                      },
-                      "error": null
-                    }
-                  },
-                  "example8": {
-                    "summary": "Альтернативное завершение того же запуска с ошибкой",
-                    "value": {
-                      "id": "56b8ff15-6ce3-49f3-9b4d-0af54afc69de",
-                      "listingId": "e0766ca4-57cc-49b5-ac65-a2d3110235ce",
-                      "sourceVersion": 4,
-                      "channelIds": [
-                        "c356513a-7633-4fb5-bd6c-f908d83c136e",
-                        "ae249257-b465-44ee-8f00-f598de20f69b"
-                      ],
-                      "status": "failed",
-                      "createdAt": "2026-10-21T12:05:00Z",
-                      "completedAt": "2026-10-21T12:05:30Z",
-                      "result": null,
-                      "error": {
-                        "type": "about:blank",
-                        "title": "Не удалось подготовить результат",
-                        "status": 504,
-                        "code": "GENERATION_TIMEOUT",
-                        "detail": "Превышено время ожидания",
-                        "requestId": "b7064c09-52c9-4459-af95-5796e62cb5c1"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/401"
-          },
-          "404": {
-            "$ref": "#/components/responses/404"
-          },
-          "429": {
-            "$ref": "#/components/responses/429"
-          },
-          "500": {
-            "$ref": "#/components/responses/500"
-          },
-          "503": {
-            "$ref": "#/components/responses/503"
-          }
-        },
-        "description": "Рекомендуемый опрос раз в 2 секунды с остановкой в терминальном состоянии или при уходе со страницы. Состояние failed возвращается как ресурс с HTTP 200; HTTP-ошибка относится к получению ресурса.",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/id"
-          },
-          {
-            "$ref": "#/components/parameters/generationId"
-          }
-        ]
       }
     },
     "/admin/channels": {
@@ -1585,7 +1846,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Только admin. Ответ содержит systemPrompt и checklist; Cache-Control: no-store."
+        "description": "Только admin. Все площадки, включая выключенные. Ответ содержит instruction и checklist; Cache-Control: no-store."
       },
       "post": {
         "operationId": "createChannel",
@@ -1629,7 +1890,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Только admin. code уникален. checklist — содержательные текстовые правила с уникальными id. Начальная revision=1.",
+        "description": "Только admin. name уникален. Создаёт площадку вместе с первой версией настроек, number=1. Площадки не удаляются, только выключаются через isActive.",
         "parameters": [
           {
             "$ref": "#/components/parameters/Origin"
@@ -1693,7 +1954,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Обновление всей конфигурации с expectedRevision. Revision увеличивается атомарно. Изменение не влияет на уже запущенную генерацию, использующую сохранённую редакцию.",
+        "description": "Обновление всей конфигурации с expectedNumber. Каждое сохранение создаёт новую версию настроек, number увеличивается атомарно. Изменение действует для новых генераций и не меняет уже полученные результаты. isActive включает и выключает площадку.",
         "parameters": [
           {
             "$ref": "#/components/parameters/Origin"
@@ -1800,651 +2061,338 @@
           "user"
         ]
       },
-      "Money": {
-        "type": "object",
-        "properties": {
-          "amount": {
-            "type": "string",
-            "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]{1,2})?$",
-            "description": "Десятичная сумма; для price должна быть больше нуля"
-          },
-          "currency": {
-            "const": "RUB",
-            "type": "string"
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "amount",
-          "currency"
-        ],
-        "examples": [
-          {
-            "amount": "9800000",
-            "currency": "RUB"
-          }
-        ]
-      },
-      "PositiveMoney": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Money"
-          },
-          {
-            "properties": {
-              "amount": {
-                "not": {
-                  "pattern": "^0(?:\\.0{1,2})?$"
-                }
-              }
-            }
-          }
-        ]
-      },
-      "Deposit": {
-        "oneOf": [
-          {
-            "type": "object",
-            "properties": {
-              "status": {
-                "type": "string",
-                "enum": [
-                  "unknown",
-                  "none"
-                ]
-              }
-            },
-            "additionalProperties": false,
-            "required": [
-              "status"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "status": {
-                "const": "specified"
-              },
-              "amount": {
-                "$ref": "#/components/schemas/PositiveMoney"
-              }
-            },
-            "additionalProperties": false,
-            "required": [
-              "status",
-              "amount"
-            ]
-          }
-        ]
-      },
-      "Commission": {
-        "oneOf": [
-          {
-            "type": "object",
-            "properties": {
-              "status": {
-                "type": "string",
-                "enum": [
-                  "unknown",
-                  "none"
-                ]
-              }
-            },
-            "additionalProperties": false,
-            "required": [
-              "status"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "status": {
-                "const": "specified"
-              },
-              "type": {
-                "const": "fixed"
-              },
-              "amount": {
-                "$ref": "#/components/schemas/PositiveMoney"
-              }
-            },
-            "additionalProperties": false,
-            "required": [
-              "status",
-              "type",
-              "amount"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "status": {
-                "const": "specified"
-              },
-              "type": {
-                "const": "percent"
-              },
-              "percent": {
-                "type": "number",
-                "exclusiveMinimum": 0,
-                "maximum": 100
-              }
-            },
-            "additionalProperties": false,
-            "required": [
-              "status",
-              "type",
-              "percent"
-            ]
-          }
-        ]
-      },
-      "Utilities": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "included",
-              "excluded",
-              "partly_included",
-              "unknown"
-            ]
-          },
-          "details": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "pattern": "\\S"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "status"
-        ]
-      },
-      "Deal": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "sale",
-                  "long_term_rent",
-                  "short_term_rent"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "sale — продажа; long_term_rent — длительная аренда; short_term_rent — посуточная аренда."
-          },
-          "price": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PositiveMoney"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Цена в RUB: полная стоимость объекта для sale, стоимость за месяц для long_term_rent, стоимость за сутки для short_term_rent. Период определяется типом сделки."
-          },
-          "deposit": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Deposit"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "commission": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Commission"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "utilities": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Utilities"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "additionalProperties": false
-      },
-      "Property": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "flat",
-                  "room",
-                  "house",
-                  "apartments"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "rooms": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Число комнат. Для flat и apartments значение 0 означает студию, значения от 1 — число комнат. Для house указывается число от 1. Для отдельной комнаты room поле не заполняется: отсутствует или null."
-          },
-          "totalArea": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Общая площадь объекта в м². Для room — площадь самой продаваемой или сдаваемой комнаты."
-          },
-          "livingArea": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Жилая площадь в м², если известна."
-          },
-          "kitchenArea": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Площадь кухни в м², если известна."
-          }
-        },
-        "additionalProperties": false
-      },
-      "Building": {
-        "type": "object",
-        "properties": {
-          "floor": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "floorsTotal": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 1
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "constructionType": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "pattern": "\\S"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "builtYear": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 1
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "elevator": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "parking": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "pattern": "\\S"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "additionalProperties": false
-      },
-      "Condition": {
-        "type": "object",
-        "properties": {
-          "renovation": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "pattern": "\\S"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "furniture": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "pattern": "\\S"
-            },
-            "uniqueItems": true
-          },
-          "appliances": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "pattern": "\\S"
-            },
-            "uniqueItems": true
-          },
-          "bathroom": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "pattern": "\\S"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "balcony": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "pattern": "\\S"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "additionalProperties": false
-      },
-      "Transport": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "metro",
-              "bus_stop",
-              "rail_station",
-              "other"
-            ]
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "\\S"
-          },
-          "travelMinutes": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 0
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "travelMode": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "walk",
-                  "car",
-                  "public_transport"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "type",
-          "name"
-        ]
-      },
-      "Location": {
-        "type": "object",
-        "properties": {
-          "address": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "pattern": "\\S"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "nearbyTransport": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Transport"
-            }
-          }
-        },
-        "additionalProperties": false
-      },
-      "Infrastructure": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "school",
-              "kindergarten",
-              "shop",
-              "park",
-              "other"
-            ]
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "\\S"
-          },
-          "distanceMeters": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 0
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "type",
-          "name"
-        ]
-      },
-      "RentalRules": {
-        "type": "object",
-        "properties": {
-          "childrenAllowed": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "petsAllowed": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "availableFrom": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "additionalProperties": false
-      },
       "ListingData": {
         "type": "object",
         "properties": {
           "deal": {
-            "$ref": "#/components/schemas/Deal"
+            "$ref": "#/components/schemas/ListingDeal"
           },
-          "property": {
-            "$ref": "#/components/schemas/Property"
+          "object": {
+            "$ref": "#/components/schemas/ListingObject"
           },
           "building": {
-            "$ref": "#/components/schemas/Building"
+            "$ref": "#/components/schemas/ListingBuilding"
           },
-          "condition": {
-            "$ref": "#/components/schemas/Condition"
+          "house": {
+            "$ref": "#/components/schemas/ListingHouse"
+          },
+          "amenities": {
+            "$ref": "#/components/schemas/ListingAmenities"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/ListingRules"
+          },
+          "legal": {
+            "$ref": "#/components/schemas/ListingLegal"
           },
           "location": {
-            "$ref": "#/components/schemas/Location"
+            "$ref": "#/components/schemas/ListingLocation"
           },
-          "infrastructure": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Infrastructure"
-            }
-          },
-          "rentalRules": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RentalRules"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "comment": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "extra": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "description": "Дополнительная информация от агента: инфраструктура рядом, особенности объекта, пожелания к тексту."
           }
         },
         "additionalProperties": false,
-        "description": "Неполный черновик допустим. Отсутствие необязательного поля означает отсутствие сведений. Значение null имеет тот же смысл только для полей, чья схема допускает null. PUT заменяет data целиком: для очистки необязательного блока его исключают из data, для очистки списка передают []. Пустой список мебели означает, что ничего не отмечено, а не что мебели точно нет.",
+        "description": "Данные объекта по составу полей ЦИАН (infra/formats.md). Неполный черновик допустим. Отсутствие поля означает «неизвестно»; null не используется. PUT заменяет data целиком. Поля, неприменимые к выбранным типу сделки и объекта, отклоняются.",
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "object"
+              ],
+              "properties": {
+                "object": {
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "flat"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "house": false,
+                "object": {
+                  "properties": {
+                    "bedroomsCount": false,
+                    "wcsCount": false,
+                    "wcLocation": false
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "object"
+              ],
+              "properties": {
+                "object": {
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "room"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "house": false,
+                "legal": {
+                  "properties": {
+                    "hasRedevelopment": false
+                  }
+                },
+                "object": {
+                  "properties": {
+                    "isApartments": false,
+                    "isPenthouse": false,
+                    "isEuroFlat": false,
+                    "roomsCount": false,
+                    "roomType": false,
+                    "bedroomsCount": false,
+                    "wcsCount": false,
+                    "wcLocation": false
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "object"
+              ],
+              "properties": {
+                "object": {
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "house"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "building": false,
+                "legal": {
+                  "properties": {
+                    "hasRedevelopment": false
+                  }
+                },
+                "object": {
+                  "properties": {
+                    "isApartments": false,
+                    "isPenthouse": false,
+                    "isEuroFlat": false,
+                    "roomsCount": false,
+                    "roomType": false,
+                    "livingArea": false,
+                    "kitchenArea": false,
+                    "floor": false,
+                    "balconiesCount": false,
+                    "loggiasCount": false,
+                    "windowsView": false,
+                    "separateWcsCount": false,
+                    "combinedWcsCount": false
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "deal"
+              ],
+              "properties": {
+                "deal": {
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "sale"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "amenities": false,
+                "rules": false,
+                "deal": {
+                  "properties": {
+                    "deposit": false,
+                    "commissionPercent": false,
+                    "prepayMonths": false,
+                    "leaseTerm": false,
+                    "utilitiesIncluded": false,
+                    "utilitiesPrice": false,
+                    "metersNotIncluded": false
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "deal"
+              ],
+              "properties": {
+                "deal": {
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "rent"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "legal": false,
+                "deal": {
+                  "properties": {
+                    "saleType": false,
+                    "mortgageAllowed": false
+                  }
+                },
+                "rules": {
+                  "properties": {
+                    "bedsCount": false,
+                    "guestsCount": false,
+                    "checkInTime": false,
+                    "checkOutTime": false,
+                    "smoking": false,
+                    "parties": false,
+                    "contactlessCheckin": false
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "deal"
+              ],
+              "properties": {
+                "deal": {
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "daily_rent"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "legal": false,
+                "deal": {
+                  "properties": {
+                    "saleType": false,
+                    "mortgageAllowed": false,
+                    "commissionPercent": false,
+                    "prepayMonths": false,
+                    "leaseTerm": false,
+                    "utilitiesIncluded": false,
+                    "utilitiesPrice": false,
+                    "metersNotIncluded": false
+                  }
+                }
+              }
+            }
+          }
+        ],
         "examples": [
           {
             "deal": {
               "type": "sale",
-              "price": {
-                "amount": "9800000",
-                "currency": "RUB"
-              }
+              "price": 9800000,
+              "saleType": "free",
+              "mortgageAllowed": true
             },
-            "property": {
+            "object": {
               "type": "flat",
-              "rooms": 2,
-              "totalArea": 54
+              "roomsCount": 2,
+              "roomType": "separate",
+              "totalArea": 54,
+              "livingArea": 30,
+              "kitchenArea": 10,
+              "floor": 7,
+              "repairType": "euro"
+            },
+            "building": {
+              "floorsCount": 12,
+              "buildYear": 2008,
+              "materialType": "brick"
             },
             "location": {
-              "address": "Санкт-Петербург, Лесной проспект, 10"
+              "address": "Санкт-Петербург, Лесной проспект, 10",
+              "undergrounds": [
+                {
+                  "name": "Лесная",
+                  "minutes": 7,
+                  "transportType": "walk"
+                }
+              ]
             }
+          },
+          {
+            "deal": {
+              "type": "rent",
+              "price": 65000,
+              "deposit": 65000,
+              "commissionPercent": 50,
+              "leaseTerm": "long_term",
+              "utilitiesIncluded": false,
+              "metersNotIncluded": true
+            },
+            "object": {
+              "type": "flat",
+              "roomsCount": 1,
+              "totalArea": 38,
+              "repairType": "cosmetic"
+            },
+            "amenities": {
+              "hasFurniture": true,
+              "hasFridge": true,
+              "hasWasher": true
+            },
+            "rules": {
+              "childrenAllowed": true,
+              "petsAllowed": false
+            },
+            "location": {
+              "address": "Москва, улица Строителей, 5"
+            },
+            "extra": "Рядом парк и школа"
           }
         ]
       },
@@ -2457,78 +2405,84 @@
             "type": "object",
             "required": [
               "deal",
-              "property",
+              "object",
               "location"
             ],
             "properties": {
               "deal": {
-                "type": "object",
                 "required": [
                   "type",
                   "price"
                 ],
                 "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "sale",
-                      "long_term_rent",
-                      "short_term_rent"
-                    ]
-                  },
-                  "price": {
-                    "$ref": "#/components/schemas/PositiveMoney"
-                  }
+                  "type": {},
+                  "price": {}
                 }
               },
-              "property": {
-                "type": "object",
+              "object": {
                 "required": [
                   "type",
                   "totalArea"
                 ],
                 "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flat",
-                      "room",
-                      "house",
-                      "apartments"
-                    ]
-                  },
-                  "totalArea": {
-                    "type": "number",
-                    "exclusiveMinimum": 0
-                  }
+                  "type": {},
+                  "totalArea": {}
                 }
               },
               "location": {
-                "type": "object",
                 "required": [
                   "address"
                 ],
                 "properties": {
-                  "address": {
-                    "type": "string",
-                    "minLength": 1,
-                    "pattern": "\\S"
-                  }
+                  "address": {}
                 }
               }
             },
             "allOf": [
               {
                 "if": {
+                  "required": [
+                    "object"
+                  ],
                   "properties": {
-                    "deal": {
+                    "object": {
+                      "required": [
+                        "type"
+                      ],
                       "properties": {
                         "type": {
-                          "type": "string",
-                          "enum": [
-                            "long_term_rent",
-                            "short_term_rent"
-                          ]
+                          "const": "flat"
+                        }
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "object": {
+                      "required": [
+                        "roomsCount"
+                      ],
+                      "properties": {
+                        "roomsCount": {}
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "required": [
+                    "deal"
+                  ],
+                  "properties": {
+                    "deal": {
+                      "required": [
+                        "type"
+                      ],
+                      "properties": {
+                        "type": {
+                          "const": "rent"
                         }
                       }
                     }
@@ -2539,143 +2493,11 @@
                     "deal": {
                       "required": [
                         "deposit",
-                        "commission",
-                        "utilities"
+                        "commissionPercent"
                       ],
                       "properties": {
-                        "deposit": {
-                          "$ref": "#/components/schemas/Deposit"
-                        },
-                        "commission": {
-                          "$ref": "#/components/schemas/Commission"
-                        },
-                        "utilities": {
-                          "$ref": "#/components/schemas/Utilities"
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              {
-                "if": {
-                  "properties": {
-                    "deal": {
-                      "properties": {
-                        "type": {
-                          "const": "sale"
-                        }
-                      }
-                    }
-                  }
-                },
-                "then": {
-                  "properties": {
-                    "deal": {
-                      "properties": {
-                        "deposit": {
-                          "type": "null"
-                        },
-                        "commission": {
-                          "type": "null"
-                        },
-                        "utilities": {
-                          "type": "null"
-                        }
-                      }
-                    },
-                    "rentalRules": {
-                      "type": "null"
-                    }
-                  }
-                }
-              },
-              {
-                "if": {
-                  "properties": {
-                    "property": {
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "enum": [
-                            "flat",
-                            "apartments"
-                          ]
-                        }
-                      }
-                    }
-                  }
-                },
-                "then": {
-                  "properties": {
-                    "property": {
-                      "required": [
-                        "rooms"
-                      ],
-                      "properties": {
-                        "rooms": {
-                          "type": "integer",
-                          "minimum": 0
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              {
-                "if": {
-                  "properties": {
-                    "property": {
-                      "properties": {
-                        "type": {
-                          "const": "house"
-                        }
-                      }
-                    }
-                  }
-                },
-                "then": {
-                  "properties": {
-                    "property": {
-                      "required": [
-                        "rooms"
-                      ],
-                      "properties": {
-                        "rooms": {
-                          "type": "integer",
-                          "minimum": 1
-                        }
-                      }
-                    },
-                    "building": {
-                      "properties": {
-                        "floor": {
-                          "type": "null"
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              {
-                "if": {
-                  "properties": {
-                    "property": {
-                      "properties": {
-                        "type": {
-                          "const": "room"
-                        }
-                      }
-                    }
-                  }
-                },
-                "then": {
-                  "properties": {
-                    "property": {
-                      "properties": {
-                        "rooms": {
-                          "type": "null"
-                        }
+                        "deposit": {},
+                        "commissionPercent": {}
                       }
                     }
                   }
@@ -2684,54 +2506,70 @@
             ]
           }
         ],
-        "description": "Полнота перед генерацией. Дополнительно сервер проверяет price.amount > 0 и применимость полей. Числовые противоречия площадей и этажей — предупреждения, не ошибки.",
+        "description": "Полнота перед генерацией: тип сделки, цена, тип объекта, общая площадь и адрес; для квартиры — число комнат; для длительной аренды — залог и комиссия. Предупреждения, не ошибки: этаж выше этажности дома, жилая площадь или площадь кухни больше общей.",
         "examples": [
           {
             "deal": {
               "type": "sale",
-              "price": {
-                "amount": "9800000",
-                "currency": "RUB"
-              }
+              "price": 9800000,
+              "saleType": "free",
+              "mortgageAllowed": true
             },
-            "property": {
+            "object": {
               "type": "flat",
-              "rooms": 2,
-              "totalArea": 54
+              "roomsCount": 2,
+              "roomType": "separate",
+              "totalArea": 54,
+              "livingArea": 30,
+              "kitchenArea": 10,
+              "floor": 7,
+              "repairType": "euro"
+            },
+            "building": {
+              "floorsCount": 12,
+              "buildYear": 2008,
+              "materialType": "brick"
             },
             "location": {
-              "address": "Санкт-Петербург, Лесной проспект, 10"
+              "address": "Санкт-Петербург, Лесной проспект, 10",
+              "undergrounds": [
+                {
+                  "name": "Лесная",
+                  "minutes": 7,
+                  "transportType": "walk"
+                }
+              ]
             }
           },
           {
             "deal": {
-              "type": "short_term_rent",
-              "price": {
-                "amount": "4500",
-                "currency": "RUB"
-              },
-              "deposit": {
-                "status": "specified",
-                "amount": {
-                  "amount": "5000",
-                  "currency": "RUB"
-                }
-              },
-              "commission": {
-                "status": "none"
-              },
-              "utilities": {
-                "status": "included"
-              }
+              "type": "rent",
+              "price": 65000,
+              "deposit": 65000,
+              "commissionPercent": 50,
+              "leaseTerm": "long_term",
+              "utilitiesIncluded": false,
+              "metersNotIncluded": true
             },
-            "property": {
-              "type": "apartments",
-              "rooms": 0,
-              "totalArea": 28
+            "object": {
+              "type": "flat",
+              "roomsCount": 1,
+              "totalArea": 38,
+              "repairType": "cosmetic"
+            },
+            "amenities": {
+              "hasFurniture": true,
+              "hasFridge": true,
+              "hasWasher": true
+            },
+            "rules": {
+              "childrenAllowed": true,
+              "petsAllowed": false
             },
             "location": {
-              "address": "Санкт-Петербург, Невский проспект, 100"
-            }
+              "address": "Москва, улица Строителей, 5"
+            },
+            "extra": "Рядом парк и школа"
           }
         ]
       },
@@ -2862,18 +2700,13 @@
             "type": "string",
             "enum": [
               "image/jpeg",
-              "image/png",
-              "image/heic"
+              "image/png"
             ]
           },
           "sizeBytes": {
             "type": "integer",
             "minimum": 1,
             "maximum": 15000000
-          },
-          "position": {
-            "type": "integer",
-            "minimum": 0
           },
           "status": {
             "type": "string",
@@ -2923,13 +2756,12 @@
           "fileName",
           "mimeType",
           "sizeBytes",
-          "position",
           "status",
           "contentUrl",
           "thumbnailUrl",
           "error"
         ],
-        "description": "URL проверяет сессию, не является публичным адресом. Для HEIC ready означает доступность браузерного превью и декодированного изображения. Предел 15 МБ трактуется как 15 000 000 байт.",
+        "description": "URL проверяет сессию, не является публичным адресом. processing — готовится превью и нейросеть оценивает фото; failed — обработка не удалась, фото удаляют и загружают заново. Порядок фото — порядок загрузки. Предел 15 МБ трактуется как 15 000 000 байт.",
         "allOf": [
           {
             "if": {
@@ -2994,7 +2826,7 @@
       "ChannelLimits": {
         "type": "object",
         "properties": {
-          "titleMaxLength": {
+          "titleLimit": {
             "anyOf": [
               {
                 "type": "integer",
@@ -3005,7 +2837,7 @@
               }
             ]
           },
-          "textMaxLength": {
+          "textLimit": {
             "anyOf": [
               {
                 "type": "integer",
@@ -3019,10 +2851,10 @@
         },
         "additionalProperties": false,
         "required": [
-          "titleMaxLength",
-          "textMaxLength"
+          "titleLimit",
+          "textLimit"
         ],
-        "description": "null означает отсутствие установленного предела; длина — число Unicode code points. Контракт не выдумывает лимиты площадок."
+        "description": "null — предел не установлен; длина — число символов Unicode. Превышение сервер обрезает."
       },
       "Channel": {
         "type": "object",
@@ -3031,11 +2863,6 @@
             "type": "string",
             "format": "uuid"
           },
-          "code": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "\\S"
-          },
           "name": {
             "type": "string",
             "minLength": 1,
@@ -3047,7 +2874,7 @@
           "limits": {
             "$ref": "#/components/schemas/ChannelLimits"
           },
-          "revision": {
+          "number": {
             "type": "integer",
             "minimum": 1
           }
@@ -3055,72 +2882,57 @@
         "additionalProperties": false,
         "required": [
           "id",
-          "code",
           "name",
           "description",
           "limits",
-          "revision"
-        ]
-      },
-      "ChecklistRule": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "\\S"
-          },
-          "text": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "\\S"
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "id",
-          "text"
-        ]
+          "number"
+        ],
+        "description": "number — номер текущей версии настроек."
       },
       "AdminChannelWrite": {
         "type": "object",
         "properties": {
-          "code": {
-            "type": "string",
-            "pattern": "^[a-z][a-z0-9_-]*$"
-          },
           "name": {
             "type": "string",
             "minLength": 1,
             "pattern": "\\S"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "description": "Подсказка для агента."
           },
           "limits": {
             "$ref": "#/components/schemas/ChannelLimits"
           },
-          "systemPrompt": {
+          "instruction": {
             "type": "string",
             "minLength": 1,
-            "pattern": "\\S"
+            "pattern": "\\S",
+            "description": "Инструкция для генерации текста под площадку."
           },
           "checklist": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ChecklistRule"
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
             },
-            "minItems": 1
+            "minItems": 1,
+            "description": "Правила, которым должен соответствовать текст, по порядку."
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Выключенная площадка недоступна для новых генераций; полученные по ней результаты сохраняются."
           }
         },
         "additionalProperties": false,
         "required": [
-          "code",
           "name",
           "description",
           "limits",
-          "systemPrompt",
-          "checklist"
+          "instruction",
+          "checklist",
+          "isActive"
         ]
       },
       "AdminChannel": {
@@ -3130,387 +2942,105 @@
             "type": "string",
             "format": "uuid"
           },
-          "code": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "\\S"
-          },
           "name": {
             "type": "string",
             "minLength": 1,
             "pattern": "\\S"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "description": "Подсказка для агента."
           },
           "limits": {
             "$ref": "#/components/schemas/ChannelLimits"
           },
-          "revision": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "systemPrompt": {
+          "instruction": {
             "type": "string",
             "minLength": 1,
-            "pattern": "\\S"
+            "pattern": "\\S",
+            "description": "Инструкция для генерации текста под площадку."
           },
           "checklist": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ChecklistRule"
-            },
-            "minItems": 1
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "id",
-          "code",
-          "name",
-          "description",
-          "limits",
-          "revision",
-          "systemPrompt",
-          "checklist"
-        ]
-      },
-      "AdminChannelUpdate": {
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string",
-            "pattern": "^[a-z][a-z0-9_-]*$"
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "\\S"
-          },
-          "description": {
-            "type": "string"
-          },
-          "limits": {
-            "$ref": "#/components/schemas/ChannelLimits"
-          },
-          "systemPrompt": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "\\S"
-          },
-          "checklist": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ChecklistRule"
-            },
-            "minItems": 1
-          },
-          "expectedRevision": {
-            "type": "integer",
-            "minimum": 1
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "code",
-          "name",
-          "description",
-          "limits",
-          "systemPrompt",
-          "checklist",
-          "expectedRevision"
-        ]
-      },
-      "ChannelResult": {
-        "type": "object",
-        "properties": {
-          "channelId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "channelRevision": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "title": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "\\S"
-          },
-          "text": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "\\S"
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "channelId",
-          "channelRevision",
-          "title",
-          "text"
-        ]
-      },
-      "Assessment": {
-        "type": "object",
-        "properties": {
-          "score": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "reasons": {
             "type": "array",
             "items": {
               "type": "string",
               "minLength": 1,
               "pattern": "\\S"
             },
-            "minItems": 3
+            "minItems": 1,
+            "description": "Правила, которым должен соответствовать текст, по порядку."
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Выключенная площадка недоступна для новых генераций; полученные по ней результаты сохраняются."
+          },
+          "number": {
+            "type": "integer",
+            "minimum": 1
           }
         },
         "additionalProperties": false,
         "required": [
-          "score",
-          "reasons"
+          "id",
+          "name",
+          "description",
+          "limits",
+          "instruction",
+          "checklist",
+          "isActive",
+          "number"
         ]
       },
-      "PhotoRecommendation": {
+      "AdminChannelUpdate": {
         "type": "object",
         "properties": {
-          "photoId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "rank": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 3
-          },
-          "reason": {
+          "name": {
             "type": "string",
             "minLength": 1,
             "pattern": "\\S"
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "photoId",
-          "rank",
-          "reason"
-        ]
-      },
-      "GenerationResult": {
-        "type": "object",
-        "properties": {
-          "channelResults": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ChannelResult"
-            },
-            "minItems": 1
           },
-          "assessment": {
-            "$ref": "#/components/schemas/Assessment"
-          },
-          "photoRecommendations": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PhotoRecommendation"
-            },
-            "minItems": 1,
-            "maxItems": 3
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "channelResults",
-          "assessment",
-          "photoRecommendations"
-        ],
-        "description": "Ровно один текст для каждого выбранного channelId без дублей. Число рекомендаций = min(3, число фото снимка), photoId уникальны и принадлежат снимку, rank подряд от 1. Все факты только из исходных данных; оценка и фото общие для запуска."
-      },
-      "PendingGeneration": {
-        "type": "object",
-        "properties": {
-          "id": {
+          "description": {
             "type": "string",
-            "format": "uuid"
+            "description": "Подсказка для агента."
           },
-          "listingId": {
+          "limits": {
+            "$ref": "#/components/schemas/ChannelLimits"
+          },
+          "instruction": {
             "type": "string",
-            "format": "uuid"
+            "minLength": 1,
+            "pattern": "\\S",
+            "description": "Инструкция для генерации текста под площадку."
           },
-          "sourceVersion": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "channelIds": {
+          "checklist": {
             "type": "array",
             "items": {
               "type": "string",
-              "format": "uuid"
+              "minLength": 1,
+              "pattern": "\\S"
             },
             "minItems": 1,
-            "uniqueItems": true
+            "description": "Правила, которым должен соответствовать текст, по порядку."
           },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
+          "isActive": {
+            "type": "boolean",
+            "description": "Выключенная площадка недоступна для новых генераций; полученные по ней результаты сохраняются."
           },
-          "status": {
-            "type": "string",
-            "enum": [
-              "queued",
-              "running"
-            ]
-          },
-          "completedAt": {
-            "type": "null"
-          },
-          "result": {
-            "type": "null"
-          },
-          "error": {
-            "type": "null"
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "id",
-          "listingId",
-          "sourceVersion",
-          "channelIds",
-          "createdAt",
-          "status",
-          "completedAt",
-          "result",
-          "error"
-        ]
-      },
-      "SucceededGeneration": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "listingId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "sourceVersion": {
+          "expectedNumber": {
             "type": "integer",
             "minimum": 1
-          },
-          "channelIds": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "minItems": 1,
-            "uniqueItems": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "status": {
-            "const": "succeeded"
-          },
-          "completedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "result": {
-            "$ref": "#/components/schemas/GenerationResult"
-          },
-          "error": {
-            "type": "null"
           }
         },
         "additionalProperties": false,
         "required": [
-          "id",
-          "listingId",
-          "sourceVersion",
-          "channelIds",
-          "createdAt",
-          "status",
-          "completedAt",
-          "result",
-          "error"
+          "name",
+          "description",
+          "limits",
+          "instruction",
+          "checklist",
+          "isActive",
+          "expectedNumber"
         ]
-      },
-      "FailedGeneration": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "listingId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "sourceVersion": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "channelIds": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "minItems": 1,
-            "uniqueItems": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "status": {
-            "const": "failed"
-          },
-          "completedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "result": {
-            "type": "null"
-          },
-          "error": {
-            "$ref": "#/components/schemas/Problem"
-          }
-        },
-        "additionalProperties": false,
-        "required": [
-          "id",
-          "listingId",
-          "sourceVersion",
-          "channelIds",
-          "createdAt",
-          "status",
-          "completedAt",
-          "result",
-          "error"
-        ]
-      },
-      "Generation": {
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/PendingGeneration"
-          },
-          {
-            "$ref": "#/components/schemas/SucceededGeneration"
-          },
-          {
-            "$ref": "#/components/schemas/FailedGeneration"
-          }
-        ],
-        "description": "queued → running → succeeded/failed; терминальные состояния неизменяемы. sourceVersion связывает результат со снимком данных, фото и ревизий каналов. Устаревший результат не показывается как актуальный."
       },
       "Listing": {
         "type": "object",
@@ -3523,6 +3053,9 @@
             "type": "integer",
             "minimum": 1
           },
+          "status": {
+            "$ref": "#/components/schemas/ListingStatus"
+          },
           "data": {
             "$ref": "#/components/schemas/ListingData"
           },
@@ -3533,27 +3066,27 @@
             },
             "maxItems": 20
           },
-          "latestGeneration": {
+          "result": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/Generation"
+                "$ref": "#/components/schemas/GenerationResult"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "Последний созданный запуск этого объявления независимо от его состояния; null, если запусков ещё не было."
+            "description": "Последний успешный результат. Неудачная генерация и правка данных его не стирают."
           },
-          "lastSuccessfulGeneration": {
+          "generationError": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/SucceededGeneration"
+                "$ref": "#/components/schemas/Problem"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "Последний успешно завершённый запуск этого объявления; null, если успешных запусков ещё не было. Новый запуск в состоянии queued, running или failed не очищает это поле. Результат сохраняется после редактирования данных; его актуальность определяется сравнением sourceVersion с version объявления."
+            "description": "Ошибка последней генерации; только при status=failed."
           },
           "createdAt": {
             "type": "string",
@@ -3561,19 +3094,77 @@
           },
           "updatedAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Меняется только от действий агента: правка данных, загрузка и удаление фото."
           }
         },
         "additionalProperties": false,
         "required": [
           "id",
           "version",
+          "status",
           "data",
           "photos",
-          "latestGeneration",
-          "lastSuccessfulGeneration",
+          "result",
+          "generationError",
           "createdAt",
           "updatedAt"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "ready"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "result": {
+                  "$ref": "#/components/schemas/GenerationResult"
+                },
+                "generationError": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "failed"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "generationError": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "enum": [
+                    "draft",
+                    "generating"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "generationError": {
+                  "type": "null"
+                }
+              }
+            }
+          }
         ]
       },
       "ListingSummary": {
@@ -3603,8 +3194,8 @@
                 "type": "string",
                 "enum": [
                   "sale",
-                  "long_term_rent",
-                  "short_term_rent"
+                  "rent",
+                  "daily_rent"
                 ]
               },
               {
@@ -3612,15 +3203,14 @@
               }
             ]
           },
-          "propertyType": {
+          "objectType": {
             "anyOf": [
               {
                 "type": "string",
                 "enum": [
                   "flat",
                   "room",
-                  "house",
-                  "apartments"
+                  "house"
                 ]
               },
               {
@@ -3631,40 +3221,20 @@
           "price": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/PositiveMoney"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "latestGenerationStatus": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "queued",
-                  "running",
-                  "succeeded",
-                  "failed"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "generatedForVersion": {
-            "anyOf": [
-              {
                 "type": "integer",
                 "minimum": 1
               },
               {
                 "type": "null"
               }
-            ],
-            "description": "sourceVersion последнего успешного запуска (lastSuccessfulGeneration); null, если успешных запусков ещё не было. Ошибка нового запуска не очищает это значение."
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ListingStatus"
+          },
+          "hasResult": {
+            "type": "boolean",
+            "description": "Есть успешный результат. Вместе с status=draft означает, что результат устарел."
           },
           "createdAt": {
             "type": "string",
@@ -3681,10 +3251,10 @@
           "version",
           "address",
           "dealType",
-          "propertyType",
+          "objectType",
           "price",
-          "latestGenerationStatus",
-          "generatedForVersion",
+          "status",
+          "hasResult",
           "createdAt",
           "updatedAt"
         ]
@@ -3787,7 +3357,7 @@
           "file": {
             "type": "string",
             "format": "binary",
-            "description": "Один JPG, PNG или HEIC, до 15 000 000 байт. MIME и успешность декодирования проверяются сервером.",
+            "description": "Один JPEG или PNG, до 15 000 000 байт. MIME и успешность декодирования проверяются сервером.",
             "x-max-size-bytes": 15000000
           },
           "expectedVersion": {
@@ -3817,6 +3387,649 @@
           "version",
           "photo"
         ]
+      },
+      "ListingDeal": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "sale",
+              "rent",
+              "daily_rent"
+            ],
+            "description": "sale — продажа; rent — длительная аренда; daily_rent — посуточная аренда."
+          },
+          "price": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Цена в целых рублях: за объект при продаже, в месяц при аренде, в сутки при посуточной аренде."
+          },
+          "saleType": {
+            "type": "string",
+            "enum": [
+              "free",
+              "alternative"
+            ],
+            "description": "Продажа: free — свободная, alternative — альтернатива."
+          },
+          "mortgageAllowed": {
+            "type": "boolean",
+            "description": "Продажа: возможна ипотека."
+          },
+          "deposit": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Аренда и посуточно: залог в рублях; 0 — без залога."
+          },
+          "commissionPercent": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Аренда: комиссия в процентах; 0 — без комиссии."
+          },
+          "prepayMonths": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Аренда: предоплата в месяцах."
+          },
+          "leaseTerm": {
+            "type": "string",
+            "enum": [
+              "few_months",
+              "long_term"
+            ],
+            "description": "Аренда: срок."
+          },
+          "utilitiesIncluded": {
+            "type": "boolean",
+            "description": "Аренда: коммунальные платежи включены в цену."
+          },
+          "utilitiesPrice": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Аренда: коммунальные платежи в рублях в месяц."
+          },
+          "metersNotIncluded": {
+            "type": "boolean",
+            "description": "Аренда: счётчики оплачиваются отдельно."
+          }
+        },
+        "additionalProperties": false
+      },
+      "ListingObject": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "flat",
+              "room",
+              "house"
+            ],
+            "description": "Апартаменты — квартира с isApartments=true."
+          },
+          "totalArea": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Общая площадь в м². Для комнаты — площадь самой комнаты."
+          },
+          "repairType": {
+            "type": "string",
+            "enum": [
+              "cosmetic",
+              "design",
+              "euro",
+              "no"
+            ]
+          },
+          "isApartments": {
+            "type": "boolean",
+            "description": "Квартира: апартаменты."
+          },
+          "isPenthouse": {
+            "type": "boolean",
+            "description": "Квартира: пентхаус."
+          },
+          "isEuroFlat": {
+            "type": "boolean",
+            "description": "Квартира: европланировка."
+          },
+          "roomsCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Квартира: число комнат; 0 — студия."
+          },
+          "roomType": {
+            "type": "string",
+            "enum": [
+              "separate",
+              "combined",
+              "both"
+            ],
+            "description": "Квартира: separate — изолированные, combined — смежные, both — есть и те, и другие."
+          },
+          "livingArea": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Квартира, комната: жилая площадь в м²."
+          },
+          "kitchenArea": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Квартира, комната: площадь кухни в м²."
+          },
+          "floor": {
+            "type": "integer",
+            "description": "Квартира, комната: этаж."
+          },
+          "balconiesCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "loggiasCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "windowsView": {
+            "type": "string",
+            "enum": [
+              "street",
+              "yard",
+              "yard_and_street"
+            ]
+          },
+          "separateWcsCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "combinedWcsCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bedroomsCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Дом: число спален."
+          },
+          "wcsCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Дом: число санузлов."
+          },
+          "wcLocation": {
+            "type": "string",
+            "enum": [
+              "indoors",
+              "outdoors"
+            ],
+            "description": "Дом: санузел в доме или на улице."
+          }
+        },
+        "additionalProperties": false,
+        "description": "balconiesCount, loggiasCount, windowsView, separateWcsCount и combinedWcsCount — для квартиры и комнаты."
+      },
+      "ListingBuilding": {
+        "type": "object",
+        "properties": {
+          "floorsCount": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Этажность дома."
+          },
+          "buildYear": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "materialType": {
+            "type": "string",
+            "enum": [
+              "block",
+              "boards",
+              "brick",
+              "monolith",
+              "monolith_brick",
+              "old",
+              "panel",
+              "stalin",
+              "wood",
+              "wireframe",
+              "aerocrete_block",
+              "gas_silicate_block",
+              "foam_concrete_block"
+            ]
+          },
+          "ceilingHeight": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Высота потолков в метрах."
+          },
+          "passengerLiftsCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cargoLiftsCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hasGarbageChute": {
+            "type": "boolean"
+          },
+          "parkingType": {
+            "type": "string",
+            "enum": [
+              "ground",
+              "multilevel",
+              "roof",
+              "underground",
+              "open"
+            ]
+          },
+          "hasBarrierYard": {
+            "type": "boolean"
+          },
+          "hasCarFreeCourt": {
+            "type": "boolean"
+          },
+          "hasConcierge": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Многоквартирный дом, в котором находится квартира или комната."
+      },
+      "ListingHouse": {
+        "type": "object",
+        "properties": {
+          "floorsCount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "buildYear": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "isDacha": {
+            "type": "boolean"
+          },
+          "materialTypes": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "boards",
+                "brick",
+                "monolith",
+                "wood",
+                "wireframe",
+                "aerocrete_block",
+                "gas_silicate_block",
+                "foam_concrete_block",
+                "solid_wood",
+                "glued_laminated_timber",
+                "sip_panels",
+                "reinforced_concrete_panels",
+                "metal_frame",
+                "expanded_clay_concrete",
+                "slag_concrete",
+                "arbolit"
+              ]
+            }
+          },
+          "condition": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "interior_decoration_required",
+              "unfinished",
+              "major_repairs_required"
+            ]
+          },
+          "heatingType": {
+            "type": "string",
+            "enum": [
+              "fireplace",
+              "no",
+              "stove",
+              "central_gas",
+              "central_coal",
+              "electric",
+              "autonomous_gas",
+              "diesel",
+              "solid_fuel_boiler"
+            ]
+          },
+          "gasType": {
+            "type": "string",
+            "enum": [
+              "main",
+              "border",
+              "gas_holder",
+              "gas_bottle"
+            ]
+          },
+          "waterType": {
+            "type": "string",
+            "enum": [
+              "central",
+              "borehole",
+              "well"
+            ]
+          },
+          "drainageType": {
+            "type": "string",
+            "enum": [
+              "central",
+              "septic_tank",
+              "cesspool"
+            ]
+          },
+          "hasElectricity": {
+            "type": "boolean"
+          },
+          "hasTerrace": {
+            "type": "boolean"
+          },
+          "hasCellar": {
+            "type": "boolean"
+          },
+          "hasBathhouse": {
+            "type": "boolean"
+          },
+          "hasGarage": {
+            "type": "boolean"
+          },
+          "hasPool": {
+            "type": "boolean"
+          },
+          "hasSecurity": {
+            "type": "boolean"
+          },
+          "landArea": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "landAreaUnit": {
+            "type": "string",
+            "enum": [
+              "sotka",
+              "hectare"
+            ]
+          },
+          "landUseType": {
+            "type": "string",
+            "enum": [
+              "farm",
+              "private_farm",
+              "gardening",
+              "individual_housing_construction",
+              "suburban_non_profit_partnership",
+              "horticulture",
+              "other"
+            ]
+          },
+          "landCategory": {
+            "type": "string",
+            "enum": [
+              "for_agricultural_purposes",
+              "settlements",
+              "other"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "description": "Частный дом и участок."
+      },
+      "ListingAmenities": {
+        "type": "object",
+        "properties": {
+          "hasFurniture": {
+            "type": "boolean"
+          },
+          "hasKitchenFurniture": {
+            "type": "boolean"
+          },
+          "hasFridge": {
+            "type": "boolean"
+          },
+          "hasWasher": {
+            "type": "boolean"
+          },
+          "hasDishwasher": {
+            "type": "boolean"
+          },
+          "hasConditioner": {
+            "type": "boolean"
+          },
+          "hasTv": {
+            "type": "boolean"
+          },
+          "hasInternet": {
+            "type": "boolean"
+          },
+          "hasBathtub": {
+            "type": "boolean"
+          },
+          "hasShower": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Оснащение для аренды и посуточной аренды."
+      },
+      "ListingRules": {
+        "type": "object",
+        "properties": {
+          "childrenAllowed": {
+            "type": "boolean"
+          },
+          "petsAllowed": {
+            "type": "boolean"
+          },
+          "bedsCount": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Посуточно: спальных мест."
+          },
+          "guestsCount": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Посуточно: гостей."
+          },
+          "checkInTime": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "description": "ЧЧ:ММ"
+          },
+          "checkOutTime": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "description": "ЧЧ:ММ"
+          },
+          "smoking": {
+            "type": "string",
+            "enum": [
+              "allowed",
+              "forbidden",
+              "designated_areas_only"
+            ]
+          },
+          "parties": {
+            "type": "string",
+            "enum": [
+              "allowed",
+              "forbidden",
+              "by_agreement"
+            ]
+          },
+          "contactlessCheckin": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Условия проживания для аренды и посуточной аренды. bedsCount, guestsCount, время заезда и выезда, smoking, parties и contactlessCheckin — только посуточно."
+      },
+      "ListingLegal": {
+        "type": "object",
+        "properties": {
+          "hasRedevelopment": {
+            "type": "boolean"
+          },
+          "hasMinorOwners": {
+            "type": "boolean"
+          },
+          "maternityCapitalUsed": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Юридические особенности для продажи. hasRedevelopment — для квартиры."
+      },
+      "ListingUnderground": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "minutes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "transportType": {
+            "type": "string",
+            "enum": [
+              "walk",
+              "transport"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ]
+      },
+      "ListingLocation": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "undergrounds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListingUnderground"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChannelRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name"
+        ],
+        "description": "Площадка результата с текущим названием, в том числе выключенная."
+      },
+      "ChannelResult": {
+        "type": "object",
+        "properties": {
+          "channelVersionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Версия настроек площадки, на которой получен результат."
+          },
+          "channel": {
+            "$ref": "#/components/schemas/ChannelRef"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Оценка привлекательности объявления для этой площадки."
+          },
+          "scoreReason": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "description": "Обоснование оценки."
+          },
+          "photoIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 3,
+            "uniqueItems": true,
+            "description": "Фото этого объявления на первые позиции для этой площадки, по порядку. Удалённое после генерации фото остаётся в списке; интерфейс его не показывает."
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "channelVersionId",
+          "channel",
+          "title",
+          "text",
+          "score",
+          "scoreReason",
+          "photoIds"
+        ],
+        "description": "Длина title и text не превышает лимитов версии; превышение сервер обрезает по границе предложения или слова."
+      },
+      "GenerationResult": {
+        "type": "object",
+        "properties": {
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChannelResult"
+            },
+            "minItems": 1
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "channels"
+        ],
+        "description": "Ровно один элемент на каждую выбранную площадку, площадки не повторяются. Тексты содержат только сведения из данных объекта и фото."
+      },
+      "ListingStatus": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "generating",
+          "ready",
+          "failed"
+        ],
+        "description": "draft — данные менялись после генерации или генерации не было; generating — идёт генерация, объявление заблокировано; ready — результат актуален; failed — последняя генерация не удалась. draft с непустым result означает, что результат устарел."
       }
     },
     "responses": {
@@ -4044,15 +4257,6 @@
           "format": "uuid"
         }
       },
-      "generationId": {
-        "name": "generationId",
-        "in": "path",
-        "required": true,
-        "schema": {
-          "type": "string",
-          "format": "uuid"
-        }
-      },
       "Origin": {
         "name": "Origin",
         "in": "header",
@@ -4071,16 +4275,6 @@
           "type": "integer",
           "minimum": 1
         }
-      },
-      "IdempotencyKey": {
-        "name": "Idempotency-Key",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "description": "Ключ одного намерения запуска. Область: пользователь и объявление; хранение минимум 24 часа с приёма. Тот же ключ и тело возвращают прежний запуск, даже если он завершился; другое тело с тем же ключом — 409 IDEMPOTENCY_CONFLICT. Проверка повтора предшествует проверке текущей версии. Новая попытка после ошибки — новый ключ."
       }
     },
     "securitySchemes": {

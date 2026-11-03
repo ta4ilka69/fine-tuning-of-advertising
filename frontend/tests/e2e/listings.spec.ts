@@ -10,10 +10,11 @@ for (const width of [320, 390, 768, 1440]) {
     await page.goto(`${loginServer.url}/app`);
     const list = page.getByRole('list', { name: 'Мои объявления' });
     await expect(list.getByRole('listitem')).toHaveCount(5);
-    await expect(list).toContainText('999\u00a0999\u00a0999\u00a0999\u00a0999\u00a0999\u00a0999,99\u00a0₽');
-    await expect(list).toContainText('62\u00a0000,50\u00a0₽ / мес.');
+    await expect(list).toContainText('999\u00a0999\u00a0999\u00a0999\u00a0999\u00a0₽');
+    await expect(list).toContainText('62\u00a0000\u00a0₽ / мес.');
     await expect(list).toContainText('4\u00a0500\u00a0₽ / сутки');
-    await expect(list.getByRole('listitem').nth(3)).toContainText('Результат готов');
+    await expect(list.getByRole('listitem').nth(3)).toContainText('Сохранённый результат');
+    await expect(list.getByRole('listitem').nth(3)).not.toContainText('Результат готов');
     await expect(list.getByRole('listitem').nth(3)).toContainText('Последний запуск: ошибка');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
