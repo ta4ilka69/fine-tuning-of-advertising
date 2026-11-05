@@ -33,7 +33,7 @@ for (const width of [320, 390, 768, 1440]) {
     await page.getByRole('button', { name: 'Создать объявление' }).click();
     await expect(page.getByRole('heading', { name: 'Новое объявление' })).toBeVisible();
     await page.reload();
-    await expect(page.getByText(/Форма создания объявления появится позже/)).toBeVisible();
+    await expect(page.getByRole('form', { name: 'Создание объявления' })).toBeVisible();
     expect(loginServer.calls.every((call) => call.method === 'GET')).toBe(true);
   });
 }

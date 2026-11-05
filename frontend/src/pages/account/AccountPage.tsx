@@ -1,15 +1,20 @@
 import { Anchor, Stack, Text, Title } from '@mantine/core';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { SessionGuard } from '../../features/session/SessionGuard';
 import { actionError } from '../../features/session/actionError';
 import { useSession } from '../../features/session/context';
 import { AppNotice } from '../../shared/ui/AppNotice';
 import { ListingList } from './ListingList';
 import { ListingDetails } from './ListingDetails';
-import { navigate, usePathname, useSearch } from '../../app/navigation';
+import { confirmNavigation, navigate, usePathname, useSearch } from '../../app/navigation';
 import { AppButton } from '../../shared/ui/AppButton';
 import classes from './Listings.module.css';
 import { PageLayout } from '../../shared/ui/PageLayout';
+import { LoadingState } from '../../shared/ui/LoadingState';
+import { useUnsavedChanges } from '../../features/listing-form/use-unsaved-changes';
+import type { ListingFormValues } from '../../features/listing-form/model';
+
+const NewListing = lazy(() => import('./NewListing'));
 
 export default function AccountPage() {
   const path = usePathname();
@@ -18,6 +23,11 @@ export default function AccountPage() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const userId = state.status === 'authenticated' ? state.user.id : null;
+  const [draft, setDraft] = useState<{ userId: string; values: ListingFormValues } | null>(null);
+  const [draftPath, setDraftPath] = useState(path);
+  if (draftPath !== path) { setDraftPath(path); setDraft(null); }
+  const draftDirty = useRef(false);
+  useUnsavedChanges(draftDirty, path === '/app/new' && draft !== null && (pending || state.status === 'checking' || state.status === 'error'));
   const checked = useRef<string | null>(null);
   useEffect(() => { checked.current = null; }, [path, search]);
   const recheck = useCallback((unauthorized: boolean) => {
@@ -28,7 +38,7 @@ export default function AccountPage() {
   }, [restore, userId]);
   const submitting = useRef(false);
   const signOut = async () => {
-    if (submitting.current) return;
+    if (submitting.current || !confirmNavigation()) return;
     submitting.current = true;
     setPending(true);
     setError(undefined);
@@ -47,7 +57,7 @@ export default function AccountPage() {
             {path === '/app' && <Text c="dimmed">Ваши объекты, черновики и готовые тексты</Text>}
             {error && <AppNotice tone="error" title="Не удалось выйти">{error}</AppNotice>}
             {pending ? <Text role="status">Выходим…</Text> : path === '/app/new'
-              ? <Text>Форма создания объявления появится позже. Пока вы можете вернуться к списку своих объектов.</Text>
+              ? <Suspense fallback={<LoadingState label="Загружаем форму" />}><NewListing key={state.user.id} initialValues={draft?.userId === state.user.id ? draft.values : undefined} onChange={(values, dirty) => { draftDirty.current = dirty; setDraft({ userId: state.user.id, values }); }} recheck={recheck} /></Suspense>
               : path === '/app' ? <ListingList key={state.user.id} recheck={recheck} />
                 : <ListingDetails key={`${state.user.id}:${path}`} id={path.slice('/app/listings/'.length)} recheck={recheck} />}
           </Stack>
