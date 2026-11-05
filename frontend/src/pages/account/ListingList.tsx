@@ -1,6 +1,6 @@
 import { Paper, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { listings } from '../../shared/api/listings';
+import { listings, type ListingFilters } from '../../shared/api/listings';
 import { RequestError } from '../../shared/api/errors';
 import type { ListingSummary } from '../../shared/api/types';
 import { AppButton } from '../../shared/ui/AppButton';
@@ -8,6 +8,7 @@ import { AppNotice } from '../../shared/ui/AppNotice';
 import { LoadingState } from '../../shared/ui/LoadingState';
 import { dealNames, formatDate, formatPrice, generationLabels, propertyNames } from './format';
 import classes from './Listings.module.css';
+import { ListingSearch } from './ListingSearch';
 import { navigate } from '../../app/navigation';
 
 export function ListingCard({ item, linked = true, isApartments = false }: { item: ListingSummary; linked?: boolean; isApartments?: boolean }) {
@@ -32,10 +33,15 @@ export function ListingCard({ item, linked = true, isApartments = false }: { ite
 }
 
 export function ListingList({ recheck }: { recheck: (unauthorized: boolean) => void }) {
+  return <ListingSearch>{(filters, reset) => <ListingResults key={JSON.stringify(filters)} filters={filters} reset={reset} recheck={recheck} />}</ListingSearch>;
+}
+
+function ListingResults({ recheck, filters, reset }: { recheck: (unauthorized: boolean) => void; filters: ListingFilters; reset: () => void }) {
   const [items, setItems] = useState<ListingSummary[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [pending, setPending] = useState(true);
   const [error, setError] = useState<string>();
+  const { q, from, to } = filters;
   const controller = useRef<AbortController | null>(null);
   const visited = useRef(new Set<string>());
 
@@ -43,7 +49,7 @@ export function ListingList({ recheck }: { recheck: (unauthorized: boolean) => v
     if (controller.current) return;
     const request = new AbortController();
     controller.current = request;
-    return listings.page(next, request.signal).then((page) => {
+    return listings.page(next, request.signal, { q, from, to }).then((page) => {
       if (request.signal.aborted) return;
       if (page.nextCursor !== null && (page.nextCursor === next || visited.current.has(page.nextCursor))) {
         throw new RequestError('invalid-response');
@@ -69,7 +75,7 @@ export function ListingList({ recheck }: { recheck: (unauthorized: boolean) => v
     }).finally(() => {
       if (!request.signal.aborted) { controller.current = null; setPending(false); }
     });
-  }, [recheck]);
+  }, [recheck, q, from, to]);
 
   const start = (next?: string) => {
     recheck(false);
@@ -93,7 +99,7 @@ export function ListingList({ recheck }: { recheck: (unauthorized: boolean) => v
       )}
       {pending && items.length === 0 && <Paper className={classes.state}><LoadingState label="Загружаем объявления" /><Text c="dimmed">Подождите, пока появится список ваших объектов.</Text><div aria-hidden="true"><Skeleton height={72} mt="lg" /><Skeleton height={72} mt="md" /><Skeleton height={72} mt="md" /></div></Paper>}
       {error && <AppNotice tone="error" title={items.length ? 'Не удалось загрузить следующую страницу' : 'Не удалось загрузить объявления'}><p>{error}</p><AppButton onClick={() => { start(cursor ?? undefined); }}>Повторить</AppButton></AppNotice>}
-      {!pending && !error && items.length === 0 && cursor === null && <Paper className={classes.state}><Title order={2}>Пока нет объявлений</Title><Text c="dimmed">Создайте первое объявление, чтобы начать работу с объектом.</Text><div><AppButton onClick={() => navigate('/app/new')}>Создать объявление</AppButton></div></Paper>}
+      {!pending && !error && items.length === 0 && cursor === null && <Paper className={classes.state}>{Object.keys(filters).length ? <><Title order={2}>Ничего не найдено</Title><Text c="dimmed">Попробуйте другую часть адреса или измените период создания объявления.</Text><div><AppButton onClick={reset}>Сбросить фильтры</AppButton></div></> : <><Title order={2}>Пока нет объявлений</Title><Text c="dimmed">Создайте первое объявление, чтобы начать работу с объектом.</Text><div><AppButton onClick={() => navigate('/app/new')}>Создать объявление</AppButton></div></>}</Paper>}
       {items.length > 0 && pending && <LoadingState label="Загружаем ещё объявления" />}
       {cursor !== null && !error && <div><AppButton intent="secondary" loading={pending} onClick={() => { start(cursor); }}>Показать ещё</AppButton></div>}
       {items.length > 0 && cursor === null && !pending && !error && <Text size="sm" c="dimmed" role="status">Все объявления загружены</Text>}

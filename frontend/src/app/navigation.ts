@@ -18,3 +18,13 @@ function subscribe(onChange: () => void) {
 export function usePathname() {
   return useSyncExternalStore(subscribe, () => window.location.pathname);
 }
+
+export function useSearch() {
+  return useSyncExternalStore(subscribe, () => window.location.search);
+}
+
+export function setSearch(search: string) {
+  if (window.location.search === search) return;
+  window.history.pushState(null, '', `${window.location.pathname}${search}${window.location.hash}`);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}

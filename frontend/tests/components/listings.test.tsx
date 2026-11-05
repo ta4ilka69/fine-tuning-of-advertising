@@ -232,3 +232,24 @@ test('апартаменты в карточке определяются по �
   await open(`/app/listings/${item.id}`);
   expect(await screen.findByText('Апартаменты · Продажа')).toBeVisible();
 });
+
+for (const navigation of ['search', 'date', 'history'] as const) {
+  test(`смена фильтра ${navigation} после подавленного 401 снова проверяет сессию без цикла`, async () => {
+    page = async () => json({}, 401);
+    await open();
+    await screen.findByRole('alert');
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/me'))).toHaveLength(2));
+    expect(calls().length).toBeLessThanOrEqual(2);
+    me = async () => json({}, 401);
+    if (navigation === 'search') {
+      fireEvent.change(screen.getByLabelText('Поиск по адресу'), { target: { value: 'Лесной' } });
+      fireEvent.submit(screen.getByRole('form', { name: 'Поиск и фильтры объявлений' }));
+    } else if (navigation === 'date') {
+      fireEvent.input(screen.getByLabelText('Дата создания: с'), { target: { value: '2026-10-01' } });
+    } else {
+      act(() => { window.history.pushState(null, '', '/app?q=Лесной'); window.dispatchEvent(new PopStateEvent('popstate')); });
+    }
+    expect(await screen.findByRole('heading', { name: 'С возвращением' })).toBeVisible();
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/me'))).toHaveLength(3);
+  });
+}
