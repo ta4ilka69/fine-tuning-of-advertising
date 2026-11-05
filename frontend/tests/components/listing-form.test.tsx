@@ -146,3 +146,19 @@ test('неизвестный флаг отличается от явного «�
   set('Пентхаус', 'false'); await userEvent.click(save());
   expect(onSave.mock.calls[0]![0]).toEqual({ object: { type: 'flat', isPenthouse: false } });
 });
+
+test('ошибка перепроверки сессии сохраняет предупреждение о несохранённом черновике', async () => {
+  const user = { id: '9a07b31d-ac15-495c-bb91-e3756fe40bcc', login: 'agent_demo', role: 'agent' };
+  let checks = 0;
+  vi.stubGlobal('fetch', vi.fn<typeof window.fetch>().mockImplementation(async (_, options) => {
+    const status = options?.method === 'POST' ? 401 : ++checks === 1 ? 200 : 503;
+    return new Response(JSON.stringify(status === 200 ? { user } : {}), { status, headers: { 'Content-Type': 'application/json' } });
+  }));
+  window.history.replaceState(null, '', '/app/new'); render(<App />);
+  await screen.findByRole('form', { name: 'Создание объявления' }); set('Адрес', 'Не терять');
+  await userEvent.click(save()); await screen.findByText('Не удалось проверить сессию');
+  const event = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(event);
+  expect(event.defaultPrevented).toBe(true);
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  act(() => navigate('/')); expect(confirm).toHaveBeenCalledOnce(); expect(window.location.pathname).toBe('/app/new');
+});

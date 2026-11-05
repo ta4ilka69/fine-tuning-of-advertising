@@ -18,7 +18,7 @@ const flags = [emptyOption, { value: 'true', label: 'Да' }, { value: 'false', 
 type Props = {
   initialValues?: ListingFormValues;
   initialData?: ListingData;
-  onChange?: (values: ListingFormValues) => void;
+  onChange?: (values: ListingFormValues, dirty: boolean) => void;
   onSave: (data: ListingData, signal: AbortSignal) => Promise<{ id: string }>;
   onSaved: (id: string) => void;
   onUnauthorized: () => void;
@@ -34,7 +34,7 @@ export function ListingForm({ initialValues, initialData, onChange, onSave, onSa
   const dirty = useRef(JSON.stringify(initialValues ?? listingToForm(initialData)) !== JSON.stringify(listingToForm(initialData)));
   const form = useForm<ListingFormValues>({
     initialValues: initialValues ?? listingToForm(initialData),
-    onValuesChange: (values) => { dirty.current = submitting.current || JSON.stringify(values) !== savedValues.current; onChange?.(values); },
+    onValuesChange: (values) => { dirty.current = submitting.current || JSON.stringify(values) !== savedValues.current; onChange?.(values, dirty.current); },
   });
   const prepared = prepareListing(form.values);
   useUnsavedChanges(dirty);

@@ -6,6 +6,7 @@ let guard: (() => boolean) | undefined;
 let currentURL = window.location.href;
 let position = Number(window.history.state?.appPosition ?? 0);
 let reversing = false;
+window.history.replaceState({ ...window.history.state, appPosition: position }, '', currentURL);
 
 export function guardNavigation(confirm: () => boolean) {
   guard = confirm;
@@ -18,8 +19,11 @@ export function guardNavigation(confirm: () => boolean) {
 window.addEventListener('popstate', (event) => {
   if (reversing) { reversing = false; event.stopImmediatePropagation(); return; }
   if (window.location.href === currentURL) return;
-  const next = Number(event.state?.appPosition ?? 0);
-  if (guard && !guard()) {
+  const next = Number.isSafeInteger(event.state?.appPosition) ? Number(event.state.appPosition) : position + 1;
+  if (!Number.isSafeInteger(event.state?.appPosition)) window.history.replaceState({ ...event.state, appPosition: next }, '', window.location.href);
+  const previous = new URL(currentURL);
+  const samePage = previous.pathname === window.location.pathname && previous.search === window.location.search;
+  if (!samePage && guard && !guard()) {
     event.stopImmediatePropagation();
     if (position !== next) { reversing = true; window.history.go(position - next); }
     else window.history.replaceState({ ...window.history.state, appPosition: position }, '', currentURL);

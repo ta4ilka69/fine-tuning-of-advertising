@@ -99,7 +99,7 @@ test('roundtrip данных поддерживает false, 0, массивы, 
 });
 
 test('известные ошибки API привязываются безопасно, неизвестные и скрытые игнорируются', () => {
-  const values = input({ 'object.type': 'house', 'deal.type': 'rent' }); values.undergrounds = [{ name: '', minutes: '', transportType: '' }];
+  const values = input({ 'object.type': 'house', 'deal.type': 'rent' }); values.undergrounds = [{ name: 'Лесная', minutes: '', transportType: '' }];
   const errors = serverFieldErrors(['/data/deal/price', '/data/house/landArea', '/data/object/floor', '/data/location/undergrounds/0/name', '/data/location/undergrounds/4/name', '/data/wrong'].map((field) => ({ field })), values);
   expect(errors).toEqual({ 'fields.deal_price': 'Проверьте значение', 'fields.house_landArea': 'Проверьте значение', 'undergrounds.0.name': 'Проверьте значение' });
 });
@@ -129,11 +129,19 @@ test('проверка правил типов согласована с тек�
 });
 
 test('ошибки элементов массива связываются с соответствующим вводом', () => {
-  const values = input({ 'object.type': 'house' }); values.undergrounds = [{ name: '', minutes: '', transportType: '' }];
+  const values = input({ 'object.type': 'house' }); values.undergrounds = [{ name: 'Лесная', minutes: '', transportType: '' }];
   expect(serverFieldErrors([{ field: '/data/house/materialTypes/0' }, { field: '/data/location/undergrounds/0' }], values))
     .toEqual({ 'fields.house_materialTypes': 'Проверьте значение', 'undergrounds.0.name': 'Проверьте значение' });
 });
 
 test('неизвестные имена полей не используют прототип объекта', () => {
   expect(serverFieldErrors(['/data/__proto__', '/data/constructor', '/data/toString'].map((field) => ({ field })), input())).toEqual({});
+});
+
+test('ошибки API учитывают пропущенные пустые строки метро', () => {
+  const values = input();
+  values.undergrounds = [{ name: '', minutes: '', transportType: '' }, { name: 'Лесная', minutes: '7', transportType: 'walk' }, { name: ' ', minutes: '', transportType: '' }, { name: 'Парк', minutes: '', transportType: '' }];
+  expect(prepareListing(values).data.location!.undergrounds).toHaveLength(2);
+  expect(serverFieldErrors([{ field: '/data/location/undergrounds/0/minutes' }, { field: '/data/location/undergrounds/1' }], values))
+    .toEqual({ 'undergrounds.1.minutes': 'Проверьте значение', 'undergrounds.3.name': 'Проверьте значение' });
 });

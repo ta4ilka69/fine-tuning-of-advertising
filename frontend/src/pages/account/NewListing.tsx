@@ -3,7 +3,7 @@ import { ListingForm } from '../../features/listing-form/ListingForm';
 import type { ListingFormValues } from '../../features/listing-form/model';
 import { createListing } from '../../shared/api/create-listing';
 
-type Props = { initialValues?: ListingFormValues; onChange: (values: ListingFormValues) => void; recheck: (unauthorized: boolean) => void };
+type Props = { initialValues?: ListingFormValues; onChange: (values: ListingFormValues, dirty: boolean) => void; recheck: (unauthorized: boolean) => void };
 
 export default function NewListing({ initialValues, onChange, recheck }: Props) {
   return <ListingForm initialValues={initialValues} onChange={onChange}

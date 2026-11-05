@@ -144,3 +144,42 @@ test('прямая ссылка создания защищена сессией
   await expect(page.getByRole('heading', { name: 'С возвращением' })).toBeVisible();
   await expect(page.getByRole('form', { name: 'Создание объявления' })).toHaveCount(0); expect(posts(loginServer)).toHaveLength(0);
 });
+
+test('ошибка API метро фокусирует отправленную станцию после пустой строки', async ({ page, loginServer }) => {
+  loginServer.controls.createError = 422; loginServer.controls.createFields = ['/data/location/undergrounds/0/minutes'];
+  await page.goto(`${loginServer.url}/app/new`);
+  await page.getByRole('button', { name: 'Добавить станцию метро' }).click();
+  await page.getByRole('button', { name: 'Добавить станцию метро' }).click();
+  await page.getByLabel('Название станции 2').fill('Лесная'); await page.getByLabel('Время в пути, мин — станция 2').fill('7');
+  await page.getByRole('button', { name: 'Сохранить черновик', exact: true }).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.getByLabel('Время в пути, мин — станция 2')).toBeFocused();
+  await expect(page.getByLabel('Время в пути, мин — станция 1')).not.toHaveAttribute('aria-invalid', 'true');
+});
+
+test('skip-ссылка и отмена Back сохраняют маршрут и черновик', async ({ page, loginServer }) => {
+  await page.goto(`${loginServer.url}/app`); await page.getByRole('button', { name: 'Создать объявление', exact: true }).first().click();
+  const skip = page.getByRole('link', { name: 'К содержимому', exact: true }); await skip.focus(); await skip.press('Enter');
+  await expect(page).toHaveURL(`${loginServer.url}/app/new#main-content`);
+  await page.getByLabel('Адрес', { exact: true }).fill('Сохранить черновик');
+  let dialogs = 0; page.on('dialog', (dialog) => { dialogs += 1; void dialog.dismiss(); });
+  await page.goBack();
+  await expect(page).toHaveURL(`${loginServer.url}/app/new`); expect(dialogs).toBe(0);
+  await page.goBack(); await expect.poll(() => dialogs).toBe(1);
+  await expect(page).toHaveURL(`${loginServer.url}/app/new`); await expect(page.getByLabel('Адрес', { exact: true })).toHaveValue('Сохранить черновик');
+  page.removeAllListeners('dialog'); page.on('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: '← Мои объявления' }).click(); await expect(page.getByRole('heading', { name: 'Мои объявления' })).toBeVisible();
+});
+
+test('несохранённый черновик защищён при ошибке проверки сессии', async ({ page, loginServer }) => {
+  await page.goto(`${loginServer.url}/app`); await page.getByRole('button', { name: 'Создать объявление', exact: true }).first().click();
+  await page.getByLabel('Адрес', { exact: true }).fill('Не терять после 401');
+  loginServer.controls.createError = 401; loginServer.controls.meError = 503;
+  await page.getByRole('button', { name: 'Сохранить черновик', exact: true }).click();
+  await expect(page.getByText('Не удалось проверить сессию', { exact: true })).toBeVisible();
+  let dialogs = 0; page.on('dialog', (dialog) => { dialogs += 1; void dialog.dismiss(); });
+  await page.goBack(); await expect.poll(() => dialogs).toBe(1); await expect(page).toHaveURL(`${loginServer.url}/app/new`);
+  loginServer.controls.meError = null; await page.getByRole('button', { name: 'Повторить', exact: true }).click();
+  await expect(page.getByLabel('Адрес', { exact: true })).toHaveValue('Не терять после 401');
+  page.removeAllListeners('dialog'); page.on('dialog', (dialog) => dialog.accept());
+});

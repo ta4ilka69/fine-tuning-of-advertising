@@ -86,12 +86,14 @@ export function fieldError(rule: FieldRule) {
 
 export function serverFieldErrors(issues: { field: string }[], values: ListingFormValues): FormErrors {
   const result: FormErrors = {};
+  const stationIndexes = values.undergrounds.flatMap((station, index) => Object.values(station).some((value) => value.trim()) ? [index] : []);
   for (const issue of issues) {
     let path = issue.field.replace(/^\/data\//, '').replaceAll('/', '.');
     const arrayField = path.replace(/\.\d+$/, '');
     if (listingRules[arrayField]?.type === 'array') path = arrayField;
     const station = /^location\.undergrounds\.(\d+)(?:\.(name|minutes|transportType))?$/.exec(path);
-    if (station && values.undergrounds[Number(station[1])]) result[`undergrounds.${station[1]}.${station[2] ?? 'name'}`] = 'Проверьте значение';
+    const stationIndex = station ? stationIndexes[Number(station[1])] : undefined;
+    if (station && stationIndex !== undefined) result[`undergrounds.${stationIndex}.${station[2] ?? 'name'}`] = 'Проверьте значение';
     else if (Object.hasOwn(labels, path) && visibleField(path, values)) result[inputPath(path)] = 'Проверьте значение';
   }
   return result;
