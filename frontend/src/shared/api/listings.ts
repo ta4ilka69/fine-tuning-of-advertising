@@ -69,7 +69,7 @@ function dataField(block: Record<string, unknown> | undefined, key: string) {
   return value ?? null;
 }
 
-function parseListing(value: unknown): ListingOverview {
+export function parseListing(value: unknown): ListingOverview {
   if (!isRecord(value) || !isRecord(value.data) || !Array.isArray(value.photos)
     || !(value.result === null || isGenerationResult(value.result))
     || (value.status === 'failed' ? !isRecord(value.generationError)

@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { once } from 'node:events';
 
+import type { ListingData } from '../../src/shared/api/listing-data';
 import type { ListingSummary } from '../../src/shared/api/types';
 import { listingDetails } from '../fixtures/listings.ts';
 
@@ -13,6 +14,10 @@ const user = { id: '9a07b31d-ac15-495c-bb91-e3756fe40bcc', login: 'agent_demo', 
 export async function startSessionServer(host = '127.0.0.1', port = 0) {
   const calls: { query: string; path: string; method: string; body: unknown; cookie: string | undefined; origin: string | undefined }[] = [];
   const controls = {
+    createError: null as number | 'network' | 'invalid' | 'wrong-status' | 'broken-json' | null,
+    createFields: ['/data/deal/price'] as string[],
+    createResponse: undefined as unknown,
+    holdCreate: undefined as Promise<void> | undefined,
     listingDataset: null as ListingSummary[] | null,
     listingPageSize: 20,
     listingPages: [{ items: [], nextCursor: null }] as unknown[],
@@ -64,8 +69,26 @@ export async function startSessionServer(host = '127.0.0.1', port = 0) {
       body = { type: 'about:blank', title: code === 'INVALID_CREDENTIALS' ? 'Неверный логин или пароль' : 'Не удалось выполнить запрос',
         status, code, requestId: 'a6cdd08a-a252-48fa-a6c5-73f485bc494e' };
     };
-    if (path === '/api/v1/listings' && request.method === 'GET') {
-      const index = calls.filter((call) => call.path === path).length - 1;
+    if (path === '/api/v1/listings' && request.method === 'POST') {
+      await controls.holdCreate;
+      if (controls.createError === 'network') {
+        response.writeHead(201, { 'Content-Type': 'application/json', 'Content-Length': '1000' });
+        response.write('{"id":'); setTimeout(() => response.destroy(), 25); return;
+      }
+      if (controls.createError === 'broken-json') { response.writeHead(201, { 'Content-Type': 'application/json' }).end('{'); return; }
+      if (typeof controls.createError === 'number') {
+        fail(controls.createError, 'VALIDATION_ERROR');
+        body = { ...(body as object), fieldErrors: controls.createFields.map((field) => ({ field, code: 'INVALID', message: 'Technical diagnostic must stay hidden' })) };
+      } else {
+        const data = (JSON.parse(rawBody) as { data: ListingData }).data;
+        const id = '70792597-4a2a-4ddb-9d00-c2340dd8c016';
+        body = controls.createResponse ?? { id, version: 1, status: 'draft', data, photos: [], result: null, generationError: null, createdAt: '2026-11-05T10:00:00Z', updatedAt: '2026-11-05T10:00:00Z' };
+        controls.details.set(id, body);
+        status = controls.createError === 'wrong-status' ? 200 : 201;
+        if (controls.createError === 'invalid') body = { unexpected: true };
+      }
+    } else if (path === '/api/v1/listings' && request.method === 'GET') {
+      const index = calls.filter((call) => call.path === path && call.method === 'GET').length - 1;
       const params = new URL(request.url!, 'http://localhost').searchParams;
       let result = controls.listingPages[Math.min(index, controls.listingPages.length - 1)];
       if (controls.listingDataset) {

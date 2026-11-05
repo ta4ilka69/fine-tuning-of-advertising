@@ -101,7 +101,7 @@
     display: none;
   }
 
-  .account {
+  .header .account {
     width: var(--app-control-height);
     min-width: var(--app-control-height);
     padding-inline: 0;
