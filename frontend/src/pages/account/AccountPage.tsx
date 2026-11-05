@@ -6,19 +6,20 @@ import { useSession } from '../../features/session/context';
 import { AppNotice } from '../../shared/ui/AppNotice';
 import { ListingList } from './ListingList';
 import { ListingDetails } from './ListingDetails';
-import { navigate, usePathname } from '../../app/navigation';
+import { navigate, usePathname, useSearch } from '../../app/navigation';
 import { AppButton } from '../../shared/ui/AppButton';
 import classes from './Listings.module.css';
 import { PageLayout } from '../../shared/ui/PageLayout';
 
 export default function AccountPage() {
   const path = usePathname();
+  const search = useSearch();
   const { state, logout, restore } = useSession();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const userId = state.status === 'authenticated' ? state.user.id : null;
   const checked = useRef<string | null>(null);
-  useEffect(() => { checked.current = null; }, [path]);
+  useEffect(() => { checked.current = null; }, [path, search]);
   const recheck = useCallback((unauthorized: boolean) => {
     if (!unauthorized) { checked.current = null; return; }
     if (checked.current === userId) return;

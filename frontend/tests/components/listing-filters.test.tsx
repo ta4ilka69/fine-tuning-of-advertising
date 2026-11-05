@@ -110,3 +110,24 @@ for (const search of ['?from=2026-02-30', '?from=2026-11-02&to=2026-11-01', '?q=
     expect(query().has('from')).toBe(false);
   });
 }
+
+for (const invalidField of ['from', 'to'] as const) {
+  test(`незавершённая ${invalidField} остаётся ошибкой при изменении соседних полей`, async () => {
+    open('?from=2026-10-01&to=2026-10-23'); await screen.findByRole('list');
+    const input = screen.getByLabelText(invalidField === 'from' ? 'Дата создания: с' : 'Дата создания: по');
+    Object.defineProperty(input, 'validity', { configurable: true, value: { badInput: true } });
+    fireEvent.change(input, { target: { value: '' } });
+    expect(screen.getByRole('alert')).toHaveTextContent('корректные даты');
+    fireEvent.change(screen.getByLabelText('Поиск по адресу'), { target: { value: 'Лесной' } });
+    expect(screen.getByRole('alert')).toHaveTextContent('корректные даты');
+    const other = screen.getByLabelText(invalidField === 'from' ? 'Дата создания: по' : 'Дата создания: с');
+    fireEvent.change(other, { target: { value: '2026-10-20' } });
+    enter(); await act(async () => new Promise((resolve) => setTimeout(resolve, 350)));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(window.location.search).toBe('?from=2026-10-01&to=2026-10-23');
+    fireEvent.click(screen.getByRole('button', { name: 'Сбросить фильтры' }));
+    await screen.findByRole('list');
+    expect((screen.getByLabelText(invalidField === 'from' ? 'Дата создания: с' : 'Дата создания: по') as HTMLInputElement).validity.badInput).toBe(false);
+    expect(window.location.search).toBe('');
+  });
+}

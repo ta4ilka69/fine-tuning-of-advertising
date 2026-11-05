@@ -125,3 +125,49 @@ for (const action of ['logout', 'expired'] as const) {
     release(); await expect(page.getByRole('list', { name: 'Мои объявления' })).toHaveCount(0);
   });
 }
+
+for (const invalidField of ['с', 'по']) {
+  test(`незавершённая дата ${invalidField} блокирует соседние поля, Enter и сбрасывается`, async ({ page, loginServer }) => {
+    await page.goto(`${loginServer.url}/app?from=2026-10-01&to=2026-10-23`);
+    await expect(page.getByRole('listitem')).toHaveCount(5);
+    const input = page.getByLabel(`Дата создания: ${invalidField}`);
+    await input.press('Backspace');
+    expect(await input.evaluate((el: HTMLInputElement) => el.validity.badInput)).toBe(true);
+    await expect(page.getByRole('alert')).toContainText('корректные даты');
+    const count = filters(loginServer).length;
+    await page.getByLabel('Поиск по адресу').fill('Лесной');
+    await expect(page.getByRole('alert')).toContainText('корректные даты');
+    await page.getByLabel(`Дата создания: ${invalidField === 'с' ? 'по' : 'с'}`).fill('2026-10-20');
+    await page.getByRole('button', { name: 'Найти', exact: true }).click();
+    await page.waitForTimeout(350);
+    expect(filters(loginServer)).toHaveLength(count);
+    expect(await input.evaluate((el: HTMLInputElement) => el.validity.badInput)).toBe(true);
+    await page.getByRole('button', { name: 'Сбросить фильтры' }).click();
+    await expect(page.getByRole('listitem')).toHaveCount(5);
+    expect(await input.evaluate((el: HTMLInputElement) => el.validity.badInput)).toBe(false);
+    await expect(input).toHaveValue(''); await expect(page).toHaveURL(`${loginServer.url}/app`);
+  });
+}
+
+test('Back очищает незавершённую дату при возвращении к пустой границе', async ({ page, loginServer }) => {
+  await page.goto(`${loginServer.url}/app`); await expect(page.getByRole('listitem')).toHaveCount(5);
+  const input = page.getByLabel('Дата создания: с');
+  await input.fill('2026-10-22'); await expect(page.getByRole('listitem')).toHaveCount(2);
+  await input.press('Backspace'); await expect(page.getByRole('alert')).toContainText('корректные даты');
+  await page.goBack(); await expect(page.getByRole('listitem')).toHaveCount(5);
+  await expect(input).toHaveValue(''); expect(await input.evaluate((el: HTMLInputElement) => el.validity.badInput)).toBe(false);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
+test('смена фильтра после подавленного 401 снова проверяет истёкшую сессию', async ({ page, loginServer }) => {
+  loginServer.controls.listingError = 401;
+  await page.goto(`${loginServer.url}/app`);
+  await expect(page.getByRole('alert')).toContainText('Не удалось получить доступ');
+  await expect.poll(() => loginServer.calls.filter((call) => call.path.endsWith('/me')).length).toBe(2);
+  await page.waitForTimeout(350);
+  expect(loginServer.calls.filter((call) => call.path.endsWith('/me'))).toHaveLength(2);
+  loginServer.controls.meError = 401;
+  await page.getByLabel('Поиск по адресу').fill('Лесной'); await page.getByLabel('Поиск по адресу').press('Enter');
+  await expect(page.getByRole('heading', { name: 'С возвращением' })).toBeVisible();
+  expect(loginServer.calls.filter((call) => call.path.endsWith('/me'))).toHaveLength(3);
+});
