@@ -16,6 +16,7 @@ for (const header of ['guest', 'user', 'admin']) {
         await page.keyboard.press('Enter');
         await expect(page.getByRole('menuitem', { name: 'Мои объявления' })).toBeVisible();
         if (header === 'admin') await expect(page.getByRole('menuitem', { name: 'Площадки' })).toBeVisible();
+        await expect.poll(() => page.getByRole('menu').evaluate((menu) => menu.contains(document.activeElement))).toBe(true);
         await page.keyboard.press('Escape');
         await expect(account).toBeFocused();
       }
