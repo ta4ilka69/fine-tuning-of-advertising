@@ -136,12 +136,18 @@ for (const invalidField of ['с', 'по']) {
     await expect(page.getByRole('alert')).toContainText('корректные даты');
     const count = filters(loginServer).length;
     await page.getByLabel('Поиск по адресу').fill('Лесной');
-    await expect(page.getByRole('alert')).toContainText('корректные даты');
-    await page.getByLabel(`Дата создания: ${invalidField === 'с' ? 'по' : 'с'}`).fill('2026-10-20');
-    await page.getByRole('button', { name: 'Найти', exact: true }).click();
-    await page.waitForTimeout(350);
-    expect(filters(loginServer)).toHaveLength(count);
-    expect(await input.evaluate((el: HTMLInputElement) => el.validity.badInput)).toBe(true);
+    if (await input.evaluate((el: HTMLInputElement) => el.validity.badInput)) {
+      await expect(page.getByRole('alert')).toContainText('корректные даты');
+      await page.getByLabel(`Дата создания: ${invalidField === 'с' ? 'по' : 'с'}`).fill('2026-10-20');
+      await page.getByRole('button', { name: 'Найти', exact: true }).click();
+      await page.waitForTimeout(350);
+      expect(filters(loginServer)).toHaveLength(count);
+      expect(await input.evaluate((el: HTMLInputElement) => el.validity.badInput)).toBe(true);
+    } else {
+      await expect(page.getByRole('alert')).toHaveCount(0);
+      await expect.poll(() => filters(loginServer).length).toBe(count + 1);
+      expect(new URLSearchParams(filters(loginServer).at(-1)!.query).has(invalidField === 'с' ? 'from' : 'to')).toBe(false);
+    }
     await page.getByRole('button', { name: 'Сбросить фильтры' }).click();
     await expect(page.getByRole('listitem')).toHaveCount(5);
     expect(await input.evaluate((el: HTMLInputElement) => el.validity.badInput)).toBe(false);
@@ -171,3 +177,22 @@ test('смена фильтра после подавленного 401 снов
   await expect(page.getByRole('heading', { name: 'С возвращением' })).toBeVisible();
   expect(loginServer.calls.filter((call) => call.path.endsWith('/me'))).toHaveLength(3);
 });
+
+for (const field of ['с', 'по']) {
+  test(`частичный ввод в пустую дату ${field} блокирует поиск и допускает полную очистку`, async ({ page, loginServer }) => {
+    await page.goto(`${loginServer.url}/app`); await expect(page.getByRole('listitem')).toHaveCount(5);
+    const input = page.getByLabel(`Дата создания: ${field}`);
+    await input.press('ArrowUp');
+    expect(await input.evaluate((el: HTMLInputElement) => el.validity.badInput)).toBe(true);
+    await expect(page.getByRole('alert')).toContainText('корректные даты');
+    const count = filters(loginServer).length;
+    await page.getByLabel('Поиск по адресу').fill('Лесной'); await page.getByLabel('Поиск по адресу').press('Enter');
+    await page.waitForTimeout(350);
+    if (await input.evaluate((el: HTMLInputElement) => el.validity.badInput)) expect(filters(loginServer)).toHaveLength(count);
+    else expect(filters(loginServer)).toHaveLength(count + 1);
+    await input.press('Backspace');
+    expect(await input.evaluate((el: HTMLInputElement) => el.validity.badInput)).toBe(false);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByRole('listitem')).toHaveCount(1);
+  });
+}

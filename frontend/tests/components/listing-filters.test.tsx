@@ -41,10 +41,10 @@ test('даты вместе с q, валидация, односторонние
   open('?q=Лес&from=2026-12-31&to=2026-12-31'); await screen.findByRole('list');
   expect(query().get('limit')).toBe('20');
   expect(new Date(query().get('to')!).getDate()).toBe(1);
-  fireEvent.change(screen.getByLabelText('Дата создания: с'), { target: { value: '2027-01-02' } });
+  fireEvent.input(screen.getByLabelText('Дата создания: с'), { target: { value: '2027-01-02' } });
   expect(screen.getByRole('alert')).toHaveTextContent('позже конца'); enter();
   expect(fetchMock).toHaveBeenCalledTimes(1);
-  fireEvent.change(screen.getByLabelText('Дата создания: по'), { target: { value: '' } });
+  fireEvent.input(screen.getByLabelText('Дата создания: по'), { target: { value: '' } });
   await screen.findByRole('list'); expect(query().has('to')).toBe(false); expect(query().get('q')).toBe('Лес');
   fireEvent.click(screen.getByRole('button', { name: 'Сбросить фильтры' }));
   await screen.findByRole('list'); expect([...query().keys()]).toEqual(['limit']);
@@ -116,12 +116,12 @@ for (const invalidField of ['from', 'to'] as const) {
     open('?from=2026-10-01&to=2026-10-23'); await screen.findByRole('list');
     const input = screen.getByLabelText(invalidField === 'from' ? 'Дата создания: с' : 'Дата создания: по');
     Object.defineProperty(input, 'validity', { configurable: true, value: { badInput: true } });
-    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.input(input, { target: { value: '' } });
     expect(screen.getByRole('alert')).toHaveTextContent('корректные даты');
     fireEvent.change(screen.getByLabelText('Поиск по адресу'), { target: { value: 'Лесной' } });
     expect(screen.getByRole('alert')).toHaveTextContent('корректные даты');
     const other = screen.getByLabelText(invalidField === 'from' ? 'Дата создания: по' : 'Дата создания: с');
-    fireEvent.change(other, { target: { value: '2026-10-20' } });
+    fireEvent.input(other, { target: { value: '2026-10-20' } });
     enter(); await act(async () => new Promise((resolve) => setTimeout(resolve, 350)));
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(window.location.search).toBe('?from=2026-10-01&to=2026-10-23');
@@ -129,5 +129,22 @@ for (const invalidField of ['from', 'to'] as const) {
     await screen.findByRole('list');
     expect((screen.getByLabelText(invalidField === 'from' ? 'Дата создания: с' : 'Дата создания: по') as HTMLInputElement).validity.badInput).toBe(false);
     expect(window.location.search).toBe('');
+  });
+}
+
+for (const field of ['с', 'по']) {
+  test(`частичный ввод в пустую дату ${field} и полная очистка учитывают native input`, async () => {
+    open(); await screen.findByRole('list');
+    const input = screen.getByLabelText(`Дата создания: ${field}`);
+    Object.defineProperty(input, 'validity', { configurable: true, value: { badInput: true } });
+    fireEvent.input(input, { target: { value: '' } });
+    expect(screen.getByRole('alert')).toHaveTextContent('корректные даты');
+    fireEvent.change(screen.getByLabelText('Поиск по адресу'), { target: { value: 'Лесной' } }); enter();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 350)));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    Object.defineProperty(input, 'validity', { configurable: true, value: { badInput: false } });
+    fireEvent.input(input, { target: { value: '' } });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await screen.findByRole('list'); expect(query().get('q')).toBe('Лесной');
   });
 }

@@ -245,7 +245,7 @@ for (const navigation of ['search', 'date', 'history'] as const) {
       fireEvent.change(screen.getByLabelText('Поиск по адресу'), { target: { value: 'Лесной' } });
       fireEvent.submit(screen.getByRole('form', { name: 'Поиск и фильтры объявлений' }));
     } else if (navigation === 'date') {
-      fireEvent.change(screen.getByLabelText('Дата создания: с'), { target: { value: '2026-10-01' } });
+      fireEvent.input(screen.getByLabelText('Дата создания: с'), { target: { value: '2026-10-01' } });
     } else {
       act(() => { window.history.pushState(null, '', '/app?q=Лесной'); window.dispatchEvent(new PopStateEvent('popstate')); });
     }
