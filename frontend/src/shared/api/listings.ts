@@ -95,6 +95,8 @@ function parseListing(value: unknown): ListingOverview {
   };
 }
 
+export type ListingFilters = { q?: string; from?: string; to?: string };
+
 export const listings = {
   get: (id: string, signal?: AbortSignal) => {
     if (!uuid.test(id)) throw new TypeError('Некорректный ID объявления');
@@ -104,7 +106,7 @@ export const listings = {
       return item;
     } });
   },
-  page: (cursor?: string, signal?: AbortSignal) => request('/listings', {
-    query: { limit: 20, cursor }, signal, status: 200, response: parsePage,
+  page: (cursor?: string, signal?: AbortSignal, filters: ListingFilters = {}) => request('/listings', {
+    query: { limit: 20, cursor, ...filters }, signal, status: 200, response: parsePage,
   }),
 };

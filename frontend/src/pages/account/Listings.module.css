@@ -28,3 +28,15 @@
   .statuses { grid-row: 3; }
   .state { padding: var(--mantine-spacing-lg); }
 }
+.filters { padding: var(--mantine-spacing-lg); }
+.controls { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--mantine-spacing-md); align-items: end; }
+.controls > * { min-width: 0; }
+.controls input { min-width: 0; }
+.reset { margin-top: var(--mantine-spacing-sm); }
+@media (max-width: 62em) {
+  .controls { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+@media (max-width: 43.75em) {
+  .filters { padding: var(--mantine-spacing-md); }
+  .controls { grid-template-columns: minmax(0, 1fr); }
+}

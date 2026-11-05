@@ -160,3 +160,19 @@ test('черновик с признаком апартаментов без т�
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ ...detail, data: { object: { isApartments: true } } })));
   expect(await listings.get(detail.id)).toMatchObject({ objectType: null, isApartments: false });
 });
+
+test('совместные q/from/to/cursor/limit соответствуют параметрам OpenAPI', async () => {
+  const contract = JSON.parse(readFileSync('public/docs/openapi.json', 'utf8'));
+  const ajv = new Ajv2020({ strict: false, coerceTypes: true });
+  addFormats(ajv);
+  const fetchMock = vi.fn().mockResolvedValue(response({ items: [], nextCursor: null }));
+  vi.stubGlobal('fetch', fetchMock);
+  const selected = { q: 'Адрес + / & ?', from: '2026-12-30T21:00:00.000Z', to: '2027-01-01T21:00:00.000Z' };
+  await listings.page('opaque+/=&?', undefined, selected);
+  const params = new URL(String(fetchMock.mock.calls[0]![0]), 'http://localhost').searchParams;
+  expect(Object.fromEntries(params)).toEqual({ ...selected, limit: '20', cursor: 'opaque+/=&?' });
+  for (const parameter of contract.paths['/listings'].get.parameters) {
+    const validate = ajv.compile(parameter.schema);
+    expect(validate(params.get(parameter.name)), JSON.stringify(validate.errors)).toBe(true);
+  }
+});

@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { once } from 'node:events';
 
+import type { ListingSummary } from '../../src/shared/api/types';
 import { listingDetails } from '../fixtures/listings.ts';
 
 const directory = new URL('../../node_modules/.cache/ui-fixture/', import.meta.url);
@@ -12,6 +13,8 @@ const user = { id: '9a07b31d-ac15-495c-bb91-e3756fe40bcc', login: 'agent_demo', 
 export async function startSessionServer(host = '127.0.0.1', port = 0) {
   const calls: { query: string; path: string; method: string; body: unknown; cookie: string | undefined; origin: string | undefined }[] = [];
   const controls = {
+    listingDataset: null as ListingSummary[] | null,
+    listingPageSize: 20,
     listingPages: [{ items: [], nextCursor: null }] as unknown[],
     listingError: null as number | 'network' | 'invalid' | null,
     holdListings: undefined as Promise<void> | undefined,
@@ -63,7 +66,17 @@ export async function startSessionServer(host = '127.0.0.1', port = 0) {
     };
     if (path === '/api/v1/listings' && request.method === 'GET') {
       const index = calls.filter((call) => call.path === path).length - 1;
-      const result = controls.listingPages[Math.min(index, controls.listingPages.length - 1)];
+      const params = new URL(request.url!, 'http://localhost').searchParams;
+      let result = controls.listingPages[Math.min(index, controls.listingPages.length - 1)];
+      if (controls.listingDataset) {
+        const q = (params.get('q') ?? '').toLocaleLowerCase('ru');
+        const from = params.get('from'); const to = params.get('to');
+        const items = controls.listingDataset.filter((item) => (!q || item.address?.toLocaleLowerCase('ru').includes(q))
+          && (!from || Date.parse(item.createdAt) >= Date.parse(from)) && (!to || Date.parse(item.createdAt) < Date.parse(to)));
+        const offset = Number(params.get('cursor') ?? 0);
+        const limit = Math.min(Number(params.get('limit') ?? 20), controls.listingPageSize);
+        result = { items: items.slice(offset, offset + limit), nextCursor: offset + limit < items.length ? String(offset + limit) : null };
+      }
       await controls.holdListings;
       if (controls.listingError === 'network') { response.destroy(); return; }
       if (typeof controls.listingError === 'number') fail(controls.listingError, 'SERVICE_UNAVAILABLE');
