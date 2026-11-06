@@ -26,7 +26,15 @@ beforeEach(() => {
   detail = listingDetails(); createURL.mockClear(); revokeURL.mockClear();
   URL.createObjectURL = createURL; URL.revokeObjectURL = revokeURL;
   upload = async () => json({ version: 3, photo: anotherPhoto() }, 201);
-  fetchMock.mockImplementation(async (_url, options) => options?.method === 'POST' ? upload() : options?.method === 'DELETE' ? json({ version: 4 }) : json(detail));
+  fetchMock.mockImplementation(async (url, options) => {
+    if (options?.method === 'POST') return upload();
+    if (options?.method === 'DELETE') {
+      const id = new URL(String(url), 'http://localhost').pathname.split('/').at(-1);
+      detail = { ...detail, version: 4, status: 'draft', photos: detail.photos.filter((photo) => photo.id !== id) };
+      return json({ version: 4 });
+    }
+    return json(detail);
+  });
   vi.stubGlobal('fetch', fetchMock);
 });
 afterEach(() => { URL.createObjectURL = originalCreate; URL.revokeObjectURL = originalRevoke; fetchMock.mockReset(); vi.unstubAllGlobals(); });
@@ -42,8 +50,11 @@ test('кнопка выбора открывает multiple input, превью 
   expect(await screen.findByText('Загружаем файл…')).toBeVisible();
   expect(screen.getByRole('img', { name: 'local.jpg' })).toHaveAttribute('src', 'blob:test-photo');
   expect(createURL).toHaveBeenCalledWith(file);
-  await act(async () => release(json({ version: 3, photo: anotherPhoto('local.jpg') }, 201)));
+  const added = anotherPhoto('local.jpg');
+  detail = { ...detail, version: 3, status: 'draft', photos: [...detail.photos, added] };
+  await act(async () => release(json({ version: 3, photo: added }, 201)));
   expect(await screen.findByRole('heading', { name: 'Фото · 2 из 20' })).toBeVisible();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   expect(revokeURL).toHaveBeenCalledWith('blob:test-photo'); unmount();
 });
 

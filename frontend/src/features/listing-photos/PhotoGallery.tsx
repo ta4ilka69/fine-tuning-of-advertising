@@ -49,18 +49,18 @@ export function PhotoGallery({ manager, state }: { manager: PhotoManager; state:
   const input = useRef<HTMLInputElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
-  const focusIndex = useRef<number | undefined>(undefined);
+  const focusTarget = useRef<{ id: string; index: number } | undefined>(undefined);
   const listing = state.listing!;
   const uploading = state.uploads.some((entry) => entry.state === 'uploading' || entry.state === 'waiting');
   const locked = listing.status === 'generating';
   const disabled = locked || !state.verified || state.reading || state.paused || !!state.deleting || uploading;
   const count = manager.count();
   useEffect(() => {
-    if (!state.removed || focusIndex.current === undefined) return;
-    const button = [...buttons.current.values()][Math.min(focusIndex.current, buttons.current.size - 1)];
+    if (!state.removed || focusTarget.current?.id !== state.removed || state.reading || state.deleting) return;
+    const button = [...buttons.current.values()][Math.min(focusTarget.current.index, buttons.current.size - 1)];
     if (button && !button.disabled) button.focus(); else heading.current?.focus();
-    focusIndex.current = undefined;
-  }, [state.removed]);
+    focusTarget.current = undefined;
+  }, [state.removed, state.reading, state.deleting]);
   return <section className={classes.gallery} aria-labelledby="photos-heading">
     <Stack gap="lg">
       <Title order={2} id="photos-heading" ref={heading} tabIndex={-1}>Фото · {count} из 20</Title>
@@ -84,7 +84,7 @@ export function PhotoGallery({ manager, state }: { manager: PhotoManager; state:
       <ul className={classes.photos} aria-label="Загруженные фотографии">
         {listing.photos.map((photo, index) => <UploadedPhoto key={photo.id} photo={photo} disabled={disabled} deleting={state.deleting === photo.id}
           buttonRef={(element) => { if (element) buttons.current.set(photo.id, element); else buttons.current.delete(photo.id); }}
-          onRemove={() => { focusIndex.current = index; manager.remove(photo.id); }} />)}
+          onRemove={() => { focusTarget.current = { id: photo.id, index }; manager.remove(photo.id); }} />)}
       </ul>
       {state.uploads.length > 0 && <div><Title order={3} size="h4" mb="sm">Очередь загрузки</Title><ul className={classes.photos} aria-label="Очередь загрузки">
         {state.uploads.map((entry) => <QueuedPhoto key={entry.key} entry={entry} onDismiss={() => manager.dismiss(entry.key)} />)}

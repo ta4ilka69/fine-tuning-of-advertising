@@ -132,3 +132,22 @@ test('превью требует cookie, чужой адрес не попад�
   const external: string[] = []; page.on('request', (request) => { if (request.url().includes('external.example')) external.push(request.url()); });
   await page.reload(); await expect(page.getByRole('alert')).toBeVisible(); await expect(page.getByRole('img', { name: 'room.jpg', exact: true })).toHaveCount(0); expect(external).toEqual([]);
 });
+
+test('последнее удаление без processing обновляет дату без перезагрузки', async ({ page, loginServer }) => {
+  await page.goto(`${loginServer.url}/app/listings/${id}`);
+  await expect(page.locator('time').nth(1)).toHaveAttribute('datetime', listingDetails().updatedAt);
+  await page.getByRole('button', { name: 'Удалить фотографию room.jpg', exact: true }).press('Enter');
+  await expect(page.getByRole('heading', { name: 'Фото · 0 из 20' })).toBeFocused();
+  await expect(page.locator('time').nth(1)).toHaveAttribute('datetime', '2026-11-06T12:00:00Z');
+  expect(reads(loginServer)).toHaveLength(2);
+});
+
+test('потерянный ответ выполненного DELETE: обновление и фокус с клавиатуры', async ({ page, loginServer }) => {
+  loginServer.controls.photoError = 'disconnect-after-write';
+  await page.goto(`${loginServer.url}/app/listings/${id}`);
+  await page.getByRole('button', { name: 'Удалить фотографию room.jpg', exact: true }).press('Enter');
+  await expect(page.getByRole('heading', { name: 'Фото · 0 из 20' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Продолжить очередь' })).toBeVisible();
+  expect(loginServer.calls.filter((call) => call.method === 'DELETE')).toHaveLength(1);
+  expect(reads(loginServer)).toHaveLength(2);
+});

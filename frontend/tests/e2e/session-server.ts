@@ -90,7 +90,7 @@ export async function startSessionServer(host = '127.0.0.1', port = 0) {
     const photoPath = /^\/api\/v1\/listings\/([^/]+)\/photos(?:\/([^/]+)(?:\/(content|thumbnail))?)?$/.exec(path);
     if (photoPath) {
       const id = photoPath[1]!;
-      const detail = (controls.details.get(id) ?? controls.detail) as { id: string; photos: Photo[]; version: number; status: string };
+      const detail = (controls.details.get(id) ?? controls.detail) as { id: string; photos: Photo[]; version: number; status: string; updatedAt: string };
       if (!request.headers.cookie?.includes('session=test-session')) fail(401, 'UNAUTHENTICATED');
       else if (request.method === 'GET' && photoPath[3]) {
         const photo = detail.photos.find((entry) => entry.id === photoPath[2]);
@@ -116,13 +116,13 @@ export async function startSessionServer(host = '127.0.0.1', port = 0) {
             const photoId = `70792597-4a2a-4ddb-9d00-${String(100 + calls.filter((call) => call.method === 'POST' && call.path === path).length).padStart(12, '0')}`;
             const photo: Photo = { id: photoId, listingId: id, fileName: uploadedFile.name, mimeType: uploadedFile.type as Photo['mimeType'], sizeBytes: uploadedFile.size,
               status: 'processing', contentUrl: `/api/v1/listings/${id}/photos/${photoId}/content`, thumbnailUrl: null, error: null };
-            detail.photos.push(photo); detail.version++; detail.status = 'draft'; status = 201;
+            detail.photos.push(photo); detail.version++; detail.status = 'draft'; detail.updatedAt = '2026-11-06T12:00:00Z'; status = 201;
             body = { version: detail.version, photo };
           }
         } else if (request.method === 'DELETE') {
           const index = detail.photos.findIndex((photo) => photo.id === photoPath[2]);
           if (index < 0) fail(404, 'NOT_FOUND');
-          else { detail.photos.splice(index, 1); detail.version++; detail.status = 'draft'; body = { version: detail.version }; }
+          else { detail.photos.splice(index, 1); detail.version++; detail.status = 'draft'; detail.updatedAt = '2026-11-06T12:00:00Z'; body = { version: detail.version }; }
         } else fail(404, 'NOT_FOUND');
         if (controls.photoError === 'invalid') body = { invalid: true };
         if (controls.photoError === 'disconnect-after-write') { disconnect(); return; }

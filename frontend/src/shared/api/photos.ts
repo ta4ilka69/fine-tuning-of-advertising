@@ -17,9 +17,9 @@ export function photoAddress(value: unknown, listingId: string, photoId: string,
 export function parsePhoto(value: unknown, listingId: string): Photo {
   if (!isRecord(value) || !isUUID(value.id) || value.listingId !== listingId
     || typeof value.fileName !== 'string' || !/\S/.test(value.fileName)
-    || !['image/jpeg', 'image/png'].includes(String(value.mimeType))
+    || typeof value.mimeType !== 'string' || !['image/jpeg', 'image/png'].includes(value.mimeType)
     || !positiveInteger(value.sizeBytes) || value.sizeBytes > 15000000
-    || !['processing', 'ready', 'failed'].includes(String(value.status))) throw new TypeError('Некорректная фотография');
+    || typeof value.status !== 'string' || !['processing', 'ready', 'failed'].includes(value.status)) throw new TypeError('Некорректная фотография');
   const contentUrl = photoAddress(value.contentUrl, listingId, value.id, 'content');
   const thumbnailUrl = photoAddress(value.thumbnailUrl, listingId, value.id, 'thumbnail');
   const error = value.status === 'failed' && isRecord(value.error) && typeof value.error.status === 'number'

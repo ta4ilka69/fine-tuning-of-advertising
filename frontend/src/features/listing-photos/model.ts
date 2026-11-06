@@ -53,6 +53,8 @@ export class PhotoManager {
   private controller?: AbortController;
   private timer?: ReturnType<typeof setTimeout>;
   private refreshNeeded = true;
+  private metadataDirty = false;
+  private reconcileDeletion?: string;
   private sequence = 0;
   private deletes: string[] = [];
 
@@ -117,6 +119,7 @@ export class PhotoManager {
   private async pump() {
     if (!this.active || this.running) return;
     clearTimeout(this.timer);
+    if (this.metadataDirty && !this.state.inaccessible && !this.deletes.length && !this.state.uploads.some((entry) => entry.state === 'waiting')) this.refreshNeeded = true;
     const listing = this.state.listing;
     const read = this.refreshNeeded;
     const mayWrite = !this.state.paused && this.state.verified && !this.state.inaccessible && listing?.status !== 'generating';
@@ -132,6 +135,7 @@ export class PhotoManager {
     const controller = new AbortController();
     this.controller = controller;
     this.refreshNeeded = false;
+    if (read) this.metadataDirty = false;
     this.update({ reading: read, deleting: deletion, ...(upload ? {
       uploads: this.state.uploads.map((entry) => entry.key === upload.key ? { ...entry, state: 'uploading' } : entry),
       announcement: `Загружаем ${upload.name}.`,
@@ -141,6 +145,8 @@ export class PhotoManager {
         const current = await listings.get(this.id, controller.signal);
         if (controller.signal.aborted) return;
         if (listing && current.version < listing.version) throw new RequestError('invalid-response', 200);
+        const removed = this.reconcileDeletion && !current.photos.some((photo) => photo.id === this.reconcileDeletion) ? this.reconcileDeletion : undefined;
+        this.reconcileDeletion = undefined;
         let available = 20 - current.photos.length;
         const uploads = this.state.uploads.map((entry): Upload => {
           if (!entry.file) return entry;
@@ -148,18 +154,21 @@ export class PhotoManager {
           return { key: entry.key, name: entry.name, state: 'rejected', error: 'Можно добавить не больше 20 фотографий. Проверьте обновлённую галерею.' };
         });
         this.update({ listing: current, uploads, verified: true, inaccessible: false,
+          ...(removed ? { removed } : {}),
           ...(current.status === 'generating' ? { paused: true, error: 'Идёт генерация. Обновите состояние после её завершения.' } : {}),
-          announcement: current.photos.some((photo) => photo.status === 'processing') ? 'Фотографии обрабатываются.' : 'Состояние фотографий обновлено.',
+          announcement: removed ? 'Фотография удалена.' : current.photos.some((photo) => photo.status === 'processing') ? 'Фотографии обрабатываются.' : 'Состояние фотографий обновлено.',
         });
       } else if (deletion) {
         const result = await photos.remove(this.id, deletion, listing!.version, controller.signal);
         if (controller.signal.aborted) return;
+        this.metadataDirty = true;
         this.update({ listing: { ...listing!, version: result.version, status: 'draft', photos: listing!.photos.filter((photo) => photo.id !== deletion) },
           removed: deletion, announcement: 'Фотография удалена.', error: undefined });
       } else if (upload) {
         const result = await photos.upload(this.id, upload.file!, listing!.version, controller.signal);
         if (controller.signal.aborted) return;
         if (listing!.photos.some((photo) => photo.id === result.photo.id) || listing!.photos.length >= 20) throw new RequestError('invalid-response', 201);
+        this.metadataDirty = true;
         this.update({ listing: { ...listing!, version: result.version, status: 'draft', photos: [...listing!.photos, result.photo] },
           uploads: this.state.uploads.filter((entry) => entry.key !== upload.key), announcement: `${upload.name}: файл загружен.`, error: undefined });
       }
@@ -170,6 +179,7 @@ export class PhotoManager {
       const status = failure instanceof RequestError ? failure.status : undefined;
       const uncertain = !read && (!(failure instanceof RequestError) || failure.kind !== 'http' || (status ?? 0) >= 500);
       const inaccessible = status === 401 || status === 403 || (read && status === 404);
+      if (deletion && !inaccessible) this.reconcileDeletion = deletion;
       this.deletes = [];
       this.update({ paused: true, verified: false, inaccessible, error,
         uploads: this.state.uploads.map((entry) => entry.key === upload?.key ? {

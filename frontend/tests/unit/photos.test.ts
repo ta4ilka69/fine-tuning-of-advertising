@@ -86,21 +86,25 @@ test('смешанный выбор сохраняет допустимые фа
 });
 
 test('загрузки и удаление сериализуются и передают подтверждённую version', async () => {
-  vi.spyOn(listings, 'get').mockResolvedValue(overview());
+  const get = vi.spyOn(listings, 'get').mockResolvedValueOnce(overview());
   const pending = deferred<Awaited<ReturnType<typeof photos.upload>>>();
   const second = { ...photo, id: '70792597-4a2a-4ddb-9d00-c2340dd8c099' };
+  const first = { ...photo, id: '70792597-4a2a-4ddb-9d00-c2340dd8c098' };
+  get.mockResolvedValue({ ...overview(), version: 5, status: 'draft', photos: [first, second] });
   const upload = vi.spyOn(photos, 'upload').mockReturnValueOnce(pending.promise).mockResolvedValueOnce({ version: 5, photo: second });
   const remove = vi.spyOn(photos, 'remove').mockResolvedValue({ version: 4 });
   const value = manager(); await loaded(value); value.add([file(), file('two.jpg')]); value.remove(photo.id); value.remove(photo.id);
   expect(remove).not.toHaveBeenCalled(); expect(upload).toHaveBeenCalledTimes(1);
-  pending.resolve({ version: 3, photo: { ...photo, id: '70792597-4a2a-4ddb-9d00-c2340dd8c098' } });
+  pending.resolve({ version: 3, photo: first });
   await vi.waitFor(() => expect(value.snapshot().listing!.version).toBe(5));
   expect(upload.mock.calls.map((call) => call[2])).toEqual([2, 4]); expect(remove.mock.calls[0]![2]).toBe(3); expect(remove).toHaveBeenCalledOnce();
   expect(value.snapshot().listing!.photos.map((entry) => entry.id)).not.toContain(photo.id);
+  expect(get).toHaveBeenCalledTimes(2); expect(value.snapshot().error).toBeUndefined();
 });
 
 test('запоздалый GET завершается до удаления и не возвращает удалённое фото', async () => {
-  const late = deferred<ReturnType<typeof overview>>(); const get = vi.spyOn(listings, 'get').mockResolvedValueOnce(overview()).mockReturnValueOnce(late.promise);
+  const late = deferred<ReturnType<typeof overview>>(); const get = vi.spyOn(listings, 'get').mockResolvedValueOnce(overview()).mockReturnValueOnce(late.promise)
+    .mockResolvedValue({ ...overview(), version: 3, status: 'draft', photos: [] });
   const remove = vi.spyOn(photos, 'remove').mockResolvedValue({ version: 3 }); const value = manager(); await loaded(value);
   value.refresh(); value.refresh(); value.remove(photo.id); expect(get).toHaveBeenCalledTimes(2); expect(remove).not.toHaveBeenCalled();
   late.resolve(overview()); await vi.waitFor(() => expect(value.snapshot().listing!.version).toBe(3));
@@ -130,9 +134,10 @@ test('неопределённый POST перечитывает сервер и
 });
 
 test('удаление с ошибкой сохраняет фото, ручное обновление восстанавливает доступ', async () => {
-  vi.spyOn(listings, 'get').mockResolvedValue(overview()); const remove = vi.spyOn(photos, 'remove').mockRejectedValueOnce(new RequestError('http', 422)).mockResolvedValue({ version: 3 });
+  const get = vi.spyOn(listings, 'get').mockResolvedValue(overview()); const remove = vi.spyOn(photos, 'remove').mockRejectedValueOnce(new RequestError('http', 422)).mockResolvedValue({ version: 3 });
   const value = manager(); await loaded(value); value.remove(photo.id); await vi.waitFor(() => expect(value.snapshot().paused).toBe(true)); await loaded(value);
-  expect(value.snapshot().listing!.photos).toHaveLength(1); value.resume(); value.remove(photo.id);
+  expect(value.snapshot().listing!.photos).toHaveLength(1);
+  get.mockResolvedValue({ ...overview(), version: 3, status: 'draft', photos: [] }); value.resume(); value.remove(photo.id);
   await vi.waitFor(() => expect(value.snapshot().listing!.photos).toHaveLength(0)); expect(remove).toHaveBeenCalledTimes(2);
 });
 
@@ -205,4 +210,56 @@ test('GET после ошибки можно повторить вручную; 
   vi.spyOn(photos, 'upload').mockResolvedValue({ version: 3, photo });
   value.add([file()]); await vi.waitFor(() => expect(value.snapshot().uploads[0]!.state).toBe('uncertain'));
   expect(value.snapshot().listing!.photos).toHaveLength(1); expect(get).toHaveBeenCalledTimes(3);
+});
+
+for (const patch of [{ mimeType: ['image/jpeg'] }, { status: ['processing'] }]) {
+  test(`строковые enum Photo не приводятся из массивов: ${JSON.stringify(patch)}`, async () => {
+    const malformed = { ...photo, ...patch };
+    expect(() => parsePhoto(malformed, id)).toThrow();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response({ ...detail, photos: [malformed] }, 200)).mockResolvedValueOnce(response({ version: 3, photo: malformed })));
+    await expect(listings.get(id)).rejects.toMatchObject({ kind: 'invalid-response' });
+    await expect(photos.upload(id, file(), 2)).rejects.toMatchObject({ kind: 'invalid-response' });
+  });
+}
+
+for (const action of ['upload', 'delete'] as const) test(`после последней мутации ${action} перечитывает updatedAt без processing`, async () => {
+  let server = overview(); const updatedAt = '2026-11-06T12:00:00Z';
+  const get = vi.spyOn(listings, 'get').mockImplementation(async () => structuredClone(server));
+  vi.spyOn(photos, 'remove').mockImplementation(async () => {
+    server = { ...server, version: 3, updatedAt, photos: [], status: 'draft' }; return { version: 3 };
+  });
+  vi.spyOn(photos, 'upload').mockImplementation(async () => {
+    const added = { ...photo, id: '70792597-4a2a-4ddb-9d00-c2340dd8c099' };
+    server = { ...server, version: 3, updatedAt, photos: [...server.photos, added], status: 'draft' }; return { version: 3, photo: added };
+  });
+  const value = manager(); await loaded(value);
+  if (action === 'upload') value.add([file()]); else value.remove(photo.id);
+  await vi.waitFor(() => expect(value.snapshot().listing!.updatedAt).toBe(updatedAt));
+  expect(get).toHaveBeenCalledTimes(2); expect(value.snapshot().listing!.version).toBe(3);
+});
+
+test('потерянный ответ DELETE восстанавливает удаление по GET и сообщает ID для фокуса', async () => {
+  let server = overview(); vi.spyOn(listings, 'get').mockImplementation(async () => structuredClone(server));
+  vi.spyOn(photos, 'remove').mockImplementation(async () => {
+    server = { ...server, version: 3, photos: [], status: 'draft' }; throw new RequestError('network');
+  });
+  const value = manager(); await loaded(value); value.remove(photo.id);
+  await vi.waitFor(() => expect(value.snapshot().listing!.photos).toHaveLength(0));
+  expect(value.snapshot().removed).toBe(photo.id); expect(value.snapshot().verified).toBe(true);
+});
+
+test('ошибка завершающего GET не зацикливает запросы и не возвращает удалённое фото', async () => {
+  vi.useFakeTimers(); const get = vi.spyOn(listings, 'get').mockResolvedValueOnce(overview()).mockRejectedValue(new RequestError('network'));
+  vi.spyOn(photos, 'remove').mockResolvedValue({ version: 3 }); const value = manager(); await vi.advanceTimersByTimeAsync(0);
+  value.remove(photo.id); await vi.advanceTimersByTimeAsync(0); await vi.advanceTimersByTimeAsync(15000);
+  expect(get).toHaveBeenCalledTimes(2); expect(value.snapshot().listing!.photos).toEqual([]); expect(value.snapshot().listing!.version).toBe(3);
+  expect(value.snapshot().paused).toBe(true); expect(value.snapshot().verified).toBe(false);
+});
+
+test('утрата доступа после частичного успеха не запускает завершающий GET', async () => {
+  const get = vi.spyOn(listings, 'get').mockResolvedValue(overview());
+  vi.spyOn(photos, 'upload').mockResolvedValueOnce({ version: 3, photo: { ...photo, id: '70792597-4a2a-4ddb-9d00-c2340dd8c099' } }).mockRejectedValueOnce(new RequestError('http', 403));
+  const value = manager(); await loaded(value); value.add([file('saved.jpg'), file('denied.jpg')]);
+  await vi.waitFor(() => expect(value.snapshot().inaccessible).toBe(true));
+  expect(get).toHaveBeenCalledOnce(); expect(value.snapshot().listing!.photos).toHaveLength(2);
 });
