@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/browsers.yml'
+      - 'frontend/package.json'
+      - 'frontend/playwright.config.ts'
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
@@ -18,8 +20,13 @@ concurrency:
 
 jobs:
   browsers:
+    name: browsers (${{ matrix.browser }})
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble
       options: --ipc=host --ulimit core=0
@@ -40,11 +47,11 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: chown "$(id -u):$(id -g)" "$HOME"
-      - run: npm run test:browsers
+      - run: npm run test:browsers -- --project=${{ matrix.browser }}
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: browser-compatibility-report
+          name: browser-compatibility-report-${{ matrix.browser }}
           path: |
             frontend/playwright-report/
             frontend/test-results/
