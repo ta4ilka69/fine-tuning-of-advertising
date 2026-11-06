@@ -18,7 +18,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test --project=chromium --grep-invert @visual",
     "test:visual": "playwright test --project=chromium --grep @visual",
-    "test:browsers": "playwright test --grep-invert @visual",
+    "test:browsers": "playwright test --grep-invert @visual --global-timeout=600000",
     "check:api": "redocly lint public/docs/openapi.json",
     "check:bundle": "node scripts/check-bundle.mjs",
     "check:compose": "node scripts/check-compose.mjs",
