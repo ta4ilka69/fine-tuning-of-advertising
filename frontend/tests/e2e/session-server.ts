@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { once } from 'node:events';
 
 import type { ListingData } from '../../src/shared/api/listing-data';
-import type { ListingSummary } from '../../src/shared/api/types';
+import type { ListingSummary, Photo } from '../../src/shared/api/types';
 import { listingDetails } from '../fixtures/listings.ts';
 
 const directory = new URL('../../node_modules/.cache/ui-fixture/', import.meta.url);
@@ -12,8 +12,15 @@ const contentTypes: Record<string, string> = { js: 'text/javascript', css: 'text
 const user = { id: '9a07b31d-ac15-495c-bb91-e3756fe40bcc', login: 'agent_demo', role: 'agent' };
 
 export async function startSessionServer(host = '127.0.0.1', port = 0) {
-  const calls: { query: string; path: string; method: string; body: unknown; cookie: string | undefined; origin: string | undefined }[] = [];
+  const calls: { query: string; path: string; method: string; body: unknown; contentType: string | undefined; cookie: string | undefined; origin: string | undefined }[] = [];
   const controls = {
+    photoError: null as number | 'network' | 'invalid' | 'disconnect-after-write' | null,
+    photoErrorCode: 'VERSION_CONFLICT',
+    photoCompletion: null as 'ready' | 'failed' | null,
+    photoImageError: false,
+    holdUpload: undefined as Promise<void> | undefined,
+    holdDelete: undefined as Promise<void> | undefined,
+    holdDetail: undefined as Promise<void> | undefined,
     createError: null as number | 'network' | 'invalid' | 'wrong-status' | 'broken-json' | null,
     createFields: ['/data/deal/price'] as string[],
     createResponse: undefined as unknown,
@@ -60,8 +67,19 @@ export async function startSessionServer(host = '127.0.0.1', port = 0) {
     }
     const chunks: Buffer[] = [];
     for await (const chunk of request) chunks.push(Buffer.from(chunk));
-    const rawBody = Buffer.concat(chunks).toString();
-    calls.push({ query: new URL(request.url!, 'http://localhost').search, path, method: request.method!, body: rawBody ? JSON.parse(rawBody) : null, cookie: request.headers.cookie, origin: request.headers.origin });
+    const bytes = Buffer.concat(chunks);
+    const rawBody = bytes.toString();
+    let parsedBody: unknown;
+    let uploadedFile: File | undefined;
+    let expectedVersion: number | undefined;
+    if (request.headers['content-type']?.startsWith('multipart/form-data;')) {
+      const form = await new Request('http://localhost', { method: 'POST', headers: { 'Content-Type': request.headers['content-type'] }, body: bytes }).formData();
+      const file = form.get('file');
+      if (file instanceof File) uploadedFile = file;
+      expectedVersion = Number(form.get('expectedVersion'));
+      parsedBody = { expectedVersion, file: uploadedFile ? { name: uploadedFile.name, type: uploadedFile.type, size: uploadedFile.size, bytes: Buffer.from(await uploadedFile.arrayBuffer()).toString('base64') } : null };
+    } else parsedBody = rawBody ? JSON.parse(rawBody) : null;
+    calls.push({ query: new URL(request.url!, 'http://localhost').search, path, method: request.method!, body: parsedBody, contentType: request.headers['content-type'], cookie: request.headers.cookie, origin: request.headers.origin });
     let status = 200;
     let body: unknown = { user: { ...user, id: controls.userId, role: controls.role } };
     const fail = (statusCode: number, code: string) => {
@@ -69,7 +87,47 @@ export async function startSessionServer(host = '127.0.0.1', port = 0) {
       body = { type: 'about:blank', title: code === 'INVALID_CREDENTIALS' ? 'Неверный логин или пароль' : 'Не удалось выполнить запрос',
         status, code, requestId: 'a6cdd08a-a252-48fa-a6c5-73f485bc494e' };
     };
-    if (path === '/api/v1/listings' && request.method === 'POST') {
+    const photoPath = /^\/api\/v1\/listings\/([^/]+)\/photos(?:\/([^/]+)(?:\/(content|thumbnail))?)?$/.exec(path);
+    if (photoPath) {
+      const id = photoPath[1]!;
+      const detail = (controls.details.get(id) ?? controls.detail) as { id: string; photos: Photo[]; version: number; status: string };
+      if (!request.headers.cookie?.includes('session=test-session')) fail(401, 'UNAUTHENTICATED');
+      else if (request.method === 'GET' && photoPath[3]) {
+        const photo = detail.photos.find((entry) => entry.id === photoPath[2]);
+        if (!photo || controls.photoImageError) fail(404, 'NOT_FOUND');
+        else {
+          response.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, no-store' });
+          response.end(await readFile(new URL('../../src/pages/home/assets/living-room.jpg', import.meta.url))); return;
+        }
+      } else {
+        await (request.method === 'POST' ? controls.holdUpload : controls.holdDelete);
+        const disconnect = () => {
+          response.writeHead(request.method === 'POST' ? 201 : 200, { 'Content-Type': 'application/json', 'Content-Length': '1000' });
+          response.write('{"version":'); setTimeout(() => response.destroy(), 25);
+        };
+        if (controls.photoError === 'network') { disconnect(); return; }
+        const version = request.method === 'POST' ? expectedVersion : Number(new URL(request.url!, 'http://localhost').searchParams.get('expectedVersion'));
+        if (typeof controls.photoError === 'number') fail(controls.photoError, controls.photoErrorCode);
+        else if (detail.status === 'generating') fail(409, 'LISTING_BUSY');
+        else if (version !== detail.version) fail(409, 'VERSION_CONFLICT');
+        else if (request.method === 'POST') {
+          if (!uploadedFile || detail.photos.length >= 20 || !['image/jpeg', 'image/png'].includes(uploadedFile.type) || uploadedFile.size < 1 || uploadedFile.size > 15000000) fail(422, 'INVALID_PHOTO');
+          else {
+            const photoId = `70792597-4a2a-4ddb-9d00-${String(100 + calls.filter((call) => call.method === 'POST' && call.path === path).length).padStart(12, '0')}`;
+            const photo: Photo = { id: photoId, listingId: id, fileName: uploadedFile.name, mimeType: uploadedFile.type as Photo['mimeType'], sizeBytes: uploadedFile.size,
+              status: 'processing', contentUrl: `/api/v1/listings/${id}/photos/${photoId}/content`, thumbnailUrl: null, error: null };
+            detail.photos.push(photo); detail.version++; detail.status = 'draft'; status = 201;
+            body = { version: detail.version, photo };
+          }
+        } else if (request.method === 'DELETE') {
+          const index = detail.photos.findIndex((photo) => photo.id === photoPath[2]);
+          if (index < 0) fail(404, 'NOT_FOUND');
+          else { detail.photos.splice(index, 1); detail.version++; detail.status = 'draft'; body = { version: detail.version }; }
+        } else fail(404, 'NOT_FOUND');
+        if (controls.photoError === 'invalid') body = { invalid: true };
+        if (controls.photoError === 'disconnect-after-write') { disconnect(); return; }
+      }
+    } else if (path === '/api/v1/listings' && request.method === 'POST') {
       await controls.holdCreate;
       if (controls.createError === 'network') {
         response.writeHead(201, { 'Content-Type': 'application/json', 'Content-Length': '1000' });
@@ -105,8 +163,19 @@ export async function startSessionServer(host = '127.0.0.1', port = 0) {
       if (typeof controls.listingError === 'number') fail(controls.listingError, 'SERVICE_UNAVAILABLE');
       else body = controls.listingError === 'invalid' ? { items: 'wrong' } : result;
     } else if (path.startsWith('/api/v1/listings/') && request.method === 'GET') {
+      const detail = structuredClone(controls.details.get(path.split('/').at(-1)!) ?? controls.detail) as { photos: Photo[] };
+      if (controls.photoCompletion) {
+        detail.photos.forEach((photo) => {
+          if (photo.status !== 'processing') return;
+          photo.status = controls.photoCompletion!;
+          photo.thumbnailUrl = photo.status === 'ready' ? `/api/v1/listings/${photo.listingId}/photos/${photo.id}/thumbnail` : null;
+          photo.error = photo.status === 'failed' ? { type: 'about:blank', title: 'Обработка не удалась', status: 422, code: 'PHOTO_PROCESSING_FAILED', requestId: 'a6cdd08a-a252-48fa-a6c5-73f485bc494e' } : null;
+        });
+        controls.details.set(path.split('/').at(-1)!, detail);
+      }
+      await controls.holdDetail;
       if (controls.detailError) fail(controls.detailError, 'NOT_FOUND');
-      else body = controls.details.get(path.split('/').at(-1)!) ?? controls.detail;
+      else body = detail;
     } else if (path === '/api/v1/auth/me' && request.method === 'GET') {
       await controls.holdMe;
       if (controls.meError) fail(controls.meError, 'SERVICE_UNAVAILABLE');
