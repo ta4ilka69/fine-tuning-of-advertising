@@ -39,12 +39,23 @@ function convert(value: string | string[], rule: FieldRule) {
   return value.trim();
 }
 
-export function prepareListing(values: ListingFormValues): { data: ListingData; errors: FormErrors; warnings: string[]; missing: string[] } {
+export function prepareListing(values: ListingFormValues, initialData?: ListingData): { data: ListingData; errors: FormErrors; warnings: string[]; missing: string[] } {
   const data: Record<string, unknown> = {};
+  const initialValues = listingToForm(initialData);
+  const deal = String(rawField(values, 'deal.type'));
+  const object = String(rawField(values, 'object.type'));
+  if (initialData) {
+    for (const [block, value] of Object.entries(initialData)) {
+      if (block !== 'extra' && applicableField(block, deal, object) && typeof value === 'object' && !Array.isArray(value)) data[block] = {};
+    }
+  }
   const errors: FormErrors = {};
   for (const [path, rule] of Object.entries(listingRules)) {
-    if (path.startsWith('underground.') || !visibleField(path, values)) continue;
-    const value = convert(rawField(values, path), rule);
+    if (path.startsWith('underground.') || !(initialData ? applicableField(path, deal, object) : visibleField(path, values))) continue;
+    const [sourceBlock, sourceKey] = path.split('.');
+    const original = sourceKey ? (initialData?.[sourceBlock as keyof ListingData] as Record<string, unknown> | undefined)?.[sourceKey] : initialData?.extra;
+    const unchanged = JSON.stringify(rawField(values, path)) === JSON.stringify(rawField(initialValues, path));
+    const value = initialData && unchanged ? original : convert(rawField(values, path), rule);
     if (value === undefined) continue;
     if (!validField(value, rule)) { errors[inputPath(path)] = typeof value === 'number' && Math.abs(value) > Number.MAX_SAFE_INTEGER ? 'Слишком большое число' : fieldError(rule); continue; }
     const [block, key] = path.split('.');
@@ -62,7 +73,9 @@ export function prepareListing(values: ListingFormValues): { data: ListingData; 
     }
     return [result];
   });
-  if (undergrounds.length) { data.location ??= {}; (data.location as Record<string, unknown>).undergrounds = undergrounds; }
+  const stationsUnchanged = initialData && JSON.stringify(values.undergrounds) === JSON.stringify(initialValues.undergrounds);
+  const stations = stationsUnchanged ? initialData.location?.undergrounds : undergrounds;
+  if (stations?.length || (initialData?.location?.undergrounds !== undefined)) { data.location ??= {}; (data.location as Record<string, unknown>).undergrounds = stations ?? []; }
   const listing = data as ListingData;
   const warnings: string[] = [];
   if (listing.object?.floor !== undefined && listing.building?.floorsCount !== undefined && listing.object.floor > listing.building.floorsCount) warnings.push('Этаж выше этажности здания');
@@ -94,7 +107,7 @@ export function serverFieldErrors(issues: { field: string }[], values: ListingFo
     const station = /^location\.undergrounds\.(\d+)(?:\.(name|minutes|transportType))?$/.exec(path);
     const stationIndex = station ? stationIndexes[Number(station[1])] : undefined;
     if (station && stationIndex !== undefined) result[`undergrounds.${stationIndex}.${station[2] ?? 'name'}`] = 'Проверьте значение';
-    else if (Object.hasOwn(labels, path) && visibleField(path, values)) result[inputPath(path)] = 'Проверьте значение';
+    else if (Object.hasOwn(labels, path) && applicableField(path, String(rawField(values, 'deal.type')), String(rawField(values, 'object.type')))) result[inputPath(path)] = 'Проверьте значение';
   }
   return result;
 }

@@ -34,6 +34,7 @@ for (const deal of ['sale', 'rent', 'daily_rent']) for (const object of ['flat',
     values.fields.object_isApartments = object === 'apartments' ? 'true' : 'false';
     values.undergrounds = [{ name: 'Лесная', minutes: '0', transportType: 'walk' }, { name: 'Петроградская', minutes: '', transportType: '' }];
     const result = prepareListing(values);
+    expect(prepareListing(listingToForm(result.data), result.data).data).toEqual(result.data);
     expect(result.errors).toEqual({}); expect(validate({ data: result.data }), ajv.errorsText(validate.errors)).toBe(true);
     expect(isListingData(result.data)).toBe(true); expect(ready(result.data)).toBe(true);
     for (const path of Object.keys(listingRules).filter((path) => !path.startsWith('underground.'))) {
