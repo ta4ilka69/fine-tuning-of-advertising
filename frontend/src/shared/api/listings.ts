@@ -1,6 +1,8 @@
 import { request } from './client';
 import { isRecord, parseProblem } from './errors';
 import type { ListingOverview, ListingPage, ListingSummary } from './types';
+import { parsePhoto } from './photos';
+import { isListingData } from './validate-listing-data';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const positiveInteger = (value: unknown): value is number => Number.isSafeInteger(value) && Number(value) > 0;
@@ -70,7 +72,7 @@ function dataField(block: Record<string, unknown> | undefined, key: string) {
 }
 
 export function parseListing(value: unknown): ListingOverview {
-  if (!isRecord(value) || !isRecord(value.data) || !Array.isArray(value.photos)
+  if (!isRecord(value) || !isListingData(value.data) || !Array.isArray(value.photos) || value.photos.length > 20
     || !(value.result === null || isGenerationResult(value.result))
     || (value.status === 'failed' ? !isRecord(value.generationError)
       || typeof value.generationError.status !== 'number'
@@ -84,6 +86,8 @@ export function parseListing(value: unknown): ListingOverview {
       && (typeof object.isApartments !== 'boolean' || (object.type !== undefined && object.type !== 'flat')))) {
     throw new TypeError('Некорректные данные объекта');
   }
+  const parsedPhotos = value.photos.map((photo) => parsePhoto(photo, String(value.id)));
+  if (new Set(parsedPhotos.map((photo) => photo.id)).size !== parsedPhotos.length) throw new TypeError('Повтор фотографии');
   return {
     ...parseSummary({
       id: value.id, version: value.version, createdAt: value.createdAt, updatedAt: value.updatedAt,
@@ -92,6 +96,7 @@ export function parseListing(value: unknown): ListingOverview {
       status: value.status, hasResult: value.result !== null,
     }),
     isApartments: isRecord(object) && object.type === 'flat' && object.isApartments === true,
+    photos: parsedPhotos,
   };
 }
 

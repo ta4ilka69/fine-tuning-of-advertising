@@ -22,9 +22,9 @@ for (const width of [320, 390, 768, 1440]) {
     expect(await list.getByRole('link').first().evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe('none');
     await page.keyboard.press('Enter');
     await expect(page.getByRole('heading', { name: 'Объявление', exact: true })).toBeVisible();
-    await expect(page.getByText(/Здесь доступны основные данные/)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Фото · 1 из 20' })).toBeVisible();
     await page.reload();
-    await expect(page.getByText(/Здесь доступны основные данные/)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Фото · 1 из 20' })).toBeVisible();
     await page.goBack();
     await expect(page).toHaveURL(`${loginServer.url}/app`);
     await page.goForward();

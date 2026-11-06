@@ -181,7 +181,7 @@ test('карточка, повтор после 404, новый экран и Hi
   expect(await screen.findByRole('alert')).toHaveTextContent('не найдено');
   detail = async () => json(listingDetails());
   await userEvent.click(screen.getByRole('button', { name: 'Повторить' }));
-  expect(await screen.findByText(/Здесь доступны основные данные/)).toBeVisible();
+  expect(await screen.findByRole('heading', { name: /Фото · 1 из 20/ })).toBeVisible();
   await userEvent.click(screen.getByRole('button', { name: '← Мои объявления' }));
   await userEvent.click(screen.getAllByRole('button', { name: 'Создать объявление' })[0]!);
   expect(await screen.findByRole('heading', { name: 'Новое объявление' })).toBeVisible();

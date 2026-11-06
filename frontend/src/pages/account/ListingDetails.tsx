@@ -1,33 +1,24 @@
-import { Stack, Text } from '@mantine/core';
-import { useEffect, useState } from 'react';
-import { listings } from '../../shared/api/listings';
-import { RequestError } from '../../shared/api/errors';
-import type { ListingOverview } from '../../shared/api/types';
+import { Stack } from '@mantine/core';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { AppButton } from '../../shared/ui/AppButton';
 import { AppNotice } from '../../shared/ui/AppNotice';
 import { LoadingState } from '../../shared/ui/LoadingState';
 import { ListingCard } from './ListingList';
 import classes from './Listings.module.css';
+import { PhotoManager } from '../../features/listing-photos/model';
+import { PhotoGallery } from '../../features/listing-photos/PhotoGallery';
 
 export function ListingDetails({ id, recheck }: { id: string; recheck: (unauthorized: boolean) => void }) {
-  const [item, setItem] = useState<ListingOverview>();
-  const [error, setError] = useState<string>();
-  const [attempt, setAttempt] = useState(0);
+  const [manager] = useState(() => new PhotoManager(id, recheck));
+  const state = useSyncExternalStore(manager.subscribe, manager.snapshot);
+  const { listing: item, error } = state;
   useEffect(() => {
-    const controller = new AbortController();
-    void listings.get(id, controller.signal).then((value) => {
-      if (!controller.signal.aborted) { setItem(value); recheck(false); }
-    }, (failure: unknown) => {
-      if (controller.signal.aborted) return;
-      if (failure instanceof RequestError && failure.status === 401) recheck(true);
-      setError(failure instanceof RequestError && failure.status === 404 ? 'Объявление не найдено или больше недоступно.'
-        : failure instanceof RequestError ? failure.message : 'Не удалось загрузить объявление. Попробуйте ещё раз.');
-    });
-    return () => controller.abort();
-  }, [id, recheck, attempt]);
+    manager.start();
+    return () => manager.stop();
+  }, [manager]);
   return <Stack gap="lg">
-    {item ? <><ul className={classes.items}><ListingCard item={item} linked={false} isApartments={item.isApartments} /></ul><Text c="dimmed">Здесь доступны основные данные объекта. Форма и редактирование появятся позже.</Text></>
-      : error ? <AppNotice tone="error" title="Не удалось загрузить объявление"><p>{error}</p><AppButton onClick={() => { recheck(false); setError(undefined); setAttempt((value) => value + 1); }}>Повторить</AppButton></AppNotice>
+    {item && !state.inaccessible ? <><ul className={classes.items}><ListingCard item={item} linked={false} isApartments={item.isApartments} /></ul><PhotoGallery manager={manager} state={state} /></>
+      : error ? <AppNotice tone="error" title="Не удалось загрузить объявление"><p>{error}</p><AppButton disabled={state.reading} onClick={() => { recheck(false); manager.refresh(); }}>Повторить</AppButton></AppNotice>
         : <LoadingState label="Загружаем объявление" />}
   </Stack>;
 }

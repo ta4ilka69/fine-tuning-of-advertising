@@ -23,7 +23,21 @@ export type ListingSummary = {
   updatedAt: string;
 };
 
-export type ListingOverview = ListingSummary & { isApartments: boolean };
+export type Photo = {
+  id: string;
+  listingId: string;
+  fileName: string;
+  mimeType: 'image/jpeg' | 'image/png';
+  sizeBytes: number;
+  status: 'processing' | 'ready' | 'failed';
+  contentUrl: string | null;
+  thumbnailUrl: string | null;
+  error: Problem | null;
+};
+
+export type PhotoMutation = { version: number; photo: Photo };
+
+export type ListingOverview = ListingSummary & { isApartments: boolean; photos: Photo[] };
 
 export type ListingPage = { items: ListingSummary[]; nextCursor: string | null };
 
