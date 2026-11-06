@@ -1,7 +1,8 @@
 import { RequestError } from '../../shared/api/errors';
 import { listings } from '../../shared/api/listings';
+import type { ListingData } from '../../shared/api/listing-data';
 import { photos } from '../../shared/api/photos';
-import type { ListingOverview } from '../../shared/api/types';
+import type { Listing } from '../../shared/api/types';
 
 export function fileError(file: Pick<File, 'type' | 'size'>) {
   if (!['image/jpeg', 'image/png'].includes(file.type)) return 'Выберите JPEG или PNG.';
@@ -18,7 +19,9 @@ export type Upload = {
   error?: string;
 };
 export type PhotoState = {
-  listing?: ListingOverview;
+  listing?: Listing;
+  editing?: boolean;
+  editSavedVersion?: number;
   uploads: Upload[];
   deleting?: string;
   reading: boolean;
@@ -50,6 +53,7 @@ export class PhotoManager {
   private listeners = new Set<() => void>();
   private active = false;
   private running = false;
+  private saving = false;
   private controller?: AbortController;
   private timer?: ReturnType<typeof setTimeout>;
   private refreshNeeded = true;
@@ -79,7 +83,7 @@ export class PhotoManager {
   }
 
   add(files: File[]) {
-    if (!this.active || !this.state.verified || this.state.listing?.status === 'generating' || this.state.inaccessible) return;
+    if (!this.active || this.state.editing || !this.state.verified || this.state.listing?.status === 'generating' || this.state.inaccessible) return;
     let count = this.count();
     const uploads = files.map((file): Upload => {
       const error = fileError(file) ?? (count >= 20 ? 'Можно добавить не больше 20 фотографий.' : undefined);
@@ -90,6 +94,56 @@ export class PhotoManager {
     void this.pump();
   }
 
+  beginEdit() {
+    if (!this.active || this.running || !this.state.verified || this.state.inaccessible
+      || this.state.listing?.status === 'generating' || this.deletes.length || this.state.uploads.some((entry) => entry.file)) return;
+    this.update({ editing: true, editSavedVersion: undefined });
+    return this.state.listing;
+  }
+
+  endEdit() { this.update({ editing: false }); void this.pump(); }
+
+  private interruptRead() {
+    clearTimeout(this.timer);
+    this.controller?.abort();
+    this.running = false;
+    this.update({ reading: false });
+  }
+
+  async reloadEdit(signal: AbortSignal) {
+    if (!this.active || !this.state.editing || this.saving) throw new Error('Редактирование недоступно');
+    this.interruptRead();
+    this.running = true;
+    const controller = new AbortController();
+    this.controller = controller;
+    const cancel = () => controller.abort();
+    signal.addEventListener('abort', cancel, { once: true });
+    try {
+      const listing = await listings.get(this.id, controller.signal);
+      if (controller.signal.aborted || signal.aborted) throw new DOMException('Отменено', 'AbortError');
+      if (listing.version < (this.state.listing?.version ?? 0)) throw new RequestError('invalid-response', 200);
+      this.update({ listing, verified: true, inaccessible: false, paused: false, error: undefined });
+      this.recheck(false);
+      return listing;
+    } finally {
+      signal.removeEventListener('abort', cancel);
+      if (this.controller === controller) { this.running = false; void this.pump(); }
+    }
+  }
+
+  async saveEdit(data: ListingData, expectedVersion: number, signal: AbortSignal) {
+    if (!this.active || !this.state.editing || this.saving || this.state.inaccessible) throw new Error('Редактирование недоступно');
+    this.interruptRead();
+    this.saving = true;
+    try {
+      const listing = await listings.update(this.id, data, expectedVersion, signal);
+      if (signal.aborted || !this.active) throw new DOMException('Отменено', 'AbortError');
+      this.update({ listing, verified: true, paused: false, error: undefined, editSavedVersion: listing.version });
+      this.recheck(false);
+      return listing;
+    } finally { this.saving = false; void this.pump(); }
+  }
+
   count() { return (this.state.listing?.photos.length ?? 0) + this.state.uploads.filter((entry) => entry.file).length; }
 
   dismiss(key: number) {
@@ -97,7 +151,7 @@ export class PhotoManager {
   }
 
   remove(photoId: string) {
-    if (!this.active || !this.state.verified || this.state.inaccessible || this.state.paused
+    if (!this.active || this.state.editing || !this.state.verified || this.state.inaccessible || this.state.paused
       || this.state.listing?.status === 'generating' || this.deletes.includes(photoId) || this.state.deleting === photoId
       || !this.state.listing?.photos.some((photo) => photo.id === photoId)) return;
     this.deletes.push(photoId);
@@ -105,24 +159,24 @@ export class PhotoManager {
   }
 
   refresh = () => {
-    if (!this.active || this.running) return;
+    if (!this.active || this.running || this.saving) return;
     this.refreshNeeded = true;
     void this.pump();
   };
 
   resume = () => {
-    if (!this.active || !this.state.verified || this.state.inaccessible || this.state.listing?.status === 'generating') return;
+    if (!this.active || this.state.editing || !this.state.verified || this.state.inaccessible || this.state.listing?.status === 'generating') return;
     this.update({ paused: false, error: undefined, uploads: this.state.uploads.map((entry) => entry.state === 'error' ? { ...entry, state: 'waiting', error: undefined } : entry) });
     void this.pump();
   };
 
   private async pump() {
-    if (!this.active || this.running) return;
+    if (!this.active || this.running || this.saving) return;
     clearTimeout(this.timer);
     if (this.metadataDirty && !this.state.inaccessible && !this.deletes.length && !this.state.uploads.some((entry) => entry.state === 'waiting')) this.refreshNeeded = true;
     const listing = this.state.listing;
     const read = this.refreshNeeded;
-    const mayWrite = !this.state.paused && this.state.verified && !this.state.inaccessible && listing?.status !== 'generating';
+    const mayWrite = !this.state.editing && !this.state.paused && this.state.verified && !this.state.inaccessible && listing?.status !== 'generating';
     const deletion = !read && mayWrite ? this.deletes.shift() : undefined;
     const upload = !read && mayWrite && !deletion ? this.state.uploads.find((entry) => entry.state === 'waiting') : undefined;
     if (!read && !deletion && !upload) {

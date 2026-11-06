@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
+import { isDeepStrictEqual } from 'node:util';
 import { once } from 'node:events';
 
 import type { ListingData } from '../../src/shared/api/listing-data';
@@ -21,6 +22,11 @@ export async function startSessionServer(host = '127.0.0.1', port = 0) {
     holdUpload: undefined as Promise<void> | undefined,
     holdDelete: undefined as Promise<void> | undefined,
     holdDetail: undefined as Promise<void> | undefined,
+    updateError: null as number | 'network' | 'invalid' | 'broken-json' | 'disconnect-after-write' | null,
+    updateErrorCode: 'VERSION_CONFLICT',
+    updateFields: ['/data/deal/price'] as string[],
+    updateResponse: undefined as unknown,
+    holdUpdate: undefined as Promise<void> | undefined,
     createError: null as number | 'network' | 'invalid' | 'wrong-status' | 'broken-json' | null,
     createFields: ['/data/deal/price'] as string[],
     createResponse: undefined as unknown,
@@ -126,6 +132,32 @@ export async function startSessionServer(host = '127.0.0.1', port = 0) {
         } else fail(404, 'NOT_FOUND');
         if (controls.photoError === 'invalid') body = { invalid: true };
         if (controls.photoError === 'disconnect-after-write') { disconnect(); return; }
+      }
+    } else if (/^\/api\/v1\/listings\/[^/]+$/.test(path) && request.method === 'PUT') {
+      await controls.holdUpdate;
+      const disconnect = () => {
+        response.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length': '1000' });
+        response.write('{"id":'); setTimeout(() => response.destroy(), 25);
+      };
+      if (controls.updateError === 'network') { disconnect(); return; }
+      if (controls.updateError === 'broken-json') { response.writeHead(200, { 'Content-Type': 'application/json' }).end('{'); return; }
+      const id = path.split('/').at(-1)!;
+      const detail = (controls.details.get(id) ?? controls.detail) as { id: string; version: number; status: string; data: ListingData; generationError: unknown; updatedAt: string };
+      const input = parsedBody as { data: ListingData; expectedVersion: number };
+      if (!request.headers.cookie?.includes('session=test-session')) fail(401, 'UNAUTHENTICATED');
+      else if (typeof controls.updateError === 'number') {
+        fail(controls.updateError, controls.updateError === 409 ? controls.updateErrorCode : 'VALIDATION_ERROR');
+        if (controls.updateError === 400 || controls.updateError === 422) body = { ...(body as object), fieldErrors: controls.updateFields.map((field) => ({ field, code: 'INVALID', message: 'Technical diagnostic must stay hidden' })) };
+      } else if (input.expectedVersion !== detail.version) fail(409, 'VERSION_CONFLICT');
+      else if (detail.status === 'generating') fail(409, 'LISTING_BUSY');
+      else {
+        if (!isDeepStrictEqual(input.data, detail.data)) {
+          detail.data = input.data; detail.version++; detail.status = 'draft'; detail.generationError = null; detail.updatedAt = '2026-11-06T12:30:00Z';
+        }
+        controls.details.set(id, detail);
+        body = controls.updateResponse ?? detail;
+        if (controls.updateError === 'invalid') body = { unexpected: true };
+        if (controls.updateError === 'disconnect-after-write') { disconnect(); return; }
       }
     } else if (path === '/api/v1/listings' && request.method === 'POST') {
       await controls.holdCreate;

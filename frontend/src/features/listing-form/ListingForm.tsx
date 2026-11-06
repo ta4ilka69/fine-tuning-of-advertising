@@ -1,6 +1,6 @@
 import { MultiSelect, NativeSelect, Paper, Stack, Text, Textarea, TextInput, Title } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import type { ListingData } from '../../shared/api/listing-data';
 import { listingRules } from '../../shared/api/listing-rules';
 import { RequestError } from '../../shared/api/errors';
@@ -19,26 +19,40 @@ type Props = {
   initialValues?: ListingFormValues;
   initialData?: ListingData;
   onChange?: (values: ListingFormValues, dirty: boolean) => void;
-  onSave: (data: ListingData, signal: AbortSignal) => Promise<{ id: string }>;
+  onSave: (data: ListingData, signal: AbortSignal) => Promise<{ id: string; data?: ListingData }>;
   onSaved: (id: string) => void;
   onUnauthorized: () => void;
+  mode?: 'create' | 'edit';
+  disabled?: boolean;
+  suspended?: boolean;
+  onCancel?: () => void;
+  onFailure?: (failure: unknown) => void;
+  notice?: ReactNode;
 };
 
-export function ListingForm({ initialValues, initialData, onChange, onSave, onSaved, onUnauthorized }: Props) {
+export function ListingForm({ initialValues, initialData, onChange, onSave, onSaved, onUnauthorized, mode = 'create', disabled = false, suspended = false, onCancel, onFailure, notice }: Props) {
   const [pending, setPending] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string>();
   const [focus, setFocus] = useState<{ keys: string[] }>();
   const submitting = useRef(false);
   const active = useRef<AbortController | null>(null);
+  const [baseline, setBaseline] = useState(initialData);
+  const [wasSuspended, setWasSuspended] = useState(suspended);
+  if (wasSuspended !== suspended) { setWasSuspended(suspended); if (suspended) setPending(false); }
   const savedValues = useRef(JSON.stringify(listingToForm(initialData)));
   const dirty = useRef(JSON.stringify(initialValues ?? listingToForm(initialData)) !== JSON.stringify(listingToForm(initialData)));
   const form = useForm<ListingFormValues>({
     initialValues: initialValues ?? listingToForm(initialData),
-    onValuesChange: (values) => { dirty.current = submitting.current || JSON.stringify(values) !== savedValues.current; onChange?.(values, dirty.current); },
+    onValuesChange: (values) => { setSaved(false); dirty.current = submitting.current || JSON.stringify(values) !== savedValues.current; onChange?.(values, dirty.current); },
   });
-  const prepared = prepareListing(form.values);
+  const prepared = prepareListing(form.values, baseline);
   useUnsavedChanges(dirty);
   useEffect(() => () => { active.current?.abort(); }, []);
+  const getValues = form.getValues;
+  useEffect(() => {
+    if (suspended) { active.current?.abort(); submitting.current = false; dirty.current = JSON.stringify(getValues()) !== savedValues.current; }
+  }, [suspended, getValues]);
   useEffect(() => {
     if (!pending && focus) {
       const ids = new Set(focus.keys.map(controlId));
@@ -55,8 +69,8 @@ export function ListingForm({ initialValues, initialData, onChange, onSave, onSa
   };
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (submitting.current) return;
-    const result = prepareListing(form.getValues());
+    if (submitting.current || disabled) return;
+    const result = prepareListing(form.getValues(), baseline);
     if (Object.keys(result.errors).length) { showErrors(result.errors); setError('Исправьте отмеченные значения. Заполнять все поля для черновика не нужно.'); return; }
     submitting.current = true;
     dirty.current = true;
@@ -68,15 +82,24 @@ export function ListingForm({ initialValues, initialData, onChange, onSave, onSa
     try {
       const saved = await onSave(result.data, controller.signal);
       if (controller.signal.aborted) return;
-      savedValues.current = JSON.stringify(form.getValues());
+      if (saved.data) {
+        setBaseline(saved.data);
+        const values = listingToForm(saved.data);
+        form.setValues(values);
+        savedValues.current = JSON.stringify(values);
+        onChange?.(values, false);
+      } else savedValues.current = JSON.stringify(form.getValues());
+      setSaved(true);
       dirty.current = false;
       onSaved(saved.id);
     } catch (failure) {
       if (controller.signal.aborted) return;
+      onFailure?.(failure);
       if (failure instanceof RequestError) {
         showErrors(serverFieldErrors(failure.fieldErrors ?? [], form.getValues()));
-        setError(failure.status === 401 ? 'Сессия истекла. Проверяем вход в аккаунт.'
-          : failure.status === 403 ? 'Нет прав на создание объявления. Обратитесь к администратору.'
+        setError(mode === 'edit' && failure.status === 409 && ['VERSION_CONFLICT', 'LISTING_BUSY'].includes(failure.code ?? '') ? undefined : failure.status === 401 ? 'Сессия истекла. Проверяем вход в аккаунт.'
+          : failure.status === 403 ? mode === 'edit' ? 'Нет доступа к этому объявлению. Данные остались в форме.' : 'Нет прав на создание объявления. Обратитесь к администратору.'
+            : failure.status === 404 ? 'Объявление не найдено. Данные остались в форме.'
             : failure.status === 400 || failure.status === 422 ? 'Сервер не принял данные. Проверьте отмеченные поля и повторите сохранение.'
               : failure.status === 429 ? 'Слишком много попыток. Подождите и повторите сохранение.'
                 : failure.kind === 'network' ? 'Нет связи с сервером. Данные остались в форме. Проверьте подключение и повторите сохранение.'
@@ -94,7 +117,7 @@ export function ListingForm({ initialValues, initialData, onChange, onSave, onSa
     const key = inputPath(path);
     const label = path === 'deal.price' ? form.values.fields.deal_type === 'rent' ? 'Цена за месяц, ₽' : form.values.fields.deal_type === 'daily_rent' ? 'Цена за сутки, ₽' : 'Стоимость объекта, ₽'
       : path === 'object.totalArea' && form.values.fields.object_type === 'room' ? 'Площадь комнаты, м²' : labels[path];
-    const props = { id: controlId(key), label, disabled: pending, ...form.getInputProps(key) };
+    const props = { id: controlId(key), label, disabled: pending || disabled, ...form.getInputProps(key) };
     if (rule.type === 'boolean') return <NativeSelect key={path} {...props} data={flags} />;
     if (rule.enum) return <NativeSelect key={path} {...props} data={[emptyOption, ...fieldOptions(path)]} />;
     if (rule.type === 'array') return <MultiSelect key={path} {...props} data={fieldOptions(path)} clearable searchable nothingFoundMessage="Не найдено" placeholder="Неизвестно" />;
@@ -108,10 +131,12 @@ export function ListingForm({ initialValues, initialData, onChange, onSave, onSa
   return (
     <Stack gap="md">
       <Text c="dimmed">Черновик можно сохранить без обязательных полей. Неизвестные сведения можно добавить позже.</Text>
-      <form onSubmit={(event) => { void submit(event); }} noValidate aria-label="Создание объявления" aria-busy={pending} className={classes.layout}>
+      {saved && <AppNotice tone="success" title="Изменения сохранены">Карточка обновлена по данным сервера.</AppNotice>}
+      {notice}
+      <form onSubmit={(event) => { void submit(event); }} noValidate aria-label={mode === 'edit' ? 'Редактирование объявления' : 'Создание объявления'} aria-busy={pending} className={classes.layout}>
         <div className={classes.sections}>
           {sections.map(([section, title]) => {
-            const paths = Object.keys(labels).filter((path) => (path === section || path.startsWith(`${section}.`)) && visibleField(path, form.values));
+            const paths = Object.keys(labels).filter((path) => (path === section || path.startsWith(`${section}.`)) && (visibleField(path, form.values) || !!form.errors[inputPath(path)]));
             if (!paths.length) return null;
             return <Paper component="details" key={section} className={classes.section} open={['deal', 'object', 'location', 'extra'].includes(section) ? true : undefined}>
               <summary className={classes.summary}>{title}</summary>
@@ -120,12 +145,12 @@ export function ListingForm({ initialValues, initialData, onChange, onSave, onSa
                 {section === 'location' && <div className={classes.wide}><Stack gap="md">
                   {form.values.undergrounds.map((_, index) => <fieldset className={classes.station} key={index}>
                     <legend>Станция метро {index + 1}</legend>
-                    <TextInput id={controlId(`undergrounds.${index}.name`)} label={`Название станции ${index + 1}`} disabled={pending} {...form.getInputProps(`undergrounds.${index}.name`)} />
-                    <TextInput id={controlId(`undergrounds.${index}.minutes`)} label={`Время в пути, мин — станция ${index + 1}`} inputMode="numeric" disabled={pending} {...form.getInputProps(`undergrounds.${index}.minutes`)} />
-                    <NativeSelect id={controlId(`undergrounds.${index}.transportType`)} label={`Как добраться — станция ${index + 1}`} disabled={pending} data={[emptyOption, { value: 'walk', label: 'Пешком' }, { value: 'transport', label: 'На транспорте' }]} {...form.getInputProps(`undergrounds.${index}.transportType`)} />
-                    <AppButton intent="quiet" disabled={pending} onClick={() => { form.removeListItem('undergrounds', index); form.clearErrors(); }}>Удалить станцию {index + 1}</AppButton>
+                    <TextInput id={controlId(`undergrounds.${index}.name`)} label={`Название станции ${index + 1}`} disabled={pending || disabled} {...form.getInputProps(`undergrounds.${index}.name`)} />
+                    <TextInput id={controlId(`undergrounds.${index}.minutes`)} label={`Время в пути, мин — станция ${index + 1}`} inputMode="numeric" disabled={pending || disabled} {...form.getInputProps(`undergrounds.${index}.minutes`)} />
+                    <NativeSelect id={controlId(`undergrounds.${index}.transportType`)} label={`Как добраться — станция ${index + 1}`} disabled={pending || disabled} data={[emptyOption, { value: 'walk', label: 'Пешком' }, { value: 'transport', label: 'На транспорте' }]} {...form.getInputProps(`undergrounds.${index}.transportType`)} />
+                    <AppButton intent="quiet" disabled={pending || disabled} onClick={() => { form.removeListItem('undergrounds', index); form.clearErrors(); }}>Удалить станцию {index + 1}</AppButton>
                   </fieldset>)}
-                  <div><AppButton intent="secondary" disabled={pending} onClick={() => form.insertListItem('undergrounds', { name: '', minutes: '', transportType: '' })}>Добавить станцию метро</AppButton></div>
+                  <div><AppButton intent="secondary" disabled={pending || disabled} onClick={() => form.insertListItem('undergrounds', { name: '', minutes: '', transportType: '' })}>Добавить станцию метро</AppButton></div>
                 </Stack></div>}
               </div>
             </Paper>;
@@ -133,13 +158,14 @@ export function ListingForm({ initialValues, initialData, onChange, onSave, onSa
         </div>
         <Paper component="aside" className={classes.actions} aria-label="Сохранение черновика">
           <Stack gap="md">
-            <Title order={2} size="h3">Сохранить черновик</Title>
+            <Title order={2} size="h3">{mode === 'edit' ? 'Сохранить изменения' : 'Сохранить черновик'}</Title>
             <Text size="sm" c="dimmed">Сохранение и генерация — отдельные действия</Text>
             {prepared.missing.length > 0 ? <div><Text size="sm" fw={500}>Для генерации позже понадобятся</Text><ul>{prepared.missing.map((label) => <li key={label}><Text size="sm">{label}</Text></li>)}</ul></div>
-              : <Text size="sm">Основные сведения заполнены. Для генерации понадобятся фотографии.</Text>}
+              : <Text size="sm">{mode === 'edit' ? 'Основные сведения заполнены.' : 'Основные сведения заполнены. Для генерации понадобятся фотографии.'}</Text>}
             {!!prepared.warnings.length && <AppNotice tone="warning" title="Проверьте данные"><ul>{prepared.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul><Text size="sm">Если значения верны, черновик можно сохранить.</Text></AppNotice>}
             {error && <AppNotice tone="error" title="Не удалось сохранить">{error}</AppNotice>}
-            <AppButton type="submit" fullWidth loading={pending}>{pending ? 'Сохраняем…' : 'Сохранить черновик'}</AppButton>
+            <AppButton type="submit" fullWidth loading={pending} disabled={disabled}>{pending ? 'Сохраняем…' : mode === 'edit' ? 'Сохранить изменения' : 'Сохранить черновик'}</AppButton>
+            {onCancel && <AppButton intent="quiet" onClick={onCancel}>Отменить редактирование</AppButton>}
           </Stack>
         </Paper>
       </form>

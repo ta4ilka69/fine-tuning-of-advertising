@@ -40,3 +40,5 @@
   .filters { padding: var(--mantine-spacing-md); }
   .controls { grid-template-columns: minmax(0, 1fr); }
 }
+
+.details { margin-top: var(--mantine-spacing-lg); }

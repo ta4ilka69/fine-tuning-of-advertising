@@ -1,7 +1,8 @@
 import { request } from './client';
 import { isRecord, parseProblem } from './errors';
-import type { ListingOverview, ListingPage, ListingSummary } from './types';
+import type { GenerationResult, Listing, ListingPage, ListingSummary } from './types';
 import { parsePhoto } from './photos';
+import type { ListingData } from './listing-data';
 import { isListingData } from './validate-listing-data';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -50,7 +51,7 @@ function parsePage(value: unknown): ListingPage {
 const hasText = (value: unknown): value is string => typeof value === 'string' && /\S/.test(value);
 const isUUID = (value: unknown): value is string => typeof value === 'string' && uuid.test(value);
 
-function isGenerationResult(value: unknown) {
+function isGenerationResult(value: unknown): value is GenerationResult {
   if (!isRecord(value) || !Array.isArray(value.channels) || value.channels.length < 1) return false;
   const channelIds = new Set<string>();
   return value.channels.every((channel) => {
@@ -71,7 +72,7 @@ function dataField(block: Record<string, unknown> | undefined, key: string) {
   return value ?? null;
 }
 
-export function parseListing(value: unknown): ListingOverview {
+export function parseListing(value: unknown): Listing {
   if (!isRecord(value) || !isListingData(value.data) || !Array.isArray(value.photos) || value.photos.length > 20
     || !(value.result === null || isGenerationResult(value.result))
     || (value.status === 'failed' ? !isRecord(value.generationError)
@@ -96,13 +97,22 @@ export function parseListing(value: unknown): ListingOverview {
       status: value.status, hasResult: value.result !== null,
     }),
     isApartments: isRecord(object) && object.type === 'flat' && object.isApartments === true,
-    photos: parsedPhotos,
+    photos: parsedPhotos, data: value.data, result: value.result as GenerationResult | null,
+    generationError: value.generationError === null ? null : parseProblem(value.generationError, Number((value.generationError as Record<string, unknown>).status))!,
   };
 }
 
 export type ListingFilters = { q?: string; from?: string; to?: string };
 
 export const listings = {
+  update: (id: string, data: ListingData, expectedVersion: number, signal?: AbortSignal) => {
+    if (!uuid.test(id) || !positiveInteger(expectedVersion) || !isListingData(data)) throw new TypeError('Некорректное объявление');
+    return request(`/listings/${id}`, { method: 'PUT', body: { data, expectedVersion }, signal, status: 200, response: (value) => {
+      const item = parseListing(value);
+      if (item.id !== id || item.version < expectedVersion) throw new TypeError('Неожиданное объявление');
+      return item;
+    } });
+  },
   get: (id: string, signal?: AbortSignal) => {
     if (!uuid.test(id)) throw new TypeError('Некорректный ID объявления');
     return request(`/listings/${id}`, { signal, status: 200, response: (value) => {

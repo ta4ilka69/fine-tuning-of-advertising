@@ -20,6 +20,8 @@ export default function AccountPage() {
   const path = usePathname();
   const search = useSearch();
   const { state, logout, restore } = useSession();
+  const [owner, setOwner] = useState(state.status === 'authenticated' ? state.user.id : null);
+  if (state.status === 'authenticated' && owner !== state.user.id) setOwner(state.user.id);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const userId = state.status === 'authenticated' ? state.user.id : null;
@@ -59,10 +61,13 @@ export default function AccountPage() {
             {pending ? <Text role="status">Выходим…</Text> : path === '/app/new'
               ? <Suspense fallback={<LoadingState label="Загружаем форму" />}><NewListing key={state.user.id} initialValues={draft?.userId === state.user.id ? draft.values : undefined} onChange={(values, dirty) => { draftDirty.current = dirty; setDraft({ userId: state.user.id, values }); }} recheck={recheck} /></Suspense>
               : path === '/app' ? <ListingList key={state.user.id} recheck={recheck} />
-                : <ListingDetails key={`${state.user.id}:${path}`} id={path.slice('/app/listings/'.length)} recheck={recheck} />}
+                : null}
           </Stack>
         )}
       </SessionGuard>
+      {path.startsWith('/app/listings/') && owner && state.status !== 'anonymous' && <div className={classes.details} hidden={pending || state.status !== 'authenticated'}>
+        <ListingDetails key={`${owner}:${path}`} id={path.slice('/app/listings/'.length)} recheck={recheck} suspended={pending || state.status !== 'authenticated'} />
+      </div>}
       {state.status === 'error' && <Anchor href="/login">Войти в аккаунт</Anchor>}
     </PageLayout>
   );

@@ -1,3 +1,5 @@
+import type { ListingData } from './listing-data';
+
 export type User = {
   id: string;
   login: string;
@@ -38,6 +40,18 @@ export type Photo = {
 export type PhotoMutation = { version: number; photo: Photo };
 
 export type ListingOverview = ListingSummary & { isApartments: boolean; photos: Photo[] };
+
+export type GenerationResult = { channels: {
+  channelVersionId: string;
+  channel: { id: string; name: string };
+  title: string;
+  text: string;
+  score: number;
+  scoreReason: string;
+  photoIds: string[];
+}[] };
+
+export type Listing = ListingOverview & { data: ListingData; result: GenerationResult | null; generationError: Problem | null };
 
 export type ListingPage = { items: ListingSummary[]; nextCursor: string | null };
 
