@@ -1,13 +1,15 @@
 package com.adtune.backend.web;
 
-import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.matchesPattern;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -16,15 +18,22 @@ import com.adtune.backend.ai.AiClientException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.http.MediaType;
 import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-/** Регрессия на замечания ревью: корректные статусы MVC-ошибок и безопасные тексты наружу. */
+/**
+ * Ошибки API приходят в формате problem+json с полями, которые валидирует
+ * фронтенд (type, title, status, code, requestId-UUID), статусы MVC-ошибок
+ * корректны, детали провайдера наружу не утекают.
+ */
 @WebMvcTest(controllers = {HealthController.class, DemoController.class})
 class GlobalExceptionHandlerTest {
+
+  private static final String UUID_PATTERN =
+      "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
 
   @Autowired
   private MockMvc mockMvc;
@@ -57,62 +66,69 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
-  void wrongMethodIs405Not500() throws Exception {
-    mockMvc.perform(get("/ai/demo"))
+  void wrongMethodIs405Problem() throws Exception {
+    mockMvc.perform(get("/v1/ai/demo"))
         .andExpect(status().isMethodNotAllowed())
-        .andExpect(jsonPath("$.error").value("method_not_allowed"));
+        .andExpect(header().string("Content-Type", "application/problem+json"))
+        .andExpect(jsonPath("$.type").value("about:blank"))
+        .andExpect(jsonPath("$.title").value("Метод не поддерживается."))
+        .andExpect(jsonPath("$.status").value(405))
+        .andExpect(jsonPath("$.code").value("method_not_allowed"))
+        .andExpect(jsonPath("$.requestId", matchesPattern(UUID_PATTERN)));
   }
 
   @Test
-  void wrongMediaTypeIs415Not500() throws Exception {
-    mockMvc.perform(post("/ai/demo")
+  void wrongMediaTypeIs415Problem() throws Exception {
+    mockMvc.perform(post("/v1/ai/demo")
             .contentType(MediaType.TEXT_PLAIN)
             .content("hello"))
         .andExpect(status().isUnsupportedMediaType())
-        .andExpect(jsonPath("$.error").value("unsupported_media_type"));
+        .andExpect(jsonPath("$.code").value("unsupported_media_type"))
+        .andExpect(jsonPath("$.requestId", matchesPattern(UUID_PATTERN)));
   }
 
   @Test
-  void missingParamsIs400WithOurShape() throws Exception {
-    mockMvc.perform(post("/ai/demo")
+  void missingParamsIs400ProblemWithOurTitle() throws Exception {
+    mockMvc.perform(post("/v1/ai/demo")
             .contentType(MediaType.APPLICATION_JSON)
             .content("{}"))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.error").value("bad_request"))
-        .andExpect(jsonPath("$.message").isNotEmpty());
+        .andExpect(jsonPath("$.code").value("bad_request"))
+        .andExpect(jsonPath("$.title", containsString("params")));
   }
 
   @Test
-  void aiFailureHidesProviderDetailsAndAddsRequestId() throws Exception {
+  void aiFailureHidesProviderDetails() throws Exception {
     when(adGenerationClient.generate(any())).thenThrow(new AiClientException(
         AiClientException.REQUEST_FAILED,
         "Модель вернула ошибку HTTP 403: "
             + "{\"error\":{\"code\":\"unsupported_country_region_territory\"},"
             + "\"host\":\"host.docker.internal/192.168.65.2:8123\"}"));
 
-    mockMvc.perform(post("/ai/demo")
+    mockMvc.perform(post("/v1/ai/demo")
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"params\":{\"rooms\":2}}"))
         .andExpect(status().isBadGateway())
-        .andExpect(jsonPath("$.error").value("ai_request_failed"))
-        .andExpect(jsonPath("$.requestId").isNotEmpty())
-        .andExpect(jsonPath("$.message").value(
+        .andExpect(header().string("Content-Type", "application/problem+json"))
+        .andExpect(jsonPath("$.code").value("ai_request_failed"))
+        .andExpect(jsonPath("$.title").value(
             "Не удалось получить результат от модели. Попробуйте повторить позже."))
+        .andExpect(jsonPath("$.requestId", matchesPattern(UUID_PATTERN)))
         .andExpect(content().string(not(containsString("403"))))
         .andExpect(content().string(not(containsString("host.docker.internal"))));
   }
 
   @Test
-  void notConfiguredIs503() throws Exception {
+  void notConfiguredIs503Problem() throws Exception {
     when(adGenerationClient.generate(any())).thenThrow(new AiClientException(
         AiClientException.NOT_CONFIGURED,
         "Не задан ключ доступа к модели (OPENAI_API_KEY). Проверьте backend/.env."));
 
-    mockMvc.perform(post("/ai/demo")
+    mockMvc.perform(post("/v1/ai/demo")
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"params\":{\"rooms\":2}}"))
         .andExpect(status().isServiceUnavailable())
-        .andExpect(jsonPath("$.error").value("ai_not_configured"))
-        .andExpect(jsonPath("$.requestId").isNotEmpty());
+        .andExpect(jsonPath("$.code").value("ai_not_configured"))
+        .andExpect(jsonPath("$.requestId", matchesPattern(UUID_PATTERN)));
   }
 }

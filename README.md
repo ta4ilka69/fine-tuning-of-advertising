@@ -96,7 +96,7 @@ docker run --rm -v "$(pwd)/backend:/workspace" -v adtune-gradle-cache:/home/grad
 
 Полный запуск вместе с фронтендом — как описано выше, `docker compose up --build -d --wait`;
 бэкенд собирается из `./backend` и слушает внутренний порт `8000` за прокси фронтенда.
-Демо-эндпоинт генерации: `POST http://localhost:8088/api/ai/demo`.
+Демо-эндпоинт генерации: `POST http://localhost:8088/api/v1/ai/demo`.
 
 ### Один реальный запрос к модели
 
@@ -114,7 +114,7 @@ docker run --rm -v "$(pwd)/backend:/workspace" -v adtune-gradle-cache:/home/grad
 2. Один запрос:
 
    ```sh
-   curl -s -X POST http://127.0.0.1:8009/api/ai/demo \
+   curl -s -X POST http://127.0.0.1:8009/api/v1/ai/demo \
      -H "Content-Type: application/json; charset=utf-8" \
      --data-binary @backend/examples/demo-request-min.json
    ```
