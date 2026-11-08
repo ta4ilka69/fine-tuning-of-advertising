@@ -20,6 +20,13 @@ services:
   backend:
     build:
       context: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/advertising
+      DB_USER: ${POSTGRES_USER:-advertising}
+      DB_PASSWORD: ${DB_PASSWORD:-advertising}
     env_file:
       - path: ./backend/.env
         required: false

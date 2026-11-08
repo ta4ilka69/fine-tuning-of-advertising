@@ -3,6 +3,7 @@ package com.adtune.backend.web;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -16,6 +17,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -28,6 +31,30 @@ class GlobalExceptionHandlerTest {
 
   @MockitoBean
   private AdGenerationClient adGenerationClient;
+
+  @MockitoBean
+  private JdbcTemplate jdbcTemplate;
+
+  @Test
+  void healthIsOkWhenDatabaseResponds() throws Exception {
+    when(jdbcTemplate.queryForObject(anyString(), (Class<Integer>) any())).thenReturn(1);
+
+    mockMvc.perform(get("/health"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("ok"))
+        .andExpect(jsonPath("$.db").value("ok"));
+  }
+
+  @Test
+  void healthFailsWhenDatabaseIsDown() throws Exception {
+    when(jdbcTemplate.queryForObject(anyString(), (Class<Integer>) any()))
+        .thenThrow(new DataAccessResourceFailureException("Connection refused"));
+
+    mockMvc.perform(get("/health"))
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(jsonPath("$.status").value("error"))
+        .andExpect(jsonPath("$.db").value("unavailable"));
+  }
 
   @Test
   void wrongMethodIs405Not500() throws Exception {
