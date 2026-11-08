@@ -31,6 +31,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
   private static final URI PROBLEM_TYPE = URI.create("about:blank");
 
+  @ExceptionHandler(ApiProblem.class)
+  public ResponseEntity<ProblemDetail> handleApiProblem(ApiProblem e) {
+    ProblemDetail problem = problem(HttpStatusCode.valueOf(e.status()), e.code(), e.title(), null);
+    if (!e.fieldErrors().isEmpty()) {
+      problem.setProperty("fieldErrors", e.fieldErrors());
+    }
+    if (e.currentVersion() != null) {
+      problem.setProperty("currentVersion", e.currentVersion());
+    }
+    if (e.status() >= 500) {
+      log.error("Ошибка API [{}] {}: {}", requestId(problem), e.code(), e.getMessage(), e);
+    }
+    return response(problem);
+  }
+
   @ExceptionHandler(AiClientException.class)
   public ResponseEntity<ProblemDetail> handleAiClient(AiClientException e) {
     HttpStatus status = AiClientException.NOT_CONFIGURED.equals(e.code())

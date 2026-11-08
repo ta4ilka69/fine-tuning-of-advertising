@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.adtune.backend.ai.AdGenerationClient;
 import com.adtune.backend.ai.AiClientException;
+import com.adtune.backend.auth.AuthService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -43,6 +44,10 @@ class GlobalExceptionHandlerTest {
 
   @MockitoBean
   private JdbcTemplate jdbcTemplate;
+
+  /** Нужен WebConfig (резолвер @CurrentUser) в web-срезе. */
+  @MockitoBean
+  private AuthService authService;
 
   @Test
   void healthIsOkWhenDatabaseResponds() throws Exception {

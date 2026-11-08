@@ -29,12 +29,15 @@ public class Session implements Persistable<byte[]> {
   private UUID userId;
 
   public static Session of(byte[] tokenHash, UUID userId) {
+    return of(tokenHash, userId, OffsetDateTime.now().plusDays(DEFAULT_TTL_DAYS));
+  }
+
+  public static Session of(byte[] tokenHash, UUID userId, OffsetDateTime expiresAt) {
     Session session = new Session();
     session.tokenHash = tokenHash;
     session.userId = userId;
-    OffsetDateTime now = OffsetDateTime.now();
-    session.createdAt = now;
-    session.expiresAt = now.plusDays(DEFAULT_TTL_DAYS);
+    session.createdAt = OffsetDateTime.now();
+    session.expiresAt = expiresAt;
     session.isNew = true;
     return session;
   }

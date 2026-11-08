@@ -24,7 +24,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DB_URL: jdbc:postgresql://db:5432/advertising
+      DB_URL: jdbc:postgresql://db:5432/advertising?stringtype=unspecified
       DB_USER: ${POSTGRES_USER:-advertising}
       DB_PASSWORD: ${DB_PASSWORD:-advertising}
     env_file:
