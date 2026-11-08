@@ -9,7 +9,9 @@ spring:
     name: adtune-backend
   datasource:
     # Схема создаётся SQL из infra/db при первом старте тома postgres (compose).
-    url: ${DB_URL:jdbc:postgresql://db:5432/advertising}
+    # stringtype=unspecified: строки уходят без типа, и PostgreSQL сам приводит их
+    # к enum- и jsonb-колонкам схемы.
+    url: ${DB_URL:jdbc:postgresql://db:5432/advertising?stringtype=unspecified}
     username: ${DB_USER:advertising}
     password: ${DB_PASSWORD:advertising}
     hikari:

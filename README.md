@@ -94,6 +94,17 @@ docker run --rm -v "$(pwd)/backend:/workspace" -v adtune-gradle-cache:/home/grad
 
 (в PowerShell вместо `$(pwd)` — `${PWD}`.)
 
+Интеграционные тесты сущностей ходят в реальную базу и включаются переменной
+`DB_TEST_URL` (без неё, как в CI, пропускаются). Предварительно поднимите базу
+и подставьте порт из `DB_PORT`:
+
+```sh
+docker compose up -d --wait db
+docker run --rm -v "$(pwd)/backend:/workspace" -v adtune-gradle-cache:/home/gradle/.gradle -w /workspace \
+  -e DB_TEST_URL="jdbc:postgresql://host.docker.internal:5544/advertising?stringtype=unspecified" \
+  gradle:8.14.3-jdk21 gradle --no-daemon test
+```
+
 Полный запуск вместе с фронтендом — как описано выше, `docker compose up --build -d --wait`;
 бэкенд собирается из `./backend` и слушает внутренний порт `8000` за прокси фронтенда.
 Демо-эндпоинт генерации: `POST http://localhost:8088/api/v1/ai/demo`.
