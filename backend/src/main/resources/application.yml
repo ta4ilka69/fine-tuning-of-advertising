@@ -7,8 +7,30 @@ server:
 spring:
   application:
     name: adtune-backend
+  servlet:
+    multipart:
+      # чуть выше бизнес-лимита 15 МБ: сам файл плюс поля формы
+      max-file-size: 16MB
+      max-request-size: 17MB
+  datasource:
+    # Схема создаётся SQL из infra/db при первом старте тома postgres (compose).
+    # stringtype=unspecified: строки уходят без типа, и PostgreSQL сам приводит их
+    # к enum- и jsonb-колонкам схемы.
+    url: ${DB_URL:jdbc:postgresql://db:5432/advertising?stringtype=unspecified}
+    username: ${DB_USER:advertising}
+    password: ${DB_PASSWORD:advertising}
+    hikari:
+      connection-timeout: 5000
+      maximum-pool-size: 10
+
+# Каталог хранилища фотографий (в compose — том /photos).
+photo:
+  dir: ${PHOTO_DIR:photos}
 
 adtune:
+  # false — фоновые AI-задачи выполняются в потоке запроса (для тестов).
+  ai-tasks:
+    async: ${AI_TASKS_ASYNC:true}
   ai:
     provider: ${AI_PROVIDER:openai}
     timeout: ${AI_TIMEOUT:50s}

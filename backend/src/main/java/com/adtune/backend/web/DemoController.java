@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
  * жизненного цикла генераций; после этого будет удалён.
  */
 @RestController
-@RequestMapping("/ai/demo")
+@RequestMapping("/v1/ai/demo")
 public class DemoController {
 
   /** Демо-настройки площадок: чек-листы и лимиты согласуются с заказчиком отдельно. */
