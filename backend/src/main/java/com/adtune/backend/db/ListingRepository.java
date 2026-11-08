@@ -1,8 +1,11 @@
 package com.adtune.backend.db;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.jdbc.repository.query.Modifying;
+import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.CrudRepository;
 
 public interface ListingRepository extends CrudRepository<Listing, UUID> {
@@ -10,4 +13,26 @@ public interface ListingRepository extends CrudRepository<Listing, UUID> {
   List<Listing> findByUserIdOrderByUpdatedAtDescIdDesc(UUID userId);
 
   Optional<Listing> findByIdAndUserId(UUID id, UUID userId);
+
+  /**
+   * Правка данных: растит версию, сбрасывает в draft (старый результат сохраняется).
+   * Возвращает 0 строк при чужом объявлении, устаревшей версии или во время генерации.
+   */
+  @Modifying
+  @Query("""
+      UPDATE listing SET data = CAST(:data AS jsonb), status = 'draft',
+        version = version + 1, updated_at = :updatedAt
+      WHERE id = :id AND user_id = :userId AND version = :expectedVersion
+        AND status <> 'generating'
+      """)
+  int updateData(UUID id, UUID userId, int expectedVersion, String data,
+      OffsetDateTime updatedAt);
+
+  @Modifying
+  @Query("""
+      DELETE FROM listing
+      WHERE id = :id AND user_id = :userId AND version = :expectedVersion
+        AND status <> 'generating'
+      """)
+  int deleteByIdAndUserIdAndVersion(UUID id, UUID userId, int expectedVersion);
 }
