@@ -27,7 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @SpringBootTest(properties = {
     "spring.datasource.url=${DB_TEST_URL}",
-    "photo.dir=build/test-photos"})
+    "photo.dir=build/test-photos",
+    "adtune.ai-tasks.async=false"})
 @AutoConfigureMockMvc
 @EnabledIfEnvironmentVariable(named = "DB_TEST_URL", matches = ".+")
 @Transactional
@@ -50,6 +51,9 @@ class PhotoFlowIntegrationTest {
 
   @Autowired
   private MockMvc mockMvc;
+
+  @org.springframework.test.context.bean.override.mockito.MockitoBean
+  private com.adtune.backend.ai.PhotoAnalysisClient analysisClient;
 
   private String cookie;
 
@@ -75,6 +79,14 @@ class PhotoFlowIntegrationTest {
         .path("id").asText();
   }
 
+  @org.junit.jupiter.api.BeforeEach
+  void stubAnalysis() {
+    org.mockito.Mockito.when(analysisClient.analyze(org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.anyString()))
+        .thenReturn(new com.adtune.backend.ai.PhotoAnalysisClient.PhotoAnalysis(
+            3, "Светлая комната", "Гостиная"));
+  }
+
   @Test
   void uploadContentThumbnailRemove() throws Exception {
     String cookie = register();
@@ -87,7 +99,7 @@ class PhotoFlowIntegrationTest {
             .cookie(new Cookie("session", cookie)))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.version").value(2))
-        .andExpect(jsonPath("$.photo.status").value("processing"))
+        .andExpect(jsonPath("$.photo.status").value("ready"))
         .andExpect(jsonPath("$.photo.mimeType").value("image/png"))
         .andExpect(jsonPath("$.photo.thumbnailUrl").isNotEmpty())
         .andReturn();
@@ -99,7 +111,7 @@ class PhotoFlowIntegrationTest {
     mockMvc.perform(get("/v1/listings/{id}", listingId).cookie(new Cookie("session", cookie)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.photos.length()").value(1))
-        .andExpect(jsonPath("$.photos[0].status").value("processing"));
+        .andExpect(jsonPath("$.photos[0].status").value("ready"));
 
     // Контент — исходные байты PNG; превью — JPEG.
     mockMvc.perform(get("/v1/listings/{lid}/photos/{pid}/content", listingId, photoId)

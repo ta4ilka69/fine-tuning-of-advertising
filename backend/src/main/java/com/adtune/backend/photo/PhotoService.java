@@ -35,13 +35,22 @@ public class PhotoService {
   private final ListingRepository listings;
   private final PhotoStorage storage;
   private final ThumbnailGenerator thumbnails;
+  private final com.adtune.backend.ai.PhotoAnalysisClient analysisClient;
+  private final java.util.concurrent.ExecutorService executor;
+  @org.springframework.beans.factory.annotation.Value("${adtune.ai-tasks.async:true}")
+  private boolean async;
 
   public PhotoService(PhotoRepository photos, ListingRepository listings,
-      PhotoStorage storage, ThumbnailGenerator thumbnails) {
+      PhotoStorage storage, ThumbnailGenerator thumbnails,
+      com.adtune.backend.ai.PhotoAnalysisClient analysisClient,
+      @org.springframework.beans.factory.annotation.Qualifier("aiExecutor")
+      java.util.concurrent.ExecutorService executor) {
     this.photos = photos;
     this.listings = listings;
     this.storage = storage;
     this.thumbnails = thumbnails;
+    this.analysisClient = analysisClient;
+    this.executor = executor;
   }
 
   public record MutationResult(int version, PhotoView photo) {
@@ -88,7 +97,11 @@ public class PhotoService {
     int newVersion = bumpVersion(listingId, user.getId(), expectedVersion);
     log.info("Фото {} загружено к объявлению {} ({} байт, версия {})",
         saved.getId(), listingId, file.content().length, newVersion);
-    return new MutationResult(newVersion, PhotoView.of(saved));
+    submitAnalysis(saved.getId());
+    // при синхронном анализе фото уже готово — отдаём свежее состояние из базы
+    PhotoView view = photos.findById(saved.getId()).map(PhotoView::of)
+        .orElseGet(() -> PhotoView.of(saved));
+    return new MutationResult(newVersion, view);
   }
 
   @Transactional
@@ -125,6 +138,62 @@ public class PhotoService {
       throw new ApiProblem(404, "NOT_FOUND",
           "Объявление не найдено или фотография больше недоступна.");
     }
+  }
+
+  /** Оценка нейросетью сразу после загрузки, независимо от генерации. */
+  private void submitAnalysis(UUID photoId) {
+    Runnable task = () -> {
+      try {
+        analyze(photoId);
+      } catch (Exception e) {
+        log.error("Анализ фото {} упал с неожиданной ошибкой", photoId, e);
+      }
+    };
+    submitAfterCommit(task);
+  }
+
+  /** Асинхронная задача должна видеть данные после коммита транзакции загрузки. */
+  private void submitAfterCommit(Runnable task) {
+    if (!async) {
+      task.run();
+      return;
+    }
+    if (org.springframework.transaction.support.TransactionSynchronizationManager
+        .isSynchronizationActive()) {
+      org.springframework.transaction.support.TransactionSynchronizationManager
+          .registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+              executor.submit(task);
+            }
+          });
+    } else {
+      executor.submit(task);
+    }
+  }
+
+  void analyze(UUID photoId) {
+    Photo photo = photos.findById(photoId).orElse(null);
+    if (photo == null || photo.getStatus() != com.adtune.backend.db.PhotoStatus.processing) {
+      return;
+    }
+    try {
+      var result = analysisClient.analyze(storage.load(photo.getS3Key()), photo.getMimeType());
+      var quality = switch (result.quality()) {
+        case 1 -> com.adtune.backend.db.PhotoQuality.unfit;
+        case 2 -> com.adtune.backend.db.PhotoQuality.needs_fix;
+        default -> com.adtune.backend.db.PhotoQuality.good;
+      };
+      photo.markReady(photo.getThumbnailS3Key(), quality,
+          result.qualityReason(), result.scene());
+      log.info("Фото {} проанализировано: quality={}, scene={}",
+          photoId, quality, result.scene());
+    } catch (com.adtune.backend.ai.AiClientException e) {
+      log.error("Анализ фото {} не удался: {}", photoId, e.getMessage());
+      photo.markFailed("Не удалось оценить фотографию. Удалите её и загрузите заново.");
+    }
+    photo.markPersisted();
+    photos.save(photo);
   }
 
   public List<PhotoView> viewsOf(UUID listingId) {

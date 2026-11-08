@@ -28,6 +28,9 @@ photo:
   dir: ${PHOTO_DIR:photos}
 
 adtune:
+  # false — фоновые AI-задачи выполняются в потоке запроса (для тестов).
+  ai-tasks:
+    async: ${AI_TASKS_ASYNC:true}
   ai:
     provider: ${AI_PROVIDER:openai}
     timeout: ${AI_TIMEOUT:50s}

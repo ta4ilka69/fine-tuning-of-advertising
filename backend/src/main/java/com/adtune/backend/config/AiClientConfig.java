@@ -1,8 +1,10 @@
 package com.adtune.backend.config;
 
 import com.adtune.backend.ai.AdGenerationClient;
+import com.adtune.backend.ai.PhotoAnalysisClient;
 import com.adtune.backend.ai.SystemPromptBuilder;
 import com.adtune.backend.ai.openai.OpenAiAdGenerationClient;
+import com.adtune.backend.ai.openai.OpenAiPhotoAnalysisClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -26,15 +28,29 @@ public class AiClientConfig {
   @Bean
   @ConditionalOnProperty(prefix = "adtune.ai", name = "provider",
       havingValue = "openai", matchIfMissing = true)
-  public AdGenerationClient openAiAdGenerationClient(RestClient.Builder restClientBuilder,
-      AiProperties properties,
+  public AdGenerationClient openAiAdGenerationClient(AiProperties properties,
       SystemPromptBuilder promptBuilder) {
     AiProperties.OpenAi openAi = properties.openai();
     ObjectMapper wireMapper = OpenAiAdGenerationClient.wireMapper();
+    // свежий билдер на каждый клиент: переиспользование одного билдера
+    // для нескольких build() ломает список конвертеров
     RestClient restClient = OpenAiAdGenerationClient.configureRestClient(
-            restClientBuilder, openAi.baseUrl(), openAi.apiKey(),
+            RestClient.builder(), openAi.baseUrl(), openAi.apiKey(),
             properties.timeout(), wireMapper)
         .build();
     return new OpenAiAdGenerationClient(restClient, openAi, promptBuilder, wireMapper);
+  }
+
+  @Bean
+  @ConditionalOnProperty(prefix = "adtune.ai", name = "provider",
+      havingValue = "openai", matchIfMissing = true)
+  public PhotoAnalysisClient openAiPhotoAnalysisClient(AiProperties properties) {
+    AiProperties.OpenAi openAi = properties.openai();
+    ObjectMapper wireMapper = OpenAiAdGenerationClient.wireMapper();
+    RestClient restClient = OpenAiAdGenerationClient.configureRestClient(
+            RestClient.builder(), openAi.baseUrl(), openAi.apiKey(),
+            properties.timeout(), wireMapper)
+        .build();
+    return new OpenAiPhotoAnalysisClient(restClient, openAi, wireMapper);
   }
 }
