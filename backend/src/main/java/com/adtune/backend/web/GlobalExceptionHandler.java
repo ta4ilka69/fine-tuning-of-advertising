@@ -31,6 +31,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
   private static final URI PROBLEM_TYPE = URI.create("about:blank");
 
+  /** Превышен multipart-лимит: контейнер отклоняет запрос до контроллера. */
+  @Override
+  protected ResponseEntity<Object> handleMaxUploadSizeExceededException(
+      org.springframework.web.multipart.MaxUploadSizeExceededException ex,
+      HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
+    ProblemDetail problem = problem(HttpStatus.PAYLOAD_TOO_LARGE, "FILE_TOO_LARGE",
+        "Файл слишком большой. Выберите файл до 15 МБ.", ex.getMessage());
+    log.warn("MVC-ошибка [{}] file_too_large", requestId(problem));
+    return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+        .headers(headers)
+        .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+        .body(problem);
+  }
+
   @ExceptionHandler(ApiProblem.class)
   public ResponseEntity<ProblemDetail> handleApiProblem(ApiProblem e) {
     ProblemDetail problem = problem(HttpStatusCode.valueOf(e.status()), e.code(), e.title(), null);

@@ -8,7 +8,9 @@ RUN --mount=type=cache,target=/home/gradle/.gradle \
     gradle --no-daemon bootJar
 
 FROM eclipse-temurin:21-jre-alpine
-RUN addgroup -S app && adduser -S app -G app
+RUN addgroup -S app && adduser -S app -G app \
+    # том фотографий монтируется в /photos и при первом создании наследует владельца из образа
+    && mkdir -p /photos && chown app:app /photos
 WORKDIR /app
 COPY --from=build /workspace/build/libs/*SNAPSHOT.jar app.jar
 USER app

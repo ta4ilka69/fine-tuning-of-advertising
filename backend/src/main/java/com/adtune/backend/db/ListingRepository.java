@@ -35,4 +35,13 @@ public interface ListingRepository extends CrudRepository<Listing, UUID> {
         AND status <> 'generating'
       """)
   int deleteByIdAndUserIdAndVersion(UUID id, UUID userId, int expectedVersion);
+
+  /** Действия с фото тоже меняют объявление: версия растёт, updated_at обновляется. */
+  @Modifying
+  @Query("""
+      UPDATE listing SET version = version + 1, updated_at = :updatedAt
+      WHERE id = :id AND user_id = :userId AND version = :expectedVersion
+        AND status <> 'generating'
+      """)
+  int bumpVersion(UUID id, UUID userId, int expectedVersion, OffsetDateTime updatedAt);
 }

@@ -25,3 +25,6 @@ backend/.gradle/
 backend/build/
 backend/out/
 backend/bin/
+
+# Локальное хранилище фотографий при запуске без тома
+backend/photos/

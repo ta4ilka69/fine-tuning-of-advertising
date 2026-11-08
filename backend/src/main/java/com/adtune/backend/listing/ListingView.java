@@ -2,6 +2,7 @@ package com.adtune.backend.listing;
 
 import com.adtune.backend.db.Listing;
 import com.adtune.backend.db.ListingStatus;
+import com.adtune.backend.photo.PhotoView;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -30,10 +31,13 @@ public record ListingView(
     String createdAt,
     String updatedAt) {
 
-  public static ListingView of(Listing listing) {
-    return ofFields(listing.getId(), listing.getVersion(), listing.getStatus(),
+  public static ListingView of(Listing listing, List<PhotoView> photos) {
+    ListingView view = ofFields(listing.getId(), listing.getVersion(), listing.getStatus(),
         listing.getData(), listing.getResult(), listing.getGenerationError(),
         listing.getCreatedAt(), listing.getUpdatedAt());
+    return new ListingView(view.id, view.version, view.status, view.address, view.dealType,
+        view.objectType, view.price, view.hasResult, view.isApartments, view.data, view.result,
+        view.generationError, photos, view.createdAt, view.updatedAt);
   }
 
   /** Маппинг полей строки SQL без загрузки сущности (страница списка). */

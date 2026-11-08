@@ -33,12 +33,15 @@ public class ListingService {
   private static final int MAX_LIMIT = 50;
 
   private final ListingRepository listings;
+  private final com.adtune.backend.photo.PhotoService photoService;
   private final JdbcTemplate jdbc;
   private final com.fasterxml.jackson.databind.ObjectMapper mapper
       = new com.fasterxml.jackson.databind.ObjectMapper();
 
-  public ListingService(ListingRepository listings, JdbcTemplate jdbc) {
+  public ListingService(ListingRepository listings,
+      com.adtune.backend.photo.PhotoService photoService, JdbcTemplate jdbc) {
     this.listings = listings;
+    this.photoService = photoService;
     this.jdbc = jdbc;
   }
 
@@ -49,12 +52,13 @@ public class ListingService {
   public ListingView create(AppUser user, JsonNode data) {
     requireObject(data);
     Listing saved = listings.save(Listing.newDraft(user.getId(), data));
-    return ListingView.of(saved);
+    return ListingView.of(saved, photoService.viewsOf(saved.getId()));
   }
 
   @Transactional(readOnly = true)
   public ListingView get(AppUser user, UUID id) {
-    return ListingView.of(loadOwned(user, id));
+    Listing listing = loadOwned(user, id);
+    return ListingView.of(listing, photoService.viewsOf(listing.getId()));
   }
 
   /** Пагинация по updated_at: курсор — смещение; q ищет по адресу, from/to — по дате создания. */
@@ -112,7 +116,7 @@ public class ListingService {
       checkEditable(loadOwned(user, id), expectedVersion);
       throw new IllegalStateException("Обновление не прошло при совпадающей версии");
     }
-    return ListingView.of(loadOwned(user, id));
+    return ListingView.of(loadOwned(user, id), photoService.viewsOf(id));
   }
 
   @Transactional

@@ -92,6 +92,11 @@ public class Photo implements Persistable<UUID> {
     return status;
   }
 
+  /** Превью готово сразу при загрузке; статус остаётся processing до анализа. */
+  public void attachThumbnail(String thumbnailS3Key) {
+    this.thumbnailS3Key = thumbnailS3Key;
+  }
+
   /** Анализ завершён: превью, оценка и описание готовы (CHECK схемы требует все поля). */
   public void markReady(String thumbnailS3Key, PhotoQuality quality,
       String qualityReason, String scene) {
