@@ -15,6 +15,10 @@ const user = { id: '9a07b31d-ac15-495c-bb91-e3756fe40bcc', login: 'agent_demo', 
 export async function startSessionServer(host = '127.0.0.1', port = 0) {
   const calls: { query: string; path: string; method: string; body: unknown; contentType: string | undefined; cookie: string | undefined; origin: string | undefined }[] = [];
   const controls = {
+    deleteListingError: null as number | 'invalid' | null,
+    deleteListingErrorCode: 'VERSION_CONFLICT',
+    holdListingDelete: undefined as Promise<void> | undefined,
+    deletedListings: new Set<string>(),
     photoError: null as number | 'network' | 'invalid' | 'disconnect-after-write' | null,
     photoErrorCode: 'VERSION_CONFLICT',
     photoCompletion: null as 'ready' | 'failed' | null,
@@ -133,6 +137,21 @@ export async function startSessionServer(host = '127.0.0.1', port = 0) {
         if (controls.photoError === 'invalid') body = { invalid: true };
         if (controls.photoError === 'disconnect-after-write') { disconnect(); return; }
       }
+    } else if (/^\/api\/v1\/listings\/[^/]+$/.test(path) && request.method === 'DELETE') {
+      await controls.holdListingDelete;
+      const id = path.split('/').at(-1)!;
+      const detail = (controls.details.get(id) ?? controls.detail) as { version: number; status: string };
+      const version = Number(new URL(request.url!, 'http://localhost').searchParams.get('expectedVersion'));
+      if (!request.headers.cookie?.includes('session=test-session')) fail(401, 'UNAUTHENTICATED');
+      else if (typeof controls.deleteListingError === 'number') fail(controls.deleteListingError, controls.deleteListingErrorCode);
+      else if (controls.deletedListings.has(id)) fail(404, 'NOT_FOUND');
+      else if (detail.status === 'generating') fail(409, 'LISTING_BUSY');
+      else if (version !== detail.version) fail(409, 'VERSION_CONFLICT');
+      else {
+        controls.deletedListings.add(id);
+        if (controls.deleteListingError === 'invalid') { status = 200; body = {}; }
+        else { response.writeHead(204).end(); return; }
+      }
     } else if (/^\/api\/v1\/listings\/[^/]+$/.test(path) && request.method === 'PUT') {
       await controls.holdUpdate;
       const disconnect = () => {
@@ -190,6 +209,9 @@ export async function startSessionServer(host = '127.0.0.1', port = 0) {
         const limit = Math.min(Number(params.get('limit') ?? 20), controls.listingPageSize);
         result = { items: items.slice(offset, offset + limit), nextCursor: offset + limit < items.length ? String(offset + limit) : null };
       }
+      if (result && typeof result === 'object' && 'items' in result && Array.isArray(result.items)) {
+        result = { ...result, items: result.items.filter((item: ListingSummary) => !controls.deletedListings.has(item.id)) };
+      }
       await controls.holdListings;
       if (controls.listingError === 'network') { response.destroy(); return; }
       if (typeof controls.listingError === 'number') fail(controls.listingError, 'SERVICE_UNAVAILABLE');
@@ -206,7 +228,8 @@ export async function startSessionServer(host = '127.0.0.1', port = 0) {
         controls.details.set(path.split('/').at(-1)!, detail);
       }
       await controls.holdDetail;
-      if (controls.detailError) fail(controls.detailError, 'NOT_FOUND');
+      if (controls.deletedListings.has(path.split('/').at(-1)!)) fail(404, 'NOT_FOUND');
+      else if (controls.detailError) fail(controls.detailError, 'NOT_FOUND');
       else body = detail;
     } else if (path === '/api/v1/auth/me' && request.method === 'GET') {
       await controls.holdMe;

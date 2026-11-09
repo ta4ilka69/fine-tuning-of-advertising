@@ -105,6 +105,10 @@ export function parseListing(value: unknown): Listing {
 export type ListingFilters = { q?: string; from?: string; to?: string };
 
 export const listings = {
+  remove: (id: string, expectedVersion: number, signal?: AbortSignal) => {
+    if (!uuid.test(id) || !positiveInteger(expectedVersion)) throw new TypeError('Некорректное объявление');
+    return request(`/listings/${id}`, { method: 'DELETE', query: { expectedVersion }, signal, status: 204, response: 'empty' });
+  },
   update: (id: string, data: ListingData, expectedVersion: number, signal?: AbortSignal) => {
     if (!uuid.test(id) || !positiveInteger(expectedVersion) || !isListingData(data)) throw new TypeError('Некорректное объявление');
     return request(`/listings/${id}`, { method: 'PUT', body: { data, expectedVersion }, signal, status: 200, response: (value) => {

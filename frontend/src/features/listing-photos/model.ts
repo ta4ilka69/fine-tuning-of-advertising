@@ -18,7 +18,13 @@ export type Upload = {
   state: 'waiting' | 'uploading' | 'error' | 'uncertain' | 'rejected';
   error?: string;
 };
+export type ListingDeletion = {
+  listing: Listing;
+  phase: 'confirm' | 'deleting' | 'uncertain' | 'checking' | 'conflict' | 'busy' | 'denied' | 'missing' | 'error' | 'deleted';
+  error?: string;
+};
 export type PhotoState = {
+  listingDeletion?: ListingDeletion;
   listing?: Listing;
   editing?: boolean;
   editSavedVersion?: number;
@@ -77,13 +83,16 @@ export class PhotoManager {
   start() { this.active = true; this.refreshNeeded = true; void this.pump(); }
   stop() {
     this.active = false;
+    if (this.state.listingDeletion && ['deleting', 'checking'].includes(this.state.listingDeletion.phase)) {
+      this.update({ listingDeletion: { ...this.state.listingDeletion, phase: 'uncertain', error: 'Запрос прерван. Сначала проверьте состояние объявления.' } });
+    }
     this.controller?.abort();
     clearTimeout(this.timer);
     this.running = false;
   }
 
   add(files: File[]) {
-    if (!this.active || this.state.editing || !this.state.verified || this.state.listing?.status === 'generating' || this.state.inaccessible) return;
+    if (!this.active || this.state.listingDeletion || this.state.editing || !this.state.verified || this.state.listing?.status === 'generating' || this.state.inaccessible) return;
     let count = this.count();
     const uploads = files.map((file): Upload => {
       const error = fileError(file) ?? (count >= 20 ? 'Можно добавить не больше 20 фотографий.' : undefined);
@@ -95,7 +104,7 @@ export class PhotoManager {
   }
 
   beginEdit() {
-    if (!this.active || this.running || !this.state.verified || this.state.inaccessible
+    if (!this.active || this.state.listingDeletion || this.running || !this.state.verified || this.state.inaccessible
       || this.state.listing?.status === 'generating' || this.deletes.length || this.state.uploads.some((entry) => entry.file)) return;
     this.update({ editing: true, editSavedVersion: undefined });
     return this.state.listing;
@@ -144,6 +153,82 @@ export class PhotoManager {
     } finally { this.saving = false; void this.pump(); }
   }
 
+  beginListingDelete() {
+    if (this.state.listingDeletion) return this.state.listingDeletion;
+    if (!this.active || this.running || this.saving || this.state.editing || !this.state.verified || this.state.inaccessible
+      || !this.state.listing || this.deletes.length || this.state.uploads.some((entry) => entry.file)) return;
+    clearTimeout(this.timer);
+    const listing = this.state.listing;
+    const deletion: ListingDeletion = { listing, phase: listing.status === 'generating' ? 'busy' : 'confirm',
+      ...(listing.status === 'generating' ? { error: 'Удаление недоступно, пока идёт генерация. Дождитесь её завершения и проверьте состояние.' } : {}),
+    };
+    this.update({ listingDeletion: deletion });
+    return deletion;
+  }
+
+  cancelListingDelete() {
+    const phase = this.state.listingDeletion?.phase;
+    if (!this.state.verified || phase === 'deleting' || phase === 'checking' || phase === 'uncertain' || phase === 'deleted') return;
+    this.update({ listingDeletion: undefined });
+    void this.pump();
+  }
+
+  async confirmListingDelete() {
+    const deletion = this.state.listingDeletion;
+    if (!this.active || !deletion || !['confirm', 'error'].includes(deletion.phase)) return;
+    const controller = new AbortController();
+    this.controller = controller;
+    this.recheck(false);
+    this.update({ listingDeletion: { ...deletion, phase: 'deleting', error: undefined } });
+    try {
+      await listings.remove(this.id, deletion.listing.version, controller.signal);
+      if (controller.signal.aborted || !this.active) return;
+      this.update({ listingDeletion: { ...deletion, phase: 'deleted' } });
+      this.recheck(false);
+    } catch (failure) {
+      if (controller.signal.aborted || !this.active) return;
+      const status = failure instanceof RequestError ? failure.status : undefined;
+      const code = failure instanceof RequestError ? failure.code : undefined;
+      const phase = status === 401 ? 'uncertain' : status === 403 ? 'denied' : status === 404 ? 'missing'
+        : status === 409 ? code === 'LISTING_BUSY' ? 'busy' : 'conflict'
+          : failure instanceof RequestError && failure.kind === 'http' && (status ?? 0) < 500 ? 'error' : 'uncertain';
+      const error = phase === 'uncertain' ? 'Не удалось подтвердить удаление. Проверьте подключение и состояние объявления перед новой попыткой.'
+        : phase === 'denied' ? 'У вас нет доступа к удалению этого объявления.'
+          : phase === 'missing' ? 'Объявление больше недоступно. Вернитесь к списку.'
+            : phase === 'conflict' ? 'Объявление изменилось в другом окне. Загрузите актуальную карточку и заново подтвердите удаление.'
+              : phase === 'busy' ? 'Удаление недоступно, пока идёт генерация. Дождитесь её завершения и проверьте состояние.'
+                : 'Не удалось удалить объявление. Данные сохранены. Повторите попытку вручную.';
+      this.update({ listingDeletion: { ...deletion, phase, error }, ...(['denied', 'missing', 'conflict', 'uncertain', 'busy'].includes(phase) ? { verified: false } : {}) });
+      if (status === 401) this.recheck(true);
+    }
+  }
+
+  async checkListingDelete() {
+    const deletion = this.state.listingDeletion;
+    if (!this.active || !deletion || ['deleting', 'checking', 'deleted'].includes(deletion.phase)) return;
+    const controller = new AbortController();
+    this.controller = controller;
+    this.recheck(false);
+    this.update({ listingDeletion: { ...deletion, phase: 'checking', error: undefined } });
+    try {
+      const listing = await listings.get(this.id, controller.signal);
+      if (controller.signal.aborted || !this.active) return;
+      if (listing.version < deletion.listing.version) throw new RequestError('invalid-response', 200);
+      this.update({ listing, verified: true, inaccessible: false, listingDeletion: { listing,
+        phase: listing.status === 'generating' ? 'busy' : 'confirm',
+        error: listing.status === 'generating' ? 'Дождитесь завершения генерации и проверьте состояние.' : 'Актуальная карточка загружена. Проверьте данные и подтвердите удаление ещё раз.',
+      } });
+      this.recheck(false);
+    } catch (failure) {
+      if (controller.signal.aborted || !this.active) return;
+      const status = failure instanceof RequestError ? failure.status : undefined;
+      const phase = status === 404 ? deletion.phase === 'uncertain' ? 'deleted' : 'missing' : status === 403 ? 'denied' : 'uncertain';
+      this.update({ listingDeletion: { ...deletion, phase, error: status === 403 ? 'У вас нет доступа к объявлению.'
+        : status === 404 ? 'Объявление больше недоступно.' : 'Не удалось проверить состояние. Данные карточки сохранены. Повторите проверку вручную.' }, verified: false });
+      if (status === 401) this.recheck(true);
+    }
+  }
+
   count() { return (this.state.listing?.photos.length ?? 0) + this.state.uploads.filter((entry) => entry.file).length; }
 
   dismiss(key: number) {
@@ -151,7 +236,7 @@ export class PhotoManager {
   }
 
   remove(photoId: string) {
-    if (!this.active || this.state.editing || !this.state.verified || this.state.inaccessible || this.state.paused
+    if (!this.active || this.state.listingDeletion || this.state.editing || !this.state.verified || this.state.inaccessible || this.state.paused
       || this.state.listing?.status === 'generating' || this.deletes.includes(photoId) || this.state.deleting === photoId
       || !this.state.listing?.photos.some((photo) => photo.id === photoId)) return;
     this.deletes.push(photoId);
@@ -159,19 +244,19 @@ export class PhotoManager {
   }
 
   refresh = () => {
-    if (!this.active || this.running || this.saving) return;
+    if (!this.active || this.state.listingDeletion || this.running || this.saving) return;
     this.refreshNeeded = true;
     void this.pump();
   };
 
   resume = () => {
-    if (!this.active || this.state.editing || !this.state.verified || this.state.inaccessible || this.state.listing?.status === 'generating') return;
+    if (!this.active || this.state.listingDeletion || this.state.editing || !this.state.verified || this.state.inaccessible || this.state.listing?.status === 'generating') return;
     this.update({ paused: false, error: undefined, uploads: this.state.uploads.map((entry) => entry.state === 'error' ? { ...entry, state: 'waiting', error: undefined } : entry) });
     void this.pump();
   };
 
   private async pump() {
-    if (!this.active || this.running || this.saving) return;
+    if (!this.active || this.state.listingDeletion || this.running || this.saving) return;
     clearTimeout(this.timer);
     if (this.metadataDirty && !this.state.inaccessible && !this.deletes.length && !this.state.uploads.some((entry) => entry.state === 'waiting')) this.refreshNeeded = true;
     const listing = this.state.listing;

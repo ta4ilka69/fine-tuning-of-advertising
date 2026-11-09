@@ -53,7 +53,7 @@ export function PhotoGallery({ manager, state }: { manager: PhotoManager; state:
   const listing = state.listing!;
   const uploading = state.uploads.some((entry) => entry.state === 'uploading' || entry.state === 'waiting');
   const locked = listing.status === 'generating';
-  const disabled = !!state.editing || locked || !state.verified || state.reading || state.paused || !!state.deleting || uploading;
+  const disabled = !!state.listingDeletion || !!state.editing || locked || !state.verified || state.reading || state.paused || !!state.deleting || uploading;
   const count = manager.count();
   useEffect(() => {
     if (!state.removed || focusTarget.current?.id !== state.removed || state.reading || state.deleting) return;
@@ -68,17 +68,17 @@ export function PhotoGallery({ manager, state }: { manager: PhotoManager; state:
       {state.editing && <Text c="dimmed">Загрузка и удаление фотографий недоступны, пока открыта форма редактирования.</Text>}
       {locked && <AppNotice tone="info" title="Идёт генерация">Добавлять и удалять фотографии можно после её завершения.</AppNotice>}
       {state.error && <AppNotice tone="error" title="Очередь остановлена"><p>{state.error}</p>
-        <div className={classes.actions}><AppButton intent="secondary" disabled={state.reading} onClick={manager.refresh}>Обновить фотографии</AppButton>
-          {state.verified && !locked && <AppButton disabled={!!state.editing || state.reading} onClick={manager.resume}>Продолжить очередь</AppButton>}</div>
+        <div className={classes.actions}><AppButton intent="secondary" disabled={!!state.listingDeletion || state.reading} onClick={manager.refresh}>Обновить фотографии</AppButton>
+          {state.verified && !locked && <AppButton disabled={!!state.listingDeletion || !!state.editing || state.reading} onClick={manager.resume}>Продолжить очередь</AppButton>}</div>
       </AppNotice>}
       <div className={classes.select}>
         <Text fw={600}>{count >= 20 ? 'Добавлено максимум фотографий' : 'Добавьте фотографии объекта'}</Text>
         <Text size="sm" c="dimmed">{count >= 20 ? 'Чтобы добавить другую фотографию, удалите одну из загруженных.' : 'Можно выбрать несколько файлов. Они загрузятся по очереди.'}</Text>
         <input ref={input} className={classes.input} type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" multiple tabIndex={-1} aria-label="Фотографии объявления"
-          disabled={!!state.editing || locked || !state.verified || count >= 20} onChange={(event) => {
+          disabled={!!state.listingDeletion || !!state.editing || locked || !state.verified || count >= 20} onChange={(event) => {
             manager.add(Array.from(event.currentTarget.files ?? [])); event.currentTarget.value = '';
           }} />
-        <AppButton intent="secondary" disabled={!!state.editing || locked || !state.verified || count >= 20} aria-describedby="photos-requirements" onClick={() => input.current?.click()}>Выбрать фотографии</AppButton>
+        <AppButton intent="secondary" disabled={!!state.listingDeletion || !!state.editing || locked || !state.verified || count >= 20} aria-describedby="photos-requirements" onClick={() => input.current?.click()}>Выбрать фотографии</AppButton>
       </div>
       {state.reading && <LoadingState label="Обновляем фотографии" />}
       {!listing.photos.length && !state.uploads.length && <Text c="dimmed">Фотографий пока нет</Text>}
