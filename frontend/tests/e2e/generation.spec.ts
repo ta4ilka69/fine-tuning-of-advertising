@@ -194,15 +194,25 @@ for (const status of [403, 404]) {
   });
 }
 
-flow('при 429 опроса кнопка показывает паузу, следующий GET получает готовый результат', async ({ page, loginServer, flow }) => {
+flow('пауза после 429 опроса сохраняется при восстановлении сессии', async ({ page, loginServer, flow }) => {
   await flow.choose();
   await page.route(`**${listingPath}`, (route) => route.fulfill({
     status: 429, contentType: 'application/problem+json', json: problem(429, 'TOO_MANY_REQUESTS'), headers: { 'Retry-After': '3' },
   }), { times: 1 });
   await flow.launch().click();
-  await expect(page.getByRole('button', { name: /^Проверить через \d+ с$/ })).toBeDisabled();
+  const retry = page.getByRole('button', { name: /^Проверить через \d+ с$/ });
+  await expect(retry).toBeDisabled();
+  const reads = () => loginServer.calls.filter((call) => call.path === listingPath && call.method === 'GET').length;
+  const sessions = () => loginServer.calls.filter((call) => call.path === '/api/v1/auth/me').length;
+  const previousReads = reads();
+  const previousSessions = sessions();
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
+  await expect.poll(sessions).toBeGreaterThan(previousSessions);
+  await expect(retry).toBeVisible();
+  expect(reads()).toBe(previousReads);
   loginServer.controls.detail = { ...original };
   await expect(page.getByText('Подготовка завершена', { exact: true })).toBeVisible();
+  expect(reads()).toBe(previousReads + 1);
   expect(flow.posts).toHaveLength(1);
 });
 

@@ -132,7 +132,7 @@ export class PhotoManager {
   }
 
   async reloadEdit(signal: AbortSignal) {
-    if (!this.active || !this.state.editing || this.saving) throw new Error('Редактирование недоступно');
+    if (!this.active || !this.state.editing || this.saving || this.pollDelay() > 0) throw new Error('Редактирование недоступно');
     this.interruptRead();
     this.running = true;
     const controller = new AbortController();
@@ -179,7 +179,7 @@ export class PhotoManager {
 
   cancelListingDelete() {
     const phase = this.state.listingDeletion?.phase;
-    if (!this.state.verified || phase === 'deleting' || phase === 'checking' || phase === 'uncertain' || phase === 'deleted') return;
+    if (phase !== 'busy' && (!this.state.verified || phase === 'deleting' || phase === 'checking' || phase === 'uncertain' || phase === 'deleted')) return;
     this.update({ listingDeletion: undefined });
     void this.pump();
   }
@@ -217,7 +217,7 @@ export class PhotoManager {
   async checkListingDelete() {
     const deletion = this.state.listingDeletion;
     if (!this.active || this.running || !deletion || ['deleting', 'checking', 'deleted'].includes(deletion.phase)
-      || (this.state.generation?.pollRetryAt ?? 0) > Date.now()) return;
+      || this.pollDelay() > 0) return;
     clearTimeout(this.timer);
     const controller = new AbortController();
     this.controller = controller;
@@ -259,7 +259,7 @@ export class PhotoManager {
   }
 
   refresh = () => {
-    if (!this.active || this.state.listingDeletion || this.running || this.saving || (this.state.generation?.pollRetryAt ?? 0) > Date.now()) return;
+    if (!this.active || this.state.listingDeletion || this.running || this.saving || this.pollDelay() > 0) return;
     this.refreshNeeded = true;
     void this.pump();
   };
@@ -345,6 +345,17 @@ export class PhotoManager {
     }
   }
 
+  private pollDelay() {
+    return Math.max(0, (this.state.generation?.pollRetryAt ?? 0) - Date.now());
+  }
+
+  private scheduleRead(delay: number) {
+    this.timer = setTimeout(() => {
+      this.refreshNeeded = true;
+      void this.pump();
+    }, Math.min(delay, 2 ** 31 - 1));
+  }
+
   private async pump() {
     const deletionPhase = this.state.listingDeletion?.phase;
     if (!this.active || (deletionPhase && deletionPhase !== 'busy') || this.running || this.saving) return;
@@ -352,14 +363,18 @@ export class PhotoManager {
     if (this.metadataDirty && !this.state.inaccessible && !this.deletes.length && !this.state.uploads.some((entry) => entry.state === 'waiting')) this.refreshNeeded = true;
     const listing = this.state.listing;
     const read = this.refreshNeeded;
+    const pollDelay = this.pollDelay();
+    if (read && pollDelay > 0) {
+      this.scheduleRead(pollDelay);
+      return;
+    }
     const mayWrite = !deletionPhase && !this.state.editing && !this.state.paused && this.state.verified && !this.state.inaccessible && !generationLocked(this.state);
     const deletion = !read && mayWrite ? this.deletes.shift() : undefined;
     const upload = !read && mayWrite && !deletion ? this.state.uploads.find((entry) => entry.state === 'waiting') : undefined;
     if (!read && !deletion && !upload) {
       const pollingGeneration = listing?.status === 'generating' && !this.state.inaccessible;
       if (pollingGeneration || (this.state.verified && !this.state.inaccessible && listing?.photos.some((photo) => photo.status === 'processing'))) {
-        const delay = pollingGeneration ? Math.max(2000, (this.state.generation?.pollRetryAt ?? 0) - Date.now()) : 1500;
-        this.timer = setTimeout(() => { this.refreshNeeded = true; void this.pump(); }, Math.min(delay, 2 ** 31 - 1));
+        this.scheduleRead(pollingGeneration ? Math.max(2000, pollDelay) : 1500);
       }
       return;
     }
@@ -368,10 +383,14 @@ export class PhotoManager {
     this.controller = controller;
     this.refreshNeeded = false;
     if (read) this.metadataDirty = false;
-    this.update({ reading: read, deleting: deletion, ...(upload ? {
-      uploads: this.state.uploads.map((entry) => entry.key === upload.key ? { ...entry, state: 'uploading' } : entry),
-      announcement: `Загружаем ${upload.name}.`,
-    } : {}) });
+    const launch = this.state.generation;
+    this.update({ reading: read, deleting: deletion,
+      ...(read && launch?.pollRetryAt && { generation: { ...launch, pollRetryAt: undefined } }),
+      ...(upload ? {
+        uploads: this.state.uploads.map((entry) => entry.key === upload.key ? { ...entry, state: 'uploading' } : entry),
+        announcement: `Загружаем ${upload.name}.`,
+      } : {}),
+    });
     try {
       if (read) {
         const current = retainResult(await listings.get(this.id, controller.signal), listing);
@@ -424,7 +443,7 @@ export class PhotoManager {
       if (read && generationLocked(this.state) && !inaccessible) {
         const retryAfter = failure instanceof RequestError ? failure.retryAfterSeconds : undefined;
         this.update({ verified: false, generation: { ...this.state.generation,
-          pollRetryAt: retryAfter ? Date.now() + retryAfter * 1000 : undefined,
+          pollRetryAt: retryAfter ? Date.now() + Math.max(listing?.status === 'generating' ? 2 : 0, retryAfter) * 1000 : undefined,
           pollError: 'Не удалось обновить состояние. Проверьте подключение и попробуйте ещё раз' } });
         return;
       }
