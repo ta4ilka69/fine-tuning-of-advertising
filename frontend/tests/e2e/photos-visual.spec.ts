@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { test, expect } from './login-fixture';
 import { listingDetails } from '../fixtures/listings';
 
@@ -29,6 +30,6 @@ for (const state of ['empty', 'desktop', 'mobile', 'narrow', 'processing', 'fail
     }
     await page.evaluate(() => document.fonts.ready);
     await expect(page.getByRole('button', { name: /Меню пользователя/ })).toBeVisible();
-    await expect(page).toHaveScreenshot(`photos-${state}.png`, { fullPage: true });
+    await expect(page).toHaveScreenshot(`photos-${state}.png`, { fullPage: true, stylePath: fileURLToPath(new URL('../fixtures/hide-generation.css', import.meta.url)) });
   });
 }

@@ -72,14 +72,70 @@ test('конфликт: явная загрузка версии и повтор
   expect(loginServer.calls.filter((call) => call.method === 'DELETE').map((call) => call.query)).toEqual(['?expectedVersion=2', '?expectedVersion=7']);
 });
 
-for (const known of [false, true]) test(`генерация ${known ? 'из GET' : 'LISTING_BUSY'}`, async ({ page, loginServer }) => {
-  if (known) loginServer.controls.detail = { ...listingDetails(), status: 'generating' };
+test('LISTING_BUSY блокирует удаление до сверки', async ({ page, loginServer }) => {
   await open(page, loginServer.url);
-  if (!known) { loginServer.controls.deleteListingError = 409; loginServer.controls.deleteListingErrorCode = 'LISTING_BUSY'; await confirm(page).click(); }
-  await expect(confirm(page)).toHaveCount(0); await expect(dialog(page)).toContainText('Восстановить их не получится');
-  loginServer.controls.detail = listingDetails(); loginServer.controls.deleteListingError = null;
-  await dialog(page).getByRole('button', { name: 'Проверить состояние' }).click(); await expect(confirm(page)).toBeEnabled();
-  expect(writes(loginServer)).toHaveLength(known ? 0 : 1); await confirm(page).click(); await expect(page).toHaveURL(`${loginServer.url}/app`);
+  loginServer.controls.deleteListingError = 409;
+  loginServer.controls.deleteListingErrorCode = 'LISTING_BUSY';
+  await confirm(page).click();
+  await expect(confirm(page)).toHaveCount(0);
+  await expect(dialog(page)).toContainText('Восстановить их не получится');
+  loginServer.controls.deleteListingError = null;
+  await dialog(page).getByRole('button', { name: 'Проверить состояние' }).click();
+  await expect(confirm(page)).toBeEnabled();
+  expect(writes(loginServer)).toHaveLength(1);
+  await confirm(page).click();
+  await expect(page).toHaveURL(`${loginServer.url}/app`);
+});
+
+test('ошибка фоновой сверки после LISTING_BUSY позволяет перечитать карточку', async ({ page, loginServer }) => {
+  await open(page, loginServer.url);
+  loginServer.controls.deleteListingError = 409;
+  loginServer.controls.deleteListingErrorCode = 'LISTING_BUSY';
+  await confirm(page).click();
+  loginServer.controls.detail = listingDetails(listing({ status: 'generating' }));
+  await dialog(page).getByRole('button', { name: 'Проверить состояние' }).click();
+  await expect(dialog(page).getByText('Дождитесь завершения генерации и проверьте состояние.')).toBeVisible();
+  loginServer.controls.detailError = 404;
+  await expect(page.getByText('Не удалось загрузить объявление', { exact: true })).toBeVisible();
+  loginServer.controls.detailError = null;
+  loginServer.controls.detail = listingDetails();
+  await page.getByRole('button', { name: 'Повторить', exact: true }).click();
+  await expect(trigger(page)).toBeEnabled();
+  await expect(dialog(page)).toHaveCount(0);
+  expect(writes(loginServer)).toHaveLength(1);
+});
+
+test('сразу после LISTING_BUSY отмена удаления перечитывает статус карточки', async ({ page, loginServer }) => {
+  await open(page, loginServer.url);
+  loginServer.controls.deleteListingError = 409;
+  loginServer.controls.deleteListingErrorCode = 'LISTING_BUSY';
+  await confirm(page).click();
+  await expect(dialog(page).getByText('Удаление временно недоступно')).toBeVisible();
+  await dialog(page).getByRole('button', { name: 'Отмена', exact: true }).click();
+  await expect(dialog(page)).toHaveCount(0);
+  await expect(trigger(page)).toBeEnabled();
+  expect(loginServer.calls.filter((call) => call.method === 'GET' && call.path === `/api/v1/listings/${id}`)).toHaveLength(2);
+  expect(writes(loginServer)).toHaveLength(1);
+});
+
+test('отмена удаления после LISTING_BUSY и временного сбоя возвращает ручную сверку генерации', async ({ page, loginServer }) => {
+  await open(page, loginServer.url);
+  loginServer.controls.deleteListingError = 409;
+  loginServer.controls.deleteListingErrorCode = 'LISTING_BUSY';
+  await confirm(page).click();
+  loginServer.controls.detail = listingDetails(listing({ status: 'generating' }));
+  await dialog(page).getByRole('button', { name: 'Проверить состояние' }).click();
+  await expect(dialog(page).getByText('Дождитесь завершения генерации и проверьте состояние.')).toBeVisible();
+  loginServer.controls.detailError = 503;
+  await expect(page.getByText('Не удалось проверить состояние', { exact: true })).toBeVisible();
+  await dialog(page).getByRole('button', { name: 'Отмена', exact: true }).click();
+  await expect(dialog(page)).toHaveCount(0);
+  await expect(page.getByText(/Откройте «Удалить объявление»/)).toHaveCount(0);
+  loginServer.controls.detailError = null;
+  loginServer.controls.detail = listingDetails();
+  await page.getByRole('button', { name: 'Проверить состояние' }).click();
+  await expect(trigger(page)).toBeEnabled();
+  expect(writes(loginServer)).toHaveLength(1);
 });
 
 test('потерянный ответ после удаления: сверка GET404 без второго DELETE', async ({ page, loginServer }) => {

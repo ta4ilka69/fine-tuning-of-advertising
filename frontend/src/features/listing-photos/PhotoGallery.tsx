@@ -5,7 +5,7 @@ import { AppButton } from '../../shared/ui/AppButton';
 import { AppNotice } from '../../shared/ui/AppNotice';
 import { IconButton } from '../../shared/ui/IconButton';
 import { LoadingState } from '../../shared/ui/LoadingState';
-import { PhotoManager, type PhotoState, type Upload } from './model';
+import { PhotoManager, generationLocked, type PhotoState, type Upload } from './model';
 import classes from './PhotoGallery.module.css';
 
 function Preview({ file, url, name }: { file?: File; url?: string | null; name: string }) {
@@ -35,13 +35,13 @@ function UploadedPhoto({ photo, disabled, deleting, onRemove, buttonRef }: {
   </li>;
 }
 
-function QueuedPhoto({ entry, onDismiss }: { entry: Upload; onDismiss: () => void }) {
+function QueuedPhoto({ entry, locked, onDismiss }: { entry: Upload; locked: boolean; onDismiss: () => void }) {
   return <li className={classes.photo}>
     <Preview file={entry.file} name={entry.name} />
     <div className={classes.description}><Text fw={600} className={classes.name}>{entry.name}</Text>
       <Text size="sm" c={entry.error ? 'red.8' : 'dimmed'}>{entry.error ?? (entry.state === 'uploading' ? 'Загружаем файл…' : 'В очереди')}</Text>
     </div>
-    <IconButton label={`Убрать из очереди ${entry.name}`} disabled={entry.state === 'uploading'} onClick={onDismiss}>×</IconButton>
+    <IconButton label={`Убрать из очереди ${entry.name}`} disabled={entry.state === 'uploading' || locked} onClick={onDismiss}>×</IconButton>
   </li>;
 }
 
@@ -52,7 +52,7 @@ export function PhotoGallery({ manager, state }: { manager: PhotoManager; state:
   const focusTarget = useRef<{ id: string; index: number } | undefined>(undefined);
   const listing = state.listing!;
   const uploading = state.uploads.some((entry) => entry.state === 'uploading' || entry.state === 'waiting');
-  const locked = listing.status === 'generating';
+  const locked = generationLocked(state);
   const disabled = !!state.listingDeletion || !!state.editing || locked || !state.verified || state.reading || state.paused || !!state.deleting || uploading;
   const count = manager.count();
   useEffect(() => {
@@ -66,7 +66,7 @@ export function PhotoGallery({ manager, state }: { manager: PhotoManager; state:
       <Title order={2} id="photos-heading" ref={heading} tabIndex={-1}>Фото · {count} из 20</Title>
       <Text c="dimmed" id="photos-requirements">JPEG, PNG · до 15 МБ каждый · максимум 20 фото</Text>
       {state.editing && <Text c="dimmed">Загрузка и удаление фотографий недоступны, пока открыта форма редактирования.</Text>}
-      {locked && <AppNotice tone="info" title="Идёт генерация">Добавлять и удалять фотографии можно после её завершения.</AppNotice>}
+      {state.editing && listing.status === 'generating' && <AppNotice tone="info" title="Идёт генерация">Добавлять и удалять фотографии можно после её завершения.</AppNotice>}
       {state.error && <AppNotice tone="error" title="Очередь остановлена"><p>{state.error}</p>
         <div className={classes.actions}><AppButton intent="secondary" disabled={!!state.listingDeletion || state.reading} onClick={manager.refresh}>Обновить фотографии</AppButton>
           {state.verified && !locked && <AppButton disabled={!!state.listingDeletion || !!state.editing || state.reading} onClick={manager.resume}>Продолжить очередь</AppButton>}</div>
@@ -88,7 +88,7 @@ export function PhotoGallery({ manager, state }: { manager: PhotoManager; state:
           onRemove={() => { focusTarget.current = { id: photo.id, index }; manager.remove(photo.id); }} />)}
       </ul>
       {state.uploads.length > 0 && <div><Title order={3} size="h4" mb="sm">Очередь загрузки</Title><ul className={classes.photos} aria-label="Очередь загрузки">
-        {state.uploads.map((entry) => <QueuedPhoto key={entry.key} entry={entry} onDismiss={() => manager.dismiss(entry.key)} />)}
+        {state.uploads.map((entry) => <QueuedPhoto key={entry.key} entry={entry} locked={locked} onDismiss={() => manager.dismiss(entry.key)} />)}
       </ul></div>}
       <Text size="sm" c="dimmed">Файлы после загрузки обрабатываются на сервере. Фотографии сохраняют порядок загрузки.</Text>
       <div role="status" aria-live="polite" aria-atomic="true" className={classes.live}>{state.announcement}</div>

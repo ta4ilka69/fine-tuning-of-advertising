@@ -36,10 +36,12 @@ test('ошибка сервера: данные сохранены, повтор
   expect(fetchMock.mock.calls.filter(([, options]) => options?.method === 'DELETE')).toHaveLength(1);
 });
 
-test('черновик без адреса и блокировка известной генерации', async () => {
+test('известная генерация блокирует открытие диалога удаления', async () => {
   fetchMock.mockResolvedValue(json(listingDetails(listing({ address: null, status: 'generating', hasResult: false }))));
-  await open(); expect(dialog()).toHaveTextContent('Черновик от'); expect(within(dialog()).queryByRole('button', { name: 'Удалить' })).not.toBeInTheDocument();
-  await userEvent.click(within(dialog()).getByRole('button', { name: 'Отмена' })); expect(trigger()).toBeEnabled();
+  render(<MantineProvider env="test"><ListingDetails id={listing().id} recheck={recheck} /></MantineProvider>);
+  expect(await screen.findByText('Готовим тексты и рекомендации')).toBeVisible();
+  expect(trigger()).toBeDisabled();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 
 test('повторные события и unmount отменяют DELETE; поздний ответ не меняет маршрут', async () => {

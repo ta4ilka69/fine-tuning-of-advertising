@@ -29,6 +29,7 @@ export default function EditListing({ initial, manager, state, onCancel, recheck
   const [snapshot, setSnapshot] = useState(initial);
   const [revision, setRevision] = useState(0);
   const locked = state.listing?.status === 'generating';
+  const pollDeferred = !!state.generation?.pollRetryAt;
   const observed = state.inaccessible ? 'access' : locked ? 'busy' : state.listing && state.listing.version !== snapshot.version && state.listing.version !== state.editSavedVersion ? 'conflict' : undefined;
   const [block, setBlock] = useState<Block | undefined>(observed);
   const [confirm, setConfirm] = useState(false);
@@ -49,7 +50,7 @@ export default function EditListing({ initial, manager, state, onCancel, recheck
   }, [suspended]);
 
   const reload = async (replace: boolean) => {
-    if (reading || suspended) return;
+    if (reading || suspended || pollDeferred) return;
     recheck(false);
     const controller = new AbortController();
     active.current = controller;
@@ -74,8 +75,8 @@ export default function EditListing({ initial, manager, state, onCancel, recheck
     {block && <AppNotice tone={block === 'conflict' ? 'warning' : 'info'} title={block === 'conflict' ? 'Объявление изменилось в другом окне' : block === 'busy' ? 'Идёт генерация' : 'Доступ к объявлению изменился'}>
       <Stack gap="sm">
         <Text>{block === 'conflict' ? 'Ваши правки остались в форме. Загрузите актуальные данные перед новым сохранением.' : block === 'busy' ? 'Изменение недоступно до завершения генерации. Ваши правки остались в форме.' : 'Ваши правки остались в форме. Проверьте доступ перед сохранением.'}</Text>
-        <div>{block === 'busy' && <AppButton intent="secondary" disabled={reading || suspended} onClick={() => { void reload(false); }}>Проверить состояние</AppButton>}</div>
-        <div><AppButton intent="secondary" loading={reading} disabled={suspended} onClick={requestReplace}>Загрузить актуальные данные</AppButton></div>
+        <div>{block === 'busy' && <AppButton intent="secondary" disabled={reading || suspended || pollDeferred} onClick={() => { void reload(false); }}>Проверить состояние</AppButton>}</div>
+        <div><AppButton intent="secondary" loading={reading} disabled={suspended || pollDeferred} onClick={requestReplace}>Загрузить актуальные данные</AppButton></div>
         {local && <div><AppButton intent="quiet" onClick={() => { setCopy(localText(local)); setShowCopy(true); }}>Посмотреть мои правки</AppButton></div>}
       </Stack>
     </AppNotice>}
@@ -95,7 +96,7 @@ export default function EditListing({ initial, manager, state, onCancel, recheck
       }} />
     <Modal opened={confirm && !suspended} onClose={() => setConfirm(false)} title="Загрузить актуальные данные?" centered>
       <Stack><Text>Загрузка заменит введённые значения. Ваши правки останутся в памяти этой страницы: их можно открыть и скопировать вручную.</Text>
-        <AppButton onClick={() => { void reload(true); }}>Загрузить и заменить форму</AppButton>
+        <AppButton disabled={pollDeferred} onClick={() => { void reload(true); }}>Загрузить и заменить форму</AppButton>
         <AppButton intent="secondary" onClick={() => setConfirm(false)}>Вернуться к форме</AppButton>
       </Stack>
     </Modal>

@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { test, expect } from './login-fixture';
 import { listing, listingDetails } from '../fixtures/listings';
 
@@ -7,7 +8,6 @@ for (const width of [1440, 390]) for (const state of ['confirm', 'pending', 'err
     await context.addCookies([{ name: 'session', value: 'test-session', url: `${loginServer.url}/api/v1` }]);
     await page.setViewportSize({ width, height: 900 });
     if (state === 'draft') loginServer.controls.detail = listingDetails(listing({ address: null, status: 'draft', hasResult: false }));
-    if (state === 'busy') loginServer.controls.detail = { ...listingDetails(), status: 'generating' };
     await page.goto(`${loginServer.url}/app/listings/${listing().id}`);
     await expect(page.getByRole('button', { name: /Меню пользователя/ })).toBeVisible();
     await page.getByRole('button', { name: 'Удалить объявление', exact: true }).click();
@@ -16,6 +16,12 @@ for (const width of [1440, 390]) for (const state of ['confirm', 'pending', 'err
     try {
       if (state === 'pending') loginServer.controls.holdListingDelete = new Promise((resolve) => { release = resolve; });
       if (state === 'error') loginServer.controls.deleteListingError = 503;
+      if (state === 'busy') {
+        loginServer.controls.deleteListingError = 409;
+        loginServer.controls.deleteListingErrorCode = 'LISTING_BUSY';
+        await dialog.getByRole('button', { name: 'Удалить', exact: true }).click();
+        await expect(dialog.getByText('Удаление временно недоступно')).toBeVisible();
+      }
       if (state === 'error' || state === 'pending') {
         await dialog.getByRole('button', { name: 'Удалить', exact: true }).click();
         if (state === 'error') await expect(dialog.getByRole('alert')).toBeVisible();
@@ -23,7 +29,9 @@ for (const width of [1440, 390]) for (const state of ['confirm', 'pending', 'err
       }
       await expect(dialog).toBeVisible(); await expect(dialog.getByRole('button', { name: state === 'pending' ? 'Закрыть окно' : 'Отмена', exact: true })).toBeFocused();
       await page.evaluate(() => document.fonts.ready);
-      await expect(page).toHaveScreenshot(`delete-listing-${state}-${width}.png`);
+      await expect(page).toHaveScreenshot(`delete-listing-${state}-${width}.png`, state === 'busy' ? undefined : {
+        stylePath: fileURLToPath(new URL('../fixtures/hide-generation.css', import.meta.url)),
+      });
     } finally { await page.goto('about:blank'); release?.(); }
   });
 }
