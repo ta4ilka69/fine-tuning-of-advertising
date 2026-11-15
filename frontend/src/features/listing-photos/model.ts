@@ -180,6 +180,7 @@ export class PhotoManager {
   cancelListingDelete() {
     const phase = this.state.listingDeletion?.phase;
     if (phase !== 'busy' && (!this.state.verified || phase === 'deleting' || phase === 'checking' || phase === 'uncertain' || phase === 'deleted')) return;
+    if (phase === 'busy' && !this.state.verified && this.state.listing?.status !== 'generating') this.refreshNeeded = true;
     this.update({ listingDeletion: undefined });
     void this.pump();
   }

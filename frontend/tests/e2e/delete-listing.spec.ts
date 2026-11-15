@@ -105,6 +105,19 @@ test('ошибка фоновой сверки после LISTING_BUSY позв�
   expect(writes(loginServer)).toHaveLength(1);
 });
 
+test('сразу после LISTING_BUSY отмена удаления перечитывает статус карточки', async ({ page, loginServer }) => {
+  await open(page, loginServer.url);
+  loginServer.controls.deleteListingError = 409;
+  loginServer.controls.deleteListingErrorCode = 'LISTING_BUSY';
+  await confirm(page).click();
+  await expect(dialog(page).getByText('Удаление временно недоступно')).toBeVisible();
+  await dialog(page).getByRole('button', { name: 'Отмена', exact: true }).click();
+  await expect(dialog(page)).toHaveCount(0);
+  await expect(trigger(page)).toBeEnabled();
+  expect(loginServer.calls.filter((call) => call.method === 'GET' && call.path === `/api/v1/listings/${id}`)).toHaveLength(2);
+  expect(writes(loginServer)).toHaveLength(1);
+});
+
 test('отмена удаления после LISTING_BUSY и временного сбоя возвращает ручную сверку генерации', async ({ page, loginServer }) => {
   await open(page, loginServer.url);
   loginServer.controls.deleteListingError = 409;
