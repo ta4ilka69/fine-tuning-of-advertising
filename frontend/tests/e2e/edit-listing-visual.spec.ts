@@ -9,6 +9,7 @@ for (const state of ['desktop', 'mobile', 'tablet', 'narrow', 'error', 'conflict
     const detail = { ...listingDetails(), data: { deal: { type: 'sale', price: 9800000, mortgageAllowed: true }, object: { type: 'flat', roomsCount: 2, totalArea: 54, livingArea: 30, kitchenArea: 10, floor: 7 }, building: { floorsCount: 12 }, location: { address: 'Санкт-Петербург, Лесной проспект, 10', undergrounds: [{ name: 'Лесная', minutes: 7, transportType: 'walk' }] }, extra: 'Окна во двор. Мебель и техника остаются.' } };
     loginServer.controls.detail = detail;
     await page.goto(`${loginServer.url}/app/listings/${listing().id}`);
+    await expect(page.getByRole('button', { name: /Меню пользователя:/ })).toBeVisible();
     await page.getByRole('button', { name: 'Редактировать объявление', exact: true }).click();
     await expect(page.getByRole('form', { name: 'Редактирование объявления' })).toBeVisible();
     if (['error', 'conflict', 'locked', 'confirm', 'copy'].includes(state)) {
@@ -21,6 +22,7 @@ for (const state of ['desktop', 'mobile', 'tablet', 'narrow', 'error', 'conflict
       if (state === 'confirm') await page.getByRole('button', { name: 'Загрузить актуальные данные' }).click();
       if (state === 'copy') await page.getByRole('button', { name: 'Посмотреть мои правки' }).click();
     }
+    await page.mouse.move(0, 0);
     await page.evaluate(() => document.fonts.ready); await page.evaluate(() => window.scrollTo(0, 0));
     await expect(page).toHaveScreenshot(`edit-listing-${state}.png`, { fullPage: state !== 'confirm' && state !== 'copy' });
   });

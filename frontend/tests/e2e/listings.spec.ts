@@ -38,6 +38,45 @@ for (const width of [320, 390, 768, 1440]) {
   });
 }
 
+for (const width of [320, 1280]) {
+  test(`ссылка на объявление остаётся на месте после загрузки меню, ${width}px`, async ({ page, context, loginServer }) => {
+    const item = listingItems[0]!;
+    await context.addCookies([{ name: 'session', value: 'test-session', url: `${loginServer.url}/api/v1` }]);
+    loginServer.controls.listingPages = [{ items: [item], nextCursor: null }];
+    await page.setViewportSize({ width, height: 900 });
+
+    let releaseMenu!: () => void;
+    const menuReady = new Promise<void>((resolve) => { releaseMenu = resolve; });
+    await page.route('**/assets/MemberActions-*.js', async (route) => {
+      await menuReady;
+      await route.continue();
+    });
+
+    try {
+      await page.goto(`${loginServer.url}/app`);
+      await expect(page.getByRole('banner').getByRole('status')).toHaveText('Загружаем меню');
+      const link = page.getByRole('link', { name: item.address!, exact: true });
+      await expect(link).toBeVisible();
+      await page.evaluate(async () => { await document.fonts.ready; });
+      const firstLine = () => link.evaluate((element) => {
+        const { x, y, width, height } = element.getClientRects()[0]!;
+        return { x, y, width, height };
+      });
+      const before = await firstLine();
+
+      releaseMenu();
+      await expect(page.getByRole('button', { name: /Меню пользователя:/ })).toBeVisible();
+      const after = await firstLine();
+      expect(after.y).toBeCloseTo(before.y, 0);
+
+      await page.mouse.click(before.x + before.width / 2, before.y + before.height / 2);
+      await expect(page.getByRole('button', { name: 'Редактировать объявление', exact: true })).toBeVisible();
+    } finally {
+      releaseMenu();
+    }
+  });
+}
+
 test('пагинация: непрозрачный cursor, ошибка с сохранением списка, повтор и конец', async ({ page, context, loginServer }) => {
   await context.addCookies([{ name: 'session', value: 'test-session', url: `${loginServer.url}/api/v1` }]);
   loginServer.controls.listingPages = [{ items: [listingItems[0]], nextCursor: 'opaque+/=&?' }, { items: [listingItems[0], listingItems[1]], nextCursor: null }];
