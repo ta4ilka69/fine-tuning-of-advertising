@@ -52,6 +52,10 @@
   text-underline-offset: var(--mantine-spacing-xs);
 }
 
+.menuLoading {
+  min-block-size: var(--app-control-height);
+}
+
 .account {
   max-width: 16rem;
 }
@@ -105,6 +109,20 @@
     width: var(--app-control-height);
     min-width: var(--app-control-height);
     padding-inline: 0;
+  }
+
+  .header .menuLoading {
+    flex: 0 0 var(--app-control-height);
+    justify-content: center;
+  }
+
+  .menuLoadingLabel {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    clip-path: inset(50%);
+    overflow: hidden;
+    white-space: nowrap;
   }
 
   .mobileIcon {

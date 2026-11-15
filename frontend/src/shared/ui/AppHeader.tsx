@@ -1,5 +1,5 @@
+import { Group, Loader, Text } from '@mantine/core';
 import { lazy, Suspense } from 'react';
-import { LoadingState } from './LoadingState';
 import { AppButton } from './AppButton';
 import classes from './AppHeader.module.css';
 
@@ -28,7 +28,12 @@ export function AppHeader(props: AppHeaderProps) {
         {props.variant === 'guest' ? (
           props.onStart && <AppButton className={classes.start} onClick={props.onStart}>Начать работу</AppButton>
         ) : (
-          <Suspense fallback={<LoadingState label="Загружаем меню" />}>
+          <Suspense fallback={
+            <Group className={classes.menuLoading} gap="sm" wrap="nowrap" role="status">
+              <Loader aria-hidden="true" />
+              <Text className={classes.menuLoadingLabel} size="sm" c="dimmed">Загружаем меню</Text>
+            </Group>
+          }>
             <MemberActions {...props} />
           </Suspense>
         )}
