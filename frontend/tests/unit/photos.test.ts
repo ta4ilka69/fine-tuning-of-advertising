@@ -158,12 +158,12 @@ test('опрос не пересекается, не откатывает versio
   expect(value.snapshot().listing!.version).toBe(2); expect(value.snapshot().verified).toBe(false);
 });
 
-test('generating блокирует записи, refresh не возобновляет очередь автоматически', async () => {
+test('generating блокирует записи до подтверждения ready', async () => {
   const get = vi.spyOn(listings, 'get').mockResolvedValue({ ...overview(), status: 'generating' });
   const upload = vi.spyOn(photos, 'upload'); const remove = vi.spyOn(photos, 'remove'); const value = manager(); await loaded(value);
   value.add([file()]); value.remove(photo.id); value.resume(); expect(upload).not.toHaveBeenCalled(); expect(remove).not.toHaveBeenCalled();
   get.mockResolvedValue(overview()); value.refresh(); await vi.waitFor(() => expect(value.snapshot().listing!.status).toBe('ready'));
-  expect(value.snapshot().paused).toBe(true); value.resume(); expect(value.snapshot().paused).toBe(false);
+  expect(value.snapshot().paused).toBe(false);
 });
 
 test('уход отменяет запрос и не отправляет остаток очереди после позднего ответа', async () => {

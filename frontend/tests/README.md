@@ -9,7 +9,7 @@ npm run check:api
 npm run test:coverage
 npm run build
 npm run check:bundle
-npx playwright install chromium
+npx playwright install firefox webkit
 npm run test:e2e
 
 ```
@@ -41,19 +41,21 @@ npx vite --config tests/ui/vite.config.ts --port 4174
 
 ## Браузеры
 
-Для Chromium, Firefox и WebKit:
+Локально проверяйте сценарии в Firefox и WebKit. Chromium запускается в GitHub Actions.
 
 ```sh
-npx playwright install --with-deps
+npx playwright install firefox webkit
 npm run test:browsers
 
 ```
 
-Полный прогон ограничен десятью минутами. Для одного браузера добавьте `-- --project=chromium`, `-- --project=firefox` или `-- --project=webkit`. Лимит отдельного теста — 30 секунд.
+Полный прогон ограничен десятью минутами. Для одного браузера добавьте `-- --project=firefox` или `-- --project=webkit`. Лимит отдельного теста — 30 секунд.
 
 ## Скриншоты
 
 Проверяются главная на ширинах 1440, 768, 360 и 320 px, состояния компонентов на 1440 и 320 px, наведение, фокус и нажатие кнопки. Для списка объявлений сравниваются desktop/mobile, пустой список на двух ширинах, загрузка и ошибка. Для входа сравниваются desktop, mobile, ошибка и загрузка; для регистрации — desktop, mobile, 320 px, ошибки полей, занятый логин и загрузка. Доступность списка и обеих форм проверяется на ширинах 320, 390, 768 и 1440 px.
+
+Локально `npm run test:visual` сохраняет снимки ожидания и ошибки генерации в WebKit.
 
 Скриншотные эталоны хранятся в `frontend/tests/e2e/screenshots/`. Они сравниваются в Linux ARM64 в образе `mcr.microsoft.com/playwright:v1.64.1-noble`. Команда сравнения в этом окружении:
 

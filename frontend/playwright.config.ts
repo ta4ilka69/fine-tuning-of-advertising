@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const externalURL = process.env.E2E_BASE_URL;
+const onGitHubActions = process.env.GITHUB_ACTIONS === 'true';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -28,9 +29,11 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
-    { name: 'firefox', testIgnore: '**/visual.spec.ts', use: { ...devices['Desktop Firefox'] } },
-    { name: 'webkit', testIgnore: '**/visual.spec.ts', use: { ...devices['Desktop Safari'] } },
+    ...(onGitHubActions
+      ? [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }]
+      : []),
+    { name: 'firefox', grepInvert: /@visual/, use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', grepInvert: onGitHubActions ? /@visual/ : /@visual(?!.*@capture)/, use: { ...devices['Desktop Safari'] } },
   ],
   webServer: externalURL ? undefined : {
     command: 'npm run preview -- --host 0.0.0.0 --port 4173 --strictPort',

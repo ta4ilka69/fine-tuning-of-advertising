@@ -37,7 +37,7 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 const hasText = (value: unknown): value is string => typeof value === 'string' && /\S/.test(value);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function isFieldIssue(value: unknown): value is FieldIssue {
+export function isFieldIssue(value: unknown): value is FieldIssue {
   return isRecord(value) && hasText(value.code) && typeof value.field === 'string'
     && value.field.startsWith('/') && hasText(value.message);
 }
