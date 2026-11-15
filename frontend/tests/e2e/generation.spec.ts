@@ -147,6 +147,65 @@ flow('потерянный 202: сверка через GET без повтор�
   expect(starts).toBe(1);
 });
 
+flow('новый результат подтверждает быстрый повтор после потерянного 202 без изменения даты', async ({ page, loginServer, flow }) => {
+  await flow.choose();
+  const result = structuredClone(original.result!);
+  result.channels[0]!.title = 'Обновлённый заголовок';
+  let attempts = 0;
+  await page.route(`**${listingPath}/generations`, (route) => {
+    attempts += 1;
+    loginServer.controls.detail = { ...original, result };
+    return route.abort('failed');
+  });
+  await flow.launch().click();
+  await expect.poll(() => loginServer.calls.filter((call) => call.path === listingPath && call.method === 'GET').length).toBeGreaterThan(1);
+  await expect(flow.launch()).toBeEnabled();
+  await expect(page.getByText('Подготовка завершена', { exact: true })).toBeVisible();
+  await expect(page.getByText('Не удалось подтвердить запуск. Проверьте состояние объявления')).toHaveCount(0);
+  expect(attempts).toBe(1);
+});
+
+flow('общий 409 проверки обновляет версию и сохраняет сообщение о конфликте', async ({ page, loginServer, flow }) => {
+  await flow.choose();
+  const fresh = { ...original, version: original.version + 1, updatedAt: generating.updatedAt };
+  await page.route(`**${listingPath}/validate`, (route) => {
+    loginServer.controls.detail = fresh;
+    return route.fulfill({ status: 409, contentType: 'application/problem+json', json: problem(409, 'CONFLICT') });
+  }, { times: 1 });
+  await flow.launch().click();
+  await expect(page.getByText('Объявление изменилось. Проверьте актуальные данные перед запуском')).toBeVisible();
+  expect(flow.posts).toHaveLength(0);
+  await expect(flow.launch()).toBeEnabled();
+  await flow.launch().click();
+  await expect.poll(() => flow.validations).toEqual([{ expectedVersion: fresh.version }]);
+});
+
+for (const status of [403, 404]) {
+  flow(`отказ ${status} в проверке генерации не скрывает доступную карточку`, async ({ page, loginServer, flow }) => {
+    await flow.choose();
+    await page.route(`**${listingPath}/validate`, (route) => route.fulfill({
+      status, contentType: 'application/problem+json', json: problem(status, status === 403 ? 'FORBIDDEN' : 'NOT_FOUND'),
+    }));
+    await flow.launch().click();
+    await expect(page.getByText('Сервер не разрешил запустить генерацию. Попробуйте позже')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Редактировать объявление', exact: true })).toBeEnabled();
+    expect(loginServer.calls.filter((call) => call.path === listingPath && call.method === 'GET')).toHaveLength(2);
+    expect(flow.posts).toHaveLength(0);
+  });
+}
+
+flow('при 429 опроса кнопка показывает паузу, следующий GET получает готовый результат', async ({ page, loginServer, flow }) => {
+  await flow.choose();
+  await page.route(`**${listingPath}`, (route) => route.fulfill({
+    status: 429, contentType: 'application/problem+json', json: problem(429, 'TOO_MANY_REQUESTS'), headers: { 'Retry-After': '3' },
+  }), { times: 1 });
+  await flow.launch().click();
+  await expect(page.getByRole('button', { name: /^Проверить через \d+ с$/ })).toBeDisabled();
+  loginServer.controls.detail = { ...original };
+  await expect(page.getByText('Подготовка завершена', { exact: true })).toBeVisible();
+  expect(flow.posts).toHaveLength(1);
+});
+
 flow('неудачная сверка после потери ответа блокирует новый запуск до успешного GET', async ({ page, loginServer, flow }) => {
   await flow.choose();
   await page.route(`**${listingPath}/generations`, async (route) => {

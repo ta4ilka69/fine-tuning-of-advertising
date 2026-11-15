@@ -2,10 +2,12 @@ import type { FieldIssue, Listing } from '../../shared/api/types';
 
 export type GenerationState = {
   phase?: 'validating' | 'starting' | 'checking';
+  reconciliation?: 'uncertain' | 'conflict' | 'busy' | 'unavailable';
   errors?: FieldIssue[];
   warnings?: FieldIssue[];
   message?: string;
   retryAt?: number;
+  pollRetryAt?: number;
   pollError?: string;
 };
 
@@ -19,4 +21,24 @@ export function retainResult(current: Listing, previous: Listing | undefined): L
   return (current.status === 'generating' || current.status === 'failed') && !current.result && previous?.result
     ? { ...current, hasResult: true, result: previous.result }
     : current;
+}
+
+export function observedGeneration(current: Listing, previous: Listing | undefined) {
+  if (current.status === 'generating') return true;
+  if (current.version !== previous?.version || !['ready', 'failed'].includes(current.status)) return false;
+  if (current.status !== previous.status) return true;
+  if (current.status === 'failed') {
+    const error = current.generationError;
+    const previousError = previous.generationError;
+    return error?.code !== previousError?.code || error?.title !== previousError?.title
+      || error?.status !== previousError?.status || error?.detail !== previousError?.detail;
+  }
+  const channels = current.result?.channels ?? [];
+  const previousChannels = new Map(previous.result?.channels.map((result) => [result.channel.id, result]));
+  return channels.length !== previousChannels.size || channels.some((result) => {
+    const before = previousChannels.get(result.channel.id);
+    return !before || result.channelVersionId !== before.channelVersionId || result.title !== before.title
+      || result.text !== before.text || result.score !== before.score || result.scoreReason !== before.scoreReason
+      || result.photoIds.length !== before.photoIds.length || result.photoIds.some((id, index) => id !== before.photoIds[index]);
+  });
 }

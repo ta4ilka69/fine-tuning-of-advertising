@@ -27,7 +27,7 @@ export function DeleteListing({ manager, state, suspended }: { manager: PhotoMan
         {pending && <LoadingState label={phase === 'deleting' ? 'Удаляем объявление' : 'Проверяем состояние объявления'} />}
         <AppButton ref={cancelButton} intent="secondary" data-autofocus onClick={close}>{pending ? 'Закрыть окно' : 'Отмена'}</AppButton>
         {(phase === 'confirm' || phase === 'error' || phase === 'deleting') && <AppButton intent="danger" loading={phase === 'deleting'} onClick={() => { void manager.confirmListingDelete(); }}>Удалить</AppButton>}
-        {['uncertain', 'conflict', 'busy', 'denied', 'checking'].includes(phase!) && <AppButton intent="secondary" loading={phase === 'checking'} disabled={state.reading} onClick={() => { void manager.checkListingDelete(); }}>{phase === 'conflict' ? 'Загрузить актуальную карточку' : 'Проверить состояние'}</AppButton>}
+        {['uncertain', 'conflict', 'busy', 'denied', 'checking'].includes(phase!) && <AppButton intent="secondary" loading={phase === 'checking'} disabled={state.reading || !!state.generation?.pollRetryAt} onClick={() => { void manager.checkListingDelete(); }}>{phase === 'conflict' ? 'Загрузить актуальную карточку' : 'Проверить состояние'}</AppButton>}
         {phase === 'missing' && <AppButton onClick={() => navigate('/app')}>К списку объявлений</AppButton>}
       </Stack>}
     </Modal>

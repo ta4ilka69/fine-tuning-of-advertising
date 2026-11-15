@@ -1,5 +1,5 @@
 import { generation } from '../../shared/api/generation';
-import { photoRequirement, retainResult, type GenerationState } from './generation';
+import { observedGeneration, photoRequirement, retainResult, type GenerationState } from './generation';
 import { RequestError } from '../../shared/api/errors';
 import { listings } from '../../shared/api/listings';
 import type { ListingData } from '../../shared/api/listing-data';
@@ -70,7 +70,6 @@ export class PhotoManager {
   private controller?: AbortController;
   private timer?: ReturnType<typeof setTimeout>;
   private refreshNeeded = true;
-  private nextGenerationPoll = 0;
   private metadataDirty = false;
   private reconcileDeletion?: string;
   private sequence = 0;
@@ -92,7 +91,7 @@ export class PhotoManager {
   stop() {
     this.active = false;
     if (this.state.generation?.phase === 'starting') {
-      this.update({ generation: { ...this.state.generation, phase: 'checking', message: 'Не удалось подтвердить запуск. Проверьте состояние объявления' } });
+      this.checkGeneration('uncertain', this.state.generation.warnings);
     } else if (this.state.generation?.phase === 'validating') {
       this.update({ generation: undefined });
     }
@@ -217,7 +216,8 @@ export class PhotoManager {
 
   async checkListingDelete() {
     const deletion = this.state.listingDeletion;
-    if (!this.active || this.running || !deletion || ['deleting', 'checking', 'deleted'].includes(deletion.phase)) return;
+    if (!this.active || this.running || !deletion || ['deleting', 'checking', 'deleted'].includes(deletion.phase)
+      || (this.state.generation?.pollRetryAt ?? 0) > Date.now()) return;
     clearTimeout(this.timer);
     const controller = new AbortController();
     this.controller = controller;
@@ -259,7 +259,7 @@ export class PhotoManager {
   }
 
   refresh = () => {
-    if (!this.active || this.state.listingDeletion || this.running || this.saving || this.nextGenerationPoll > Date.now()) return;
+    if (!this.active || this.state.listingDeletion || this.running || this.saving || (this.state.generation?.pollRetryAt ?? 0) > Date.now()) return;
     this.refreshNeeded = true;
     void this.pump();
   };
@@ -299,16 +299,15 @@ export class PhotoManager {
       const error = failure instanceof RequestError ? failure : undefined;
       const starting = this.state.generation?.phase === 'starting';
       const warnings = this.state.generation?.warnings;
-      if (error?.code === 'VERSION_CONFLICT' || error?.code === 'LISTING_BUSY'
-        || (starting && (error?.kind !== 'http' || (error.status ?? 0) >= 500))) {
-        this.refreshNeeded = true;
-        this.update({ generation: { phase: 'checking', warnings, message: error?.code === 'VERSION_CONFLICT'
-          ? 'Объявление изменилось. Проверьте актуальные данные перед запуском'
-          : error?.code === 'LISTING_BUSY' ? 'Сервер сообщил, что генерация уже идёт'
-            : 'Не удалось подтвердить запуск. Проверьте состояние объявления' } });
-      } else if (error?.status === 401 || error?.status === 403 || error?.status === 404) {
+      if (error?.status === 409) {
+        this.checkGeneration(error.code === 'LISTING_BUSY' ? 'busy' : 'conflict', warnings);
+      } else if (starting && (error?.kind !== 'http' || (error.status ?? 0) >= 500)) {
+        this.checkGeneration('uncertain', warnings);
+      } else if (error?.status === 403 || error?.status === 404) {
+        this.checkGeneration('unavailable', warnings);
+      } else if (error?.status === 401) {
         this.update({ verified: false, inaccessible: true, error: message(error), generation: undefined });
-        if (error.status === 401) this.recheck(true);
+        this.recheck(true);
       } else if (error?.status === 422 && error.fieldErrors?.length) {
         this.update({ generation: { errors: error.fieldErrors, warnings } });
       } else if (error?.status === 429) {
@@ -325,6 +324,18 @@ export class PhotoManager {
         void this.pump();
       }
     }
+  }
+
+  private checkGeneration(reconciliation: NonNullable<GenerationState['reconciliation']>, warnings: GenerationState['warnings']) {
+    const messages = {
+      uncertain: 'Не удалось подтвердить запуск. Проверьте состояние объявления',
+      conflict: 'Объявление изменилось. Проверьте актуальные данные перед запуском',
+      unavailable: 'Сервер не разрешил запустить генерацию. Попробуйте позже',
+    };
+    this.refreshNeeded = true;
+    this.update({ generation: {
+      phase: 'checking', reconciliation, warnings, message: reconciliation === 'busy' ? undefined : messages[reconciliation],
+    } });
   }
 
   private clearGenerationFeedback() {
@@ -347,7 +358,7 @@ export class PhotoManager {
     if (!read && !deletion && !upload) {
       const pollingGeneration = listing?.status === 'generating' && !this.state.inaccessible;
       if (pollingGeneration || (this.state.verified && !this.state.inaccessible && listing?.photos.some((photo) => photo.status === 'processing'))) {
-        const delay = pollingGeneration ? Math.max(1500, this.nextGenerationPoll - Date.now()) : 1500;
+        const delay = pollingGeneration ? Math.max(2000, (this.state.generation?.pollRetryAt ?? 0) - Date.now()) : 1500;
         this.timer = setTimeout(() => { this.refreshNeeded = true; void this.pump(); }, Math.min(delay, 2 ** 31 - 1));
       }
       return;
@@ -376,12 +387,13 @@ export class PhotoManager {
         });
         const launch = this.state.generation;
         const checked = launch?.phase === 'checking';
-        const reconciled = current.status === 'generating'
-          || ((current.status === 'ready' || current.status === 'failed') && (current.status !== listing?.status || current.updatedAt !== listing.updatedAt));
-        this.nextGenerationPoll = 0;
+        const confirmed = launch?.reconciliation === 'uncertain' && observedGeneration(current, listing);
         this.update({ listing: current, uploads, verified: true, inaccessible: false,
           ...(removed ? { removed } : {}),
-          ...(launch && { generation: { ...launch, ...(checked && { phase: undefined, message: reconciled ? undefined : launch.message }), pollError: undefined } }),
+          ...(launch && { generation: { ...launch,
+            ...(checked && { phase: undefined, reconciliation: undefined, message: confirmed ? undefined : launch.message }),
+            pollError: undefined, pollRetryAt: undefined,
+          } }),
           ...(listing?.status === 'generating' && current.status !== 'generating' && !uploads.some((entry) => entry.file) ? { paused: false, error: undefined } : {}),
           ...(current.status === 'generating' && (this.state.editing || uploads.some((entry) => entry.file)) ? { paused: true, error: 'Очередь приостановлена до завершения генерации.' } : {}),
           announcement: removed ? 'Фотография удалена.' : current.photos.some((photo) => photo.status === 'processing') ? 'Фотографии обрабатываются.' : 'Состояние фотографий обновлено.',
@@ -411,14 +423,15 @@ export class PhotoManager {
       const inaccessible = status === 401 || status === 403 || (read && status === 404);
       if (read && generationLocked(this.state) && !inaccessible) {
         const retryAfter = failure instanceof RequestError ? failure.retryAfterSeconds : undefined;
-        if (listing?.status === 'generating') this.nextGenerationPoll = Date.now() + (retryAfter ?? 0) * 1000;
         this.update({ verified: false, generation: { ...this.state.generation,
+          pollRetryAt: retryAfter ? Date.now() + retryAfter * 1000 : undefined,
           pollError: 'Не удалось обновить состояние. Проверьте подключение и попробуйте ещё раз' } });
         return;
       }
       if (deletion && !inaccessible) this.reconcileDeletion = deletion;
       this.deletes = [];
       this.update({ paused: true, verified: false, inaccessible, error,
+        ...(inaccessible && deletionPhase === 'busy' && { listingDeletion: undefined }),
         uploads: this.state.uploads.map((entry) => entry.key === upload?.key ? {
           ...entry, state: uncertain ? 'uncertain' : 'error',
           ...(uncertain ? { file: undefined } : {}),

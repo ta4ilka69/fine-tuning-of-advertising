@@ -60,6 +60,7 @@ export function ListingGeneration({ manager, state, suspended, recheck }: {
   const item = state.listing!;
   const feedback = state.generation;
   const seconds = useRetrySeconds(feedback?.retryAt);
+  const pollSeconds = useRetrySeconds(feedback?.pollRetryAt);
   const waiting = generationLocked(state);
   const blocked = waiting || suspended || !state.verified || !!state.listingDeletion || !!state.deleting || state.uploads.some((entry) => entry.file);
   const photoHint = photoRequirement(item);
@@ -83,7 +84,9 @@ export function ListingGeneration({ manager, state, suspended, recheck }: {
       {feedback?.pollError && <AppNotice tone="error" title="Не удалось проверить состояние">
         <Stack gap="sm" align="flex-start">
           <Text size="sm">{feedback.pollError}</Text>
-          <AppButton intent="secondary" disabled={state.reading || suspended} onClick={manager.refresh}>Проверить состояние</AppButton>
+          <AppButton intent="secondary" disabled={state.reading || suspended || pollSeconds > 0} onClick={manager.refresh}>
+            {pollSeconds ? `Проверить через ${pollSeconds} с` : 'Проверить состояние'}
+          </AppButton>
         </Stack>
       </AppNotice>}
       {!!feedback?.errors?.length && <AppNotice tone="error" title="Проверьте данные для запуска"><Issues issues={feedback.errors} /></AppNotice>}

@@ -87,6 +87,24 @@ test('LISTING_BUSY блокирует удаление до сверки', async
   await expect(page).toHaveURL(`${loginServer.url}/app`);
 });
 
+test('ошибка фоновой сверки после LISTING_BUSY позволяет перечитать карточку', async ({ page, loginServer }) => {
+  await open(page, loginServer.url);
+  loginServer.controls.deleteListingError = 409;
+  loginServer.controls.deleteListingErrorCode = 'LISTING_BUSY';
+  await confirm(page).click();
+  loginServer.controls.detail = listingDetails(listing({ status: 'generating' }));
+  await dialog(page).getByRole('button', { name: 'Проверить состояние' }).click();
+  await expect(dialog(page).getByText('Дождитесь завершения генерации и проверьте состояние.')).toBeVisible();
+  loginServer.controls.detailError = 404;
+  await expect(page.getByText('Не удалось загрузить объявление', { exact: true })).toBeVisible();
+  loginServer.controls.detailError = null;
+  loginServer.controls.detail = listingDetails();
+  await page.getByRole('button', { name: 'Повторить', exact: true }).click();
+  await expect(trigger(page)).toBeEnabled();
+  await expect(dialog(page)).toHaveCount(0);
+  expect(writes(loginServer)).toHaveLength(1);
+});
+
 test('потерянный ответ после удаления: сверка GET404 без второго DELETE', async ({ page, loginServer }) => {
   await open(page, loginServer.url);
   await page.route(`**/api/v1/listings/${id}?expectedVersion=*`, async (route) => { await route.fetch({ maxRetries: 0 }); await route.abort('failed'); });

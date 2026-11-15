@@ -29,15 +29,9 @@ for (const width of [1440, 390]) for (const state of ['confirm', 'pending', 'err
       }
       await expect(dialog).toBeVisible(); await expect(dialog.getByRole('button', { name: state === 'pending' ? 'Закрыть окно' : 'Отмена', exact: true })).toBeFocused();
       await page.evaluate(() => document.fonts.ready);
-      if (state === 'busy') {
-        const file = test.info().outputPath(`delete-listing-busy-${width}.png`);
-        await page.screenshot({ path: file, animations: 'disabled', caret: 'hide' });
-        await test.info().attach('Состояние LISTING_BUSY', { path: file, contentType: 'image/png' });
-      } else {
-        await expect(page).toHaveScreenshot(`delete-listing-${state}-${width}.png`, {
-          stylePath: fileURLToPath(new URL('../fixtures/hide-generation.css', import.meta.url)),
-        });
-      }
+      await expect(page).toHaveScreenshot(`delete-listing-${state}-${width}.png`, state === 'busy' ? undefined : {
+        stylePath: fileURLToPath(new URL('../fixtures/hide-generation.css', import.meta.url)),
+      });
     } finally { await page.goto('about:blank'); release?.(); }
   });
 }
