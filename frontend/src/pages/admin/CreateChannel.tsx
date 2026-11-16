@@ -1,6 +1,6 @@
 import { Paper, Stack, Switch, Text, Textarea, TextInput, Title } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { adminChannelSettingsPath, navigate } from '../../app/navigation';
 import { adminChannels } from '../../shared/api/admin-channels';
 import { RequestError } from '../../shared/api/errors';
@@ -70,7 +70,7 @@ export function CreateChannel({ draft, onDraftChange, restore }: {
     },
     onValuesChange: (values) => { setFeedback(undefined); onDraftChange({ values }); },
   });
-  const { getInputNode } = form;
+  const getInputNode = useEffectEvent(form.getInputNode);
   const ruleCount = form.values.checklist.length;
 
   useLayoutEffect(() => () => submission.current?.abort(), []);
@@ -78,12 +78,12 @@ export function CreateChannel({ draft, onDraftChange, restore }: {
     if (pending || !feedback) return;
     const field = feedback.field ? getInputNode(feedback.field) : null;
     (field ?? feedbackTarget.current)?.focus();
-  }, [feedback, getInputNode, pending]);
+  }, [feedback, pending]);
   useEffect(() => {
     if (ruleFocus.current === undefined) return;
     getInputNode(`checklist.${ruleFocus.current}.text`)?.focus();
     ruleFocus.current = undefined;
-  }, [getInputNode, ruleCount]);
+  }, [ruleCount]);
 
   const submitChannel = async (values: typeof initialValues) => {
     const { name, description, titleLimit, textLimit, instruction, checklist, isActive } = values;

@@ -76,6 +76,8 @@ test.each([401, 403])('POST %s скрывает форму до перепров
   expect(screen.getByRole('textbox', { name: 'Системный промпт' })).toHaveValue(channel.instruction);
   expect(screen.getByRole('textbox', { name: 'Правило 1' })).toHaveValue(channel.checklist[0]);
   expect(screen.getByRole('alert')).toHaveTextContent('Не удалось создать площадку');
+  await userEvent.tab();
+  expect(screen.getByRole('textbox', { name: 'Название' })).toHaveFocus();
   expect(adminCalls()).toHaveLength(1);
 });
 
