@@ -111,6 +111,56 @@ test('удалённые фотографии исчезают из сохран
   await expect(recommended).toHaveCount(0);
 });
 
+test('разный регистр UUID сохраняет фотографию и пояснение в рекомендациях', async ({ page, openListing }) => {
+  const result = { ...scoredResult, channels: [{
+    ...avito, photoIds: [room.id.toUpperCase(), bedroom.id, room.id], photos: { top: [
+      { photo_id: room.id, why: 'Виден общий план гостиной' },
+      { photo_id: bedroom.id.toUpperCase(), why: 'Хорошо виден размер спальни' },
+    ] },
+  }] };
+  await openListing({ ...listingDetails(), photos: [bedroom, room], result });
+  const recommended = page.getByRole('list', { name: 'Рекомендованные фотографии' });
+  const images = recommended.getByRole('img');
+  await expect(images).toHaveCount(2);
+  await expect(images.nth(0)).toHaveAttribute('src', room.thumbnailUrl);
+  await expect(images.nth(1)).toHaveAttribute('src', bedroom.thumbnailUrl);
+  await expect(recommended.getByText('Виден общий план гостиной')).toBeVisible();
+  await expect(recommended.getByText('Хорошо виден размер спальни')).toBeVisible();
+});
+
+test('превью с ответом 404 исчезает из рекомендаций до обновления карточки', async ({ page, openListing }) => {
+  await page.route(`**${bedroom.thumbnailUrl}`, (route) => route.fulfill({ status: 404 }));
+  await openListing({ ...listingDetails(), photos: [room, bedroom], result: scoredResult });
+  const section = page.getByRole('region', { name: 'Результат', exact: true });
+  const recommended = section.getByRole('list', { name: 'Рекомендованные фотографии' });
+  await recommended.scrollIntoViewIfNeeded();
+  await expect(recommended.getByRole('img')).toHaveCount(1);
+  await expect(recommended.getByRole('img')).toHaveAccessibleName(room.fileName);
+  await expect(recommended.getByText('Хорошо виден размер спальни')).toHaveCount(0);
+  await section.getByRole('tab', { name: telegram.channel.name }).click();
+  await section.getByRole('tabpanel', { name: telegram.channel.name }).scrollIntoViewIfNeeded();
+  await expect(recommended).toHaveCount(0);
+});
+
+test('новый результат повторно загружает недоступное ранее превью', async ({ page, openListing, loginServer }) => {
+  const result = { ...scoredResult, channels: [scoredResult.channels[0]!] };
+  const detail = { ...listingDetails(listing({ status: 'generating' })), result };
+  loginServer.controls.photoImageError = true;
+  const failedThumbnail = page.waitForResponse((response) => response.url().endsWith(room.thumbnailUrl) && response.status() === 404);
+  await openListing(detail);
+  const section = page.getByRole('region', { name: 'Результат', exact: true });
+  await expect(section.getByText('0', { exact: true })).toBeVisible();
+  await failedThumbnail;
+  await expect(section.getByRole('img', { name: room.fileName })).toHaveCount(0);
+
+  loginServer.controls.photoImageError = false;
+  loginServer.controls.detail = { ...detail, status: 'ready', result: { ...result, score: 74 } };
+  await expect(section.getByText('74', { exact: true })).toBeVisible();
+  const photo = section.getByRole('img', { name: room.fileName });
+  await photo.scrollIntoViewIfNeeded();
+  await expect.poll(() => photo.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+});
+
 test('результат старого формата показывает тексты и фото без общих оценок и пояснений', async ({ page, openListing }) => {
   await openListing({ ...listingDetails(listing({ status: 'draft' })), result: { channels: [avito] } });
   const section = page.getByRole('region', { name: 'Результат', exact: true });

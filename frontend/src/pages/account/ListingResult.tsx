@@ -107,23 +107,32 @@ function ListingAssessment({ score, why }: Pick<GenerationResult, 'score' | 'why
   </Paper>;
 }
 
-function RecommendedPhotos({ result, photos }: { result: ChannelResult; photos: Photo[] }) {
-  const recommended = result.photoIds.flatMap((id) => {
-    const photo = photos.find((photo) => photo.id === id && photo.status === 'ready');
-    return photo ? [photo] : [];
+function RecommendedPhotos({ result, photos, ready }: { result: ChannelResult; photos: Photo[]; ready: boolean }) {
+  const readyResult = ready ? result : undefined;
+  const [previews, setPreviews] = useState(() => ({ readyResult, failed: new Set<string>() }));
+  if (previews.readyResult !== readyResult) setPreviews({ readyResult, failed: new Set() });
+
+  const photoIds = new Set(result.photoIds.map((id) => id.toLowerCase()));
+  const recommended = [...photoIds].flatMap((id) => {
+    const photo = photos.find((photo) => photo.id.toLowerCase() === id);
+    const url = photo?.thumbnailUrl;
+    if (photo?.status !== 'ready' || !url || previews.failed.has(url)) return [];
+    const why = result.photos?.top.find(({ photo_id }) => photo_id.toLowerCase() === id)?.why;
+    return [{ id, url, name: photo.fileName, why }];
   });
   if (!recommended.length) return null;
 
   return <Stack gap="sm">
     <Title order={3}>Какие фотографии поставить первыми</Title>
     <ol className={classes.recommendations} role="list" aria-label="Рекомендованные фотографии">
-      {recommended.map((photo) => {
-        const why = result.photos?.top.find(({ photo_id }) => photo_id === photo.id)?.why;
-        return <li key={photo.id}>
-          <img className={classes.thumbnail} src={photo.thumbnailUrl ?? undefined} alt={photo.fileName} loading="lazy" />
+      {recommended.map(({ id, url, name, why }) => (
+        <li key={id}>
+          <img className={classes.thumbnail} src={url} alt={name} loading="lazy"
+            onError={() => setPreviews((current) => current.readyResult === readyResult
+              ? { readyResult, failed: new Set(current.failed).add(url) } : current)} />
           {why && <Text mt="xs" size="sm">{why}</Text>}
-        </li>;
-      })}
+        </li>
+      ))}
     </ol>
   </Stack>;
 }
@@ -170,7 +179,7 @@ export function ListingResult({ listing }: { listing: Pick<Listing, 'result' | '
               <ChannelTexts result={item} trackFocus={trackFocus} />
               {hasAssessment && <ListingAssessment score={result.score} why={result.why} />}
             </div>
-            <RecommendedPhotos result={item} photos={photos} />
+            <RecommendedPhotos result={item} photos={photos} ready={status === 'ready'} />
           </Stack>
         </Tabs.Panel>)}
       </Tabs> : <Stack gap="sm">

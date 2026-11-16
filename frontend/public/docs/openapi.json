@@ -4004,9 +4004,7 @@
                       "format": "uuid"
                     },
                     "why": {
-                      "type": "string",
-                      "minLength": 1,
-                      "pattern": "\\S"
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -4062,9 +4060,7 @@
                   "description": "Признак сильной стороны объявления."
                 },
                 "text": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "\\S"
+                  "type": "string"
                 }
               },
               "required": [
