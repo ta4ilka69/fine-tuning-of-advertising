@@ -187,11 +187,14 @@ test('повторное сохранение, выход, отмена, Back/Fo
   await page.getByRole('button', { name: /Меню пользователя/ }).click(); await page.getByRole('menuitem', { name: 'Выйти' }).click(); await expect.poll(() => prompts).toBe(3);
   expect(loginServer.calls.filter((call) => call.path.endsWith('/logout'))).toHaveLength(0);
   let release!: () => void; loginServer.controls.holdUpdate = new Promise((resolve) => { release = resolve; });
-  await page.getByRole('form', { name: 'Редактирование объявления' }).evaluate((form: HTMLFormElement) => { form.requestSubmit(); form.requestSubmit(); });
-  await expect(page.getByText('Сохраняем объявление', { exact: true })).toBeVisible(); expect(writes(loginServer)).toHaveLength(1);
-  await expect(page.getByLabel('Адрес', { exact: true })).toBeDisabled();
-  page.removeAllListeners('dialog'); page.on('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: 'Отменить редактирование' }).click(); release();
+  try {
+    await page.getByRole('form', { name: 'Редактирование объявления' }).evaluate((form: HTMLFormElement) => { form.requestSubmit(); form.requestSubmit(); });
+    await expect(page.getByText('Сохраняем объявление', { exact: true })).toBeVisible();
+    await expect.poll(() => writes(loginServer).length).toBe(1);
+    await expect(page.getByLabel('Адрес', { exact: true })).toBeDisabled();
+    page.removeAllListeners('dialog'); page.on('dialog', (dialog) => dialog.accept());
+    await page.getByRole('button', { name: 'Отменить редактирование' }).click();
+  } finally { release(); }
   await expect(page.getByRole('form', { name: 'Редактирование объявления' })).toHaveCount(0);
   await page.reload(); await page.getByRole('button', { name: 'Редактировать объявление', exact: true }).click();
   await expect(page.getByLabel('Адрес', { exact: true })).toHaveValue('Несохранённый ввод');
@@ -232,7 +235,8 @@ test('очередь фото работает после генерации, з
   await page.getByRole('button', { name: 'Отменить редактирование' }).click();
   await page.getByLabel('Фотографии объявления', { exact: true }).setInputFiles({ name: 'after-edit.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('jpeg') });
   await expect(page.getByRole('heading', { name: 'Фото · 2 из 20' })).toBeVisible();
-  expect(loginServer.calls.filter((call) => call.method === 'POST' && call.path.endsWith('/photos')).at(-1)!.body).toMatchObject({ expectedVersion: 3 });
+  await expect.poll(() => loginServer.calls.filter((call) => call.method === 'POST' && call.path.endsWith('/photos')).at(-1)?.body)
+    .toMatchObject({ expectedVersion: 3 });
 });
 
 for (const state of ['conflict', 'busy'] as const) test(`холодный редактор учитывает фоновую блокировку ${state}`, async ({ page, loginServer }) => {

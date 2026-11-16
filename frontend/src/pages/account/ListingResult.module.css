@@ -1,5 +1,7 @@
 .result { inline-size: min(100%, 49rem); padding: var(--mantine-spacing-lg); overflow-wrap: anywhere; }
+.result[data-assessed] { inline-size: 100%; }
 .tabs { gap: var(--mantine-spacing-sm); }
+.result[data-assessed] .tabs { max-inline-size: 49rem; }
 .tabs .tab { flex: 1 1 5rem; min-inline-size: 0; min-block-size: var(--app-control-height); padding: var(--mantine-spacing-sm); color: var(--app-brand); font-weight: 600; line-height: var(--mantine-line-height-sm); text-align: center; }
 .tabs .tab[data-active] { background: var(--app-primary); color: var(--app-surface); }
 .tab > span { min-inline-size: 0; white-space: normal; }
@@ -8,6 +10,22 @@
 .copied { padding: var(--mantine-spacing-sm) var(--mantine-spacing-md); border-radius: var(--mantine-radius-md); background: var(--app-positive); color: var(--app-brand); font-weight: 600; }
 .copied:empty { position: absolute; padding: 0; }
 .feedback:not([data-visible]) { position: absolute; }
+.overview { display: grid; gap: var(--mantine-spacing-lg); }
+.result[data-assessed] .overview { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
+.assessment { padding: var(--mantine-spacing-md); }
+.score { display: flex; align-items: baseline; gap: var(--mantine-spacing-sm); color: var(--app-brand); }
+.score strong { font-size: var(--app-display-size); line-height: 1; }
+.reasons { display: grid; gap: var(--mantine-spacing-xs); margin: 0; padding: 0; list-style: none; }
+.reasons li { display: grid; grid-template-columns: 1em minmax(0, 1fr); gap: var(--mantine-spacing-xs); }
+.reasonSign { color: var(--app-warning); font-weight: 700; }
+.reasonSign[data-plus='true'] { color: var(--app-brand); }
+.recommendations { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--mantine-spacing-md); padding: 0; margin: 0; list-style: none; counter-reset: recommendations; }
+.recommendations li { position: relative; counter-increment: recommendations; }
+.recommendations li::before { content: counter(recommendations); position: absolute; inset-block-start: var(--mantine-spacing-xs); inset-inline-start: var(--mantine-spacing-xs); min-inline-size: 1.75rem; padding: 0.125rem 0.375rem; border-radius: var(--mantine-radius-sm); background: var(--app-surface); color: var(--app-brand); text-align: center; font-weight: 600; }
+.thumbnail { display: block; inline-size: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: var(--mantine-radius-md); background: var(--app-canvas); }
+@media (max-width: 48em) {
+  .result[data-assessed] .overview, .recommendations { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-width: 43.75em) {
   .result { padding: var(--mantine-spacing-md); }
 }

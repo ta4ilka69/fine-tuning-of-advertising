@@ -15,7 +15,7 @@ test.beforeEach(async ({ context, loginServer }) => { await context.addCookies([
 for (const width of [320, 390, 768, 1440]) test(`фото: доступность и клавиатура ${width}px`, async ({ page, loginServer }) => {
   await page.setViewportSize({ width, height: 900 }); await page.goto(`${loginServer.url}/app/listings/${id}`);
   await expect(page.getByRole('heading', { name: 'Фото · 1 из 20' })).toBeVisible();
-  await expect(page.getByRole('img', { name: 'room.jpg', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Фото · 1 из 20' }).getByRole('img', { name: 'room.jpg', exact: true })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Удалить фотографию room.jpg', exact: true }).press('Enter');
@@ -123,12 +123,13 @@ test('generating блокирует фото, новый черновик не �
 
 test('превью требует cookie, чужой адрес не попадает в DOM или сеть', async ({ page, loginServer }) => {
   await page.goto(`${loginServer.url}/app/listings/${id}`);
-  await expect(page.getByRole('img', { name: 'room.jpg', exact: true })).toBeVisible();
-  const thumbnail = loginServer.calls.find((call) => call.path.endsWith('/thumbnail'))!;
-  expect(thumbnail.cookie).toContain('session=test-session');
-  const result = await page.request.get(`${loginServer.url}${thumbnail.path}`); expect(result.headers()['cache-control']).toBe('private, no-store');
-  const otherContext = await page.context().browser()!.newContext(); const denied = await otherContext.request.get(`${loginServer.url}${thumbnail.path}`); expect(denied.status()).toBe(401); await otherContext.close();
-  const detail = listingDetails(); detail.photos[0]!.thumbnailUrl = 'https://external.example/private.jpg'; loginServer.controls.detail = detail;
+  await expect(page.getByRole('region', { name: 'Фото · 1 из 20' }).getByRole('img', { name: 'room.jpg', exact: true })).toBeVisible();
+  const detail = listingDetails();
+  const thumbnail = detail.photos[0]!.thumbnailUrl;
+  await expect.poll(() => loginServer.calls.find((call) => call.path === thumbnail)?.cookie).toContain('session=test-session');
+  const result = await page.request.get(`${loginServer.url}${thumbnail}`); expect(result.headers()['cache-control']).toBe('private, no-store');
+  const otherContext = await page.context().browser()!.newContext(); const denied = await otherContext.request.get(`${loginServer.url}${thumbnail}`); expect(denied.status()).toBe(401); await otherContext.close();
+  detail.photos[0]!.thumbnailUrl = 'https://external.example/private.jpg'; loginServer.controls.detail = detail;
   const external: string[] = []; page.on('request', (request) => { if (request.url().includes('external.example')) external.push(request.url()); });
   await page.reload(); await expect(page.getByRole('alert')).toBeVisible(); await expect(page.getByRole('img', { name: 'room.jpg', exact: true })).toHaveCount(0); expect(external).toEqual([]);
 });

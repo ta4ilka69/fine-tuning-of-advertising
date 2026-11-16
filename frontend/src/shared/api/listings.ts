@@ -1,6 +1,6 @@
 import { request } from './client';
 import { isRecord, parseProblem } from './errors';
-import type { GenerationResult, Listing, ListingPage, ListingSummary } from './types';
+import type { ChannelResult, GenerationResult, Listing, ListingPage, ListingSummary } from './types';
 import { parsePhoto } from './photos';
 import type { ListingData } from './listing-data';
 import { isListingData } from './validate-listing-data';
@@ -50,20 +50,38 @@ function parsePage(value: unknown): ListingPage {
 
 const hasText = (value: unknown): value is string => typeof value === 'string' && /\S/.test(value);
 const isUUID = (value: unknown): value is string => typeof value === 'string' && uuid.test(value);
+const isScore = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 100;
 
-function isGenerationResult(value: unknown): value is GenerationResult {
-  if (!isRecord(value) || !Array.isArray(value.channels) || value.channels.length < 1) return false;
+function parseGenerationResult(value: unknown): GenerationResult {
+  if (!isRecord(value) || !Array.isArray(value.channels) || value.channels.length < 1) {
+    throw new TypeError('Некорректный результат генерации');
+  }
   const channelIds = new Set<string>();
-  return value.channels.every((channel) => {
+  const channels = value.channels.map((channel: unknown): ChannelResult => {
     if (!isRecord(channel) || !isUUID(channel.channelVersionId)
       || !isRecord(channel.channel) || !isUUID(channel.channel.id) || !hasText(channel.channel.name)
       || channelIds.has(channel.channel.id) || !hasText(channel.title) || !hasText(channel.text)
-      || !Number.isInteger(channel.score) || Number(channel.score) < 0 || Number(channel.score) > 100
+      || !isScore(channel.score)
       || !hasText(channel.scoreReason) || !Array.isArray(channel.photoIds) || channel.photoIds.length > 3
-      || !channel.photoIds.every(isUUID) || new Set(channel.photoIds).size !== channel.photoIds.length) return false;
+      || !channel.photoIds.every(isUUID) || new Set(channel.photoIds).size !== channel.photoIds.length) {
+      throw new TypeError('Некорректный результат генерации');
+    }
     channelIds.add(channel.channel.id);
-    return true;
+    const { channelVersionId, title, text, score, scoreReason, photoIds, photos } = channel;
+    const top = isRecord(photos) && Array.isArray(photos.top) ? photos.top.filter(
+      (photo: unknown): photo is NonNullable<ChannelResult['photos']>['top'][number] =>
+        isRecord(photo) && isUUID(photo.photo_id) && hasText(photo.why),
+    ).map(({ photo_id, why }) => ({ photo_id, why })) : undefined;
+    return {
+      channelVersionId, channel: { id: channel.channel.id, name: channel.channel.name },
+      title, text, score, scoreReason, photoIds, photos: top && { top },
+    };
   });
+  const why = Array.isArray(value.why) ? value.why.filter(
+    (reason: unknown): reason is NonNullable<GenerationResult['why']>[number] =>
+      isRecord(reason) && typeof reason.plus === 'boolean' && hasText(reason.text),
+  ).map(({ plus, text }) => ({ plus, text })) : undefined;
+  return { channels, score: isScore(value.score) ? value.score : undefined, why };
 }
 
 function dataField(block: Record<string, unknown> | undefined, key: string) {
@@ -74,7 +92,6 @@ function dataField(block: Record<string, unknown> | undefined, key: string) {
 
 export function parseListing(value: unknown): Listing {
   if (!isRecord(value) || !isListingData(value.data) || !Array.isArray(value.photos) || value.photos.length > 20
-    || !(value.result === null || isGenerationResult(value.result))
     || (value.status === 'failed' ? !isRecord(value.generationError)
       || typeof value.generationError.status !== 'number'
       || !parseProblem(value.generationError, value.generationError.status) : value.generationError !== null)) {
@@ -97,7 +114,7 @@ export function parseListing(value: unknown): Listing {
       status: value.status, hasResult: value.result !== null,
     }),
     isApartments: isRecord(object) && object.type === 'flat' && object.isApartments === true,
-    photos: parsedPhotos, data: value.data, result: value.result as GenerationResult | null,
+    photos: parsedPhotos, data: value.data, result: value.result === null ? null : parseGenerationResult(value.result),
     generationError: value.generationError === null ? null : parseProblem(value.generationError, Number((value.generationError as Record<string, unknown>).status))!,
   };
 }

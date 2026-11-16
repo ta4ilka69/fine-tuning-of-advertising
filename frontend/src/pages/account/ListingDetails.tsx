@@ -39,7 +39,7 @@ export function ListingDetails({ id, recheck, suspended = false }: { id: string;
     {item && (!state.inaccessible || editing) ? <><ul className={classes.items}><ListingCard item={item} linked={false} isApartments={item.isApartments} /></ul>{!editing && <div><AppButton ref={editButton} disabled={!!state.listingDeletion || suspended || state.reading || !state.verified || generationLocked(state) || state.uploads.some((entry) => !!entry.file) || !!state.deleting}
       onClick={() => { const snapshot = manager.beginEdit(); if (snapshot) setEditing(snapshot); }}>Редактировать объявление</AppButton><DeleteListing manager={manager} state={state} suspended={suspended} /></div>}
       {!editing && <ListingGeneration manager={manager} state={state} suspended={suspended} recheck={recheck} />}
-      {!editing && <ListingResult result={item.result} />}
+      {!editing && <ListingResult listing={item} />}
       <PhotoGallery manager={manager} state={state} /></>
       : error ? <AppNotice tone="error" title="Не удалось загрузить объявление"><p>{error}</p><AppButton disabled={state.reading} onClick={() => { recheck(false); manager.refresh(); }}>Повторить</AppButton></AppNotice>
         : <LoadingState label="Загружаем объявление" />}

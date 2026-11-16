@@ -149,6 +149,26 @@ test('допускает пустую подборку и ссылки на уд
   expect(await listings.get(listing().id)).toMatchObject({ status: 'draft', hasResult: true });
 });
 
+test('читает общий нулевой балл и сохраняет корректные причины и пояснения', async () => {
+  const reason = { plus: false, text: 'Не указана площадь' };
+  const explanation = { photo_id: channel.photoIds[0], why: 'Виден балкон' };
+  const result = {
+    score: 0, why: [null, reason, { plus: true, text: ' ' }],
+    howToImprove: ['Указать площадь'],
+    channels: [{ ...channel, photos: { top: [{ photo_id: 'bad', why: 'Кухня' }, explanation], rest: [] } }],
+  };
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ ...listingDetails(), result })));
+  expect((await listings.get(listing().id)).result).toEqual({
+    score: 0, why: [reason], channels: [{ ...channel, photos: { top: [explanation] } }],
+  });
+});
+
+test('некорректные дополнительные поля не скрывают тексты и порядок фото', async () => {
+  const result = { score: -1, why: {}, channels: [{ ...channel, photos: { top: null } }] };
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ ...listingDetails(), result })));
+  expect((await listings.get(listing().id)).result).toEqual({ channels: [channel] });
+});
+
 test('апартаменты определяются по флагу квартиры', async () => {
   const detail = listingDetails();
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ ...detail, data: { object: { type: 'flat', isApartments: true } } })));

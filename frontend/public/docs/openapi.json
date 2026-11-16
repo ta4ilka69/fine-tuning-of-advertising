@@ -3990,9 +3990,39 @@
             "maxItems": 3,
             "uniqueItems": true,
             "description": "Фото этого объявления на первые позиции для этой площадки, по порядку. Удалённое после генерации фото остаётся в списке; интерфейс его не показывает."
+          },
+          "photos": {
+            "type": "object",
+            "properties": {
+              "top": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "photo_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "why": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "photo_id",
+                    "why"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Пояснения к рекомендациям текущей площадки. Сопоставляются с photoIds по photo_id."
+              }
+            },
+            "required": [
+              "top"
+            ],
+            "additionalProperties": true
           }
         },
-        "additionalProperties": false,
+        "additionalProperties": true,
         "required": [
           "channelVersionId",
           "channel",
@@ -4013,9 +4043,36 @@
               "$ref": "#/components/schemas/ChannelResult"
             },
             "minItems": 1
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Общая оценка объявления."
+          },
+          "why": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "plus": {
+                  "type": "boolean",
+                  "description": "Признак сильной стороны объявления."
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "plus",
+                "text"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Причины общей оценки объявления в порядке ответа."
           }
         },
-        "additionalProperties": false,
+        "additionalProperties": true,
         "required": [
           "channels"
         ],

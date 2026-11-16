@@ -3,6 +3,7 @@ import { Ajv2020 } from 'ajv/dist/2020.js';
 import type { AnySchemaObject } from 'ajv';
 import addFormats from 'ajv-formats';
 import { describe, expect, test } from 'vitest';
+import { generationResult } from '../fixtures/listings';
 
 interface Contract {
   components: { schemas: Record<string, AnySchemaObject> };
@@ -74,4 +75,19 @@ test('сохранённый результат и ошибка соответс
   expect(validate(listing)).toBe(false);
   delete listing.result;
   expect(validate(listing)).toBe(false);
+});
+
+test('контракт допускает пустые пояснения в сохранённом результате', () => {
+  const validate = validator({ $ref: '#/components/schemas/GenerationResult' });
+  const channel = generationResult.channels[0]!;
+  const result = {
+    score: 0,
+    why: [{ plus: true, text: channel.scoreReason }, { plus: false, text: '' }],
+    howToImprove: [],
+    channels: [{
+      ...channel, score: 0, titles: [channel.title], checklist: [],
+      photos: { top: [{ photo_id: channel.photoIds[0], why: '' }], rest: [], excluded: [] },
+    }],
+  };
+  expect(validate(result), ajv.errorsText(validate.errors)).toBe(true);
 });

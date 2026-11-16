@@ -33,12 +33,15 @@ export function observedGeneration(current: Listing, previous: Listing | undefin
     return error?.code !== previousError?.code || error?.title !== previousError?.title
       || error?.status !== previousError?.status || error?.detail !== previousError?.detail;
   }
+  if (current.result?.score !== previous.result?.score
+    || JSON.stringify(current.result?.why ?? []) !== JSON.stringify(previous.result?.why ?? [])) return true;
   const channels = current.result?.channels ?? [];
   const previousChannels = new Map(previous.result?.channels.map((result) => [result.channel.id, result]));
   return channels.length !== previousChannels.size || channels.some((result) => {
     const before = previousChannels.get(result.channel.id);
     return !before || result.channelVersionId !== before.channelVersionId || result.title !== before.title
       || result.text !== before.text || result.score !== before.score || result.scoreReason !== before.scoreReason
+      || JSON.stringify(result.photos?.top ?? []) !== JSON.stringify(before.photos?.top ?? [])
       || result.photoIds.length !== before.photoIds.length || result.photoIds.some((id, index) => id !== before.photoIds[index]);
   });
 }
