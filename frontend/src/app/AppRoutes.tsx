@@ -13,8 +13,11 @@ const AdminChannelsPage = lazy(() => import('../pages/admin/AdminChannelsPage'))
 
 export function AppRoutes() {
   const path = usePathname();
-  const adminPage = path === adminChannelsPath ? 'list' : path === newAdminChannelPath ? 'create' : isAdminChannelSettingsPath(path) ? 'settings' : null;
-  const protectedPath = adminPage !== null || path === '/app' || path === '/app/new' || /^\/app\/listings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(path);
+  const adminRoute = path === adminChannelsPath ? { page: 'list' } as const
+    : path === newAdminChannelPath ? { page: 'create' } as const
+      : isAdminChannelSettingsPath(path) ? { page: 'settings', channelId: path.slice(adminChannelsPath.length + 1) } as const : null;
+  const adminPage = adminRoute?.page;
+  const protectedPath = adminRoute !== null || path === '/app' || path === '/app/new' || /^\/app\/listings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(path);
   const previousPath = useRef(path);
   const { state } = useSession();
   useEffect(() => {
@@ -32,7 +35,8 @@ export function AppRoutes() {
   if (path === '/login' || path === '/register' || protectedPath) {
     return (
       <Suspense fallback={<PageLayout header={{ variant: 'guest' }}><LoadingState label="Загружаем страницу" /></PageLayout>}>
-        {path === '/login' ? <LoginPage /> : path === '/register' ? <RegisterPage /> : adminPage ? <AdminChannelsPage key={path} page={adminPage} /> : <AccountPage />}
+        {path === '/login' ? <LoginPage /> : path === '/register' ? <RegisterPage /> : adminRoute
+          ? <AdminChannelsPage key={path} {...adminRoute} /> : <AccountPage />}
       </Suspense>
     );
   }

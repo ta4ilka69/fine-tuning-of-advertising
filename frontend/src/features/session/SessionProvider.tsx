@@ -11,6 +11,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const revision = useRef(0);
   const restoration = useRef<AbortController | null>(null);
   const mutation = useRef(false);
+  const restoreAfterMutation = useRef(false);
 
   const invalidate = useCallback(() => {
     revision.current += 1;
@@ -37,8 +38,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [invalidate]);
 
   const restore = useCallback(async () => {
-    if (mutation.current) return;
     setState({ status: 'checking' });
+    if (mutation.current) {
+      restoreAfterMutation.current = true;
+      return;
+    }
     await checkSession();
   }, [checkSession]);
 
@@ -63,12 +67,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const next = await operation();
       if (revision.current === current) setState(next);
     } catch (error) {
-      if (revision.current === current && state.status === 'checking') {
+      if (revision.current === current && (restoreAfterMutation.current || state.status === 'checking')) {
         mutation.current = false;
         void restore();
       }
       throw error;
     } finally {
+      restoreAfterMutation.current = false;
       mutation.current = false;
     }
   }, [invalidate, restore, state.status]);

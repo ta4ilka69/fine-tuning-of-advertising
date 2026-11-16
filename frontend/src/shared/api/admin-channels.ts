@@ -11,6 +11,7 @@ export type AdminChannelWrite = {
 };
 
 export type AdminChannel = AdminChannelWrite & { id: string; number: number };
+export type AdminChannelUpdate = AdminChannelWrite & { expectedNumber: number };
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const hasText = (value: unknown): value is string => typeof value === 'string' && /\S/.test(value);
@@ -40,4 +41,14 @@ function parseChannels(value: unknown) {
 export const adminChannels = {
   list: (signal?: AbortSignal) => request('/admin/channels', { signal, status: 200, response: parseChannels }),
   create: (body: AdminChannelWrite, signal?: AbortSignal) => request('/admin/channels', { method: 'POST', body, signal, status: 201, response: parseChannel }),
+  update: (id: string, body: AdminChannelUpdate, signal?: AbortSignal) => request(`/admin/channels/${id}`, {
+    method: 'PUT', body, signal, status: 200,
+    response: (value) => {
+      const channel = parseChannel(value);
+      if (channel.id.toLowerCase() !== id.toLowerCase() || channel.number <= body.expectedNumber) {
+        throw new TypeError('Некорректная версия площадки');
+      }
+      return channel;
+    },
+  }),
 };
