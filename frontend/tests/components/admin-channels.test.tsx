@@ -1,8 +1,21 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { App } from '../../src/app/App';
 import { navigate } from '../../src/app/navigation';
+
+vi.mock('../../src/app/AppProvider', async () => {
+  const { MantineProvider } = await import('@mantine/core');
+  const { cssVariablesResolver, theme } = await import('../../src/app/theme');
+  return {
+    AppProvider: ({ children }: { children: ReactNode }) => (
+      <MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver} forceColorScheme="light" env="test">
+        {children}
+      </MantineProvider>
+    ),
+  };
+});
 
 const api = '/api/v1/admin/channels';
 const user = { id: '9a07b31d-ac15-495c-bb91-e3756fe40bcc', login: 'admin_demo', role: 'admin' };
