@@ -1,0 +1,13 @@
+.result { inline-size: min(100%, 49rem); padding: var(--mantine-spacing-lg); overflow-wrap: anywhere; }
+.tabs { gap: var(--mantine-spacing-sm); }
+.tabs .tab { flex: 1 1 5rem; min-inline-size: 0; min-block-size: var(--app-control-height); padding: var(--mantine-spacing-sm); color: var(--app-brand); font-weight: 600; line-height: var(--mantine-line-height-sm); text-align: center; }
+.tabs .tab[data-active] { background: var(--app-primary); color: var(--app-surface); }
+.tab > span { min-inline-size: 0; white-space: normal; }
+.title { font-size: var(--mantine-h2-font-size); line-height: var(--mantine-h2-line-height); }
+.title, .text { white-space: pre-wrap; }
+.copied { padding: var(--mantine-spacing-sm) var(--mantine-spacing-md); border-radius: var(--mantine-radius-md); background: var(--app-positive); color: var(--app-brand); font-weight: 600; }
+.copied:empty { position: absolute; padding: 0; }
+.feedback:not([data-visible]) { position: absolute; }
+@media (max-width: 43.75em) {
+  .result { padding: var(--mantine-spacing-md); }
+}

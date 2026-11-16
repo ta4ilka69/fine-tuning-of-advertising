@@ -120,10 +120,15 @@ flow('после перезагрузки опрос получает failed и 
   await expect(page.getByText('Готовим тексты и рекомендации')).toBeVisible();
   await page.reload();
   await expect(page.getByText('Готовим тексты и рекомендации')).toBeVisible();
+  const texts = page.getByRole('region', { name: 'Результат', exact: true });
+  await expect(texts.getByRole('heading', { name: original.result!.channels[0]!.title })).toBeVisible();
+  await expect(texts.getByRole('button', { name: 'Копировать текст' })).toBeEnabled();
   loginServer.controls.detail = { ...failed, result: null };
   await expect(page.getByText('Не удалось подготовить результат')).toBeVisible();
   await expect(page.getByText('Сохранённый результат', { exact: true })).toBeVisible();
   await expect(page.getByText('Предыдущий результат сохранён')).toBeVisible();
+  await expect(texts.getByText(original.result!.channels[0]!.text, { exact: true })).toBeVisible();
+  await expect(texts.getByRole('button', { name: 'Копировать текст' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Удалить объявление', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Выбрать площадки' }).click();
   await page.getByRole('checkbox', { name: first.name }).check();
@@ -161,6 +166,7 @@ flow('новый результат подтверждает быстрый по
   await expect.poll(() => loginServer.calls.filter((call) => call.path === listingPath && call.method === 'GET').length).toBeGreaterThan(1);
   await expect(flow.launch()).toBeEnabled();
   await expect(page.getByText('Подготовка завершена', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Обновлённый заголовок' })).toBeVisible();
   await expect(page.getByText('Не удалось подтвердить запуск. Проверьте состояние объявления')).toHaveCount(0);
   expect(attempts).toBe(1);
 });

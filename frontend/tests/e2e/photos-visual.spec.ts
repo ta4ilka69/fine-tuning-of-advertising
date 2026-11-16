@@ -30,6 +30,9 @@ for (const state of ['empty', 'desktop', 'mobile', 'narrow', 'processing', 'fail
     }
     await page.evaluate(() => document.fonts.ready);
     await expect(page.getByRole('button', { name: /Меню пользователя/ })).toBeVisible();
-    await expect(page).toHaveScreenshot(`photos-${state}.png`, { fullPage: true, stylePath: fileURLToPath(new URL('../fixtures/hide-generation.css', import.meta.url)) });
+    await expect(page).toHaveScreenshot(`photos-${state}.png`, { fullPage: true, stylePath: [
+      fileURLToPath(new URL('../fixtures/hide-generation.css', import.meta.url)),
+      fileURLToPath(new URL('../fixtures/hide-result.css', import.meta.url)),
+    ] });
   });
 }

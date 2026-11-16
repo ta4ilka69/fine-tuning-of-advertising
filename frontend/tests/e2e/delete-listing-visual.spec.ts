@@ -29,8 +29,9 @@ for (const width of [1440, 390]) for (const state of ['confirm', 'pending', 'err
       }
       await expect(dialog).toBeVisible(); await expect(dialog.getByRole('button', { name: state === 'pending' ? 'Закрыть окно' : 'Отмена', exact: true })).toBeFocused();
       await page.evaluate(() => document.fonts.ready);
-      await expect(page).toHaveScreenshot(`delete-listing-${state}-${width}.png`, state === 'busy' ? undefined : {
-        stylePath: fileURLToPath(new URL('../fixtures/hide-generation.css', import.meta.url)),
+      const hidden = state === 'busy' ? ['hide-result.css'] : ['hide-generation.css', 'hide-result.css'];
+      await expect(page).toHaveScreenshot(`delete-listing-${state}-${width}.png`, {
+        stylePath: hidden.map((file) => fileURLToPath(new URL(`../fixtures/${file}`, import.meta.url))),
       });
     } finally { await page.goto('about:blank'); release?.(); }
   });
