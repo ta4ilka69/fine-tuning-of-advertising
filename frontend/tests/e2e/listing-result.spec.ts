@@ -98,18 +98,134 @@ test('вкладки и обе кнопки копирования работа�
   expect(copied).toEqual([]);
 
   reject = false;
-  await alert.getByRole('button', { name: 'Повторить копирование' }).press('Enter');
-  await expect(section.getByRole('status')).toHaveText('Заголовок скопирован');
+  await page.keyboard.press(tabKey);
+  await expect(alert.getByRole('button', { name: 'Повторить копирование' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(section.getByRole('status').filter({ hasText: 'Заголовок скопирован' })).toBeVisible();
   await expect(copyTitle).toBeFocused();
   await telegramTab.focus();
   await page.keyboard.press('Enter');
-  await expect(section.getByRole('status')).toBeEmpty();
+  await expect(section.getByText('Заголовок скопирован')).toHaveCount(0);
   await page.keyboard.press(tabKey);
   await page.keyboard.press(tabKey);
   await expect(section.getByRole('button', { name: 'Копировать текст' })).toBeFocused();
   await page.keyboard.press('Space');
-  await expect(section.getByRole('status')).toHaveText('Текст скопирован');
+  await expect(section.getByRole('status').filter({ hasText: 'Текст скопирован' })).toBeVisible();
   expect(copied).toEqual([cian.title, telegram.text]);
+});
+
+test('сообщения об успехе и ошибке копирования видны после прокрутки', async ({ page, openListing }) => {
+  await page.setViewportSize({ width: 390, height: 540 });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => undefined } });
+  });
+  await openListing({ ...listingDetails(), result: { channels: [{ ...avito, text: avito.text.repeat(8) }] } });
+  const section = page.getByRole('region', { name: 'Результат', exact: true });
+  const textButton = section.getByRole('button', { name: 'Копировать текст' });
+  await page.evaluate(() => document.fonts.ready);
+  const scrollToButton = (top: number) => textButton.evaluate((element, y) => window.scrollBy(0, element.getBoundingClientRect().top - y), top);
+  await scrollToButton(60);
+  await textButton.click();
+  await expect(section.getByRole('status').filter({ hasText: 'Текст скопирован' })).toBeInViewport({ ratio: 0.9 });
+
+  await page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { value: undefined }); });
+  await scrollToButton(480);
+  await textButton.click();
+  const alert = section.getByRole('alert');
+  await expect(alert).toContainText('Не удалось скопировать текст');
+  await expect(alert).toBeInViewport({ ratio: 0.9 });
+  await expect(alert.getByRole('button', { name: 'Повторить копирование' })).toBeInViewport({ ratio: 0.9 });
+});
+
+test('поздняя ошибка копирования не уводит с экрана кнопку, на которую перешёл фокус', async ({ page, openListing }) => {
+  await page.setViewportSize({ width: 390, height: 390 });
+  let finishCopy!: () => void;
+  const waiting = new Promise<void>((resolve) => { finishCopy = resolve; });
+  await page.exposeFunction('writeTestClipboard', async () => {
+    await waiting;
+    throw new Error('Нет доступа к буферу обмена');
+  });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: Reflect.get(window, 'writeTestClipboard') } });
+  });
+  await openListing({ ...listingDetails(), result: { channels: [{ ...avito, title: 'Квартира на Лесном проспекте'.repeat(5) }] } });
+  const section = page.getByRole('region', { name: 'Результат', exact: true });
+  const textButton = section.getByRole('button', { name: 'Копировать текст' });
+  const titleButton = section.getByRole('button', { name: 'Копировать заголовок' });
+  await page.evaluate(() => document.fonts.ready);
+  await textButton.focus();
+  await textButton.evaluate((element) => window.scrollBy(0, element.getBoundingClientRect().top - 330));
+  await page.keyboard.press('Enter');
+  await titleButton.evaluate((element: HTMLButtonElement) => element.focus({ preventScroll: true }));
+  try {
+    await expect(titleButton).toBeFocused();
+    await expect(titleButton).toBeInViewport();
+  } finally { finishCopy(); }
+  await expect(section.getByRole('alert')).toContainText('Не удалось скопировать текст');
+  await expect(titleButton).toBeFocused();
+  await expect(titleButton).toBeInViewport();
+});
+
+for (const focus of ['tab', 'copy', 'outside'] as const) {
+  test(`обновление площадок сохраняет клавиатурный фокус: ${focus}`, async ({ page, openListing, loginServer }) => {
+    const original = listingDetails(listing({ status: 'generating' }));
+    await openListing({ ...original, result: { channels: [avito, cian] } });
+    const section = page.getByRole('region', { name: 'Результат', exact: true });
+    const cianTab = section.getByRole('tab', { name: cian.channel.name });
+    await expect(section.getByRole('heading', { name: avito.title })).toBeVisible();
+    const outside = page.getByRole('button', { name: '← Мои объявления' });
+    if (focus === 'copy') {
+      await cianTab.click();
+      await section.getByRole('button', { name: 'Копировать текст' }).focus();
+    } else if (focus === 'tab') {
+      await cianTab.focus();
+    } else {
+      await outside.focus();
+    }
+    loginServer.controls.detail = { ...original, status: 'ready', result: { channels: [telegram] } };
+    await expect(section.getByRole('heading', { name: telegram.title })).toBeVisible();
+    await expect(section.getByRole('tab')).toHaveCount(1);
+    if (focus === 'outside') await expect(outside).toBeFocused();
+    else await expect(section.getByRole('tab', { name: telegram.channel.name })).toBeFocused();
+
+    if (focus === 'copy') {
+      const running = { ...original, result: { channels: [telegram] } };
+      await page.route('**/api/v1/channels', (route) => route.fulfill({ json: { items: [cian, telegram].map(({ channel }) => ({
+        ...channel, description: channel.name, limits: { titleLimit: 100, textLimit: null }, number: 1,
+      })) } }));
+      await page.route(`**/api/v1/listings/${original.id}/validate`, (route) => route.fulfill({ json: {
+        version: original.version, canGenerate: true, errors: [], warnings: [],
+      } }));
+      await page.route(`**/api/v1/listings/${original.id}/generations`, (route) => {
+        loginServer.controls.detail = running;
+        return route.fulfill({ status: 202, json: running });
+      });
+      const generation = page.getByRole('region', { name: 'Подготовка объявления' });
+      await generation.getByRole('button', { name: 'Выбрать площадки' }).click();
+      await generation.getByRole('checkbox', { name: cian.channel.name }).check();
+      await generation.getByRole('checkbox', { name: telegram.channel.name }).check();
+      await generation.getByRole('button', { name: 'Сгенерировать' }).click();
+      await expect(generation.getByText('Идёт генерация')).toBeVisible();
+      const copy = section.getByRole('button', { name: 'Копировать текст' });
+      await copy.focus();
+      loginServer.controls.detail = { ...original, status: 'ready', result: { channels: [cian, telegram] } };
+      await expect(cianTab).toBeVisible();
+      await expect(section.getByRole('tab', { name: telegram.channel.name })).toHaveAttribute('aria-selected', 'true');
+      await expect(copy).toBeFocused();
+    }
+  });
+}
+
+test('перестановка площадок в ответе не меняет вкладку, открытую по умолчанию', async ({ page, openListing, loginServer }) => {
+  const original = listingDetails(listing({ status: 'generating' }));
+  await openListing({ ...original, result: { channels: [avito] } });
+  const section = page.getByRole('region', { name: 'Результат', exact: true });
+  const copy = section.getByRole('button', { name: 'Копировать текст' });
+  await copy.focus();
+  loginServer.controls.detail = { ...original, status: 'ready', result: { channels: [cian, avito] } };
+  await expect(section.getByRole('tab', { name: cian.channel.name })).toBeVisible();
+  await expect(section.getByRole('tab', { name: avito.channel.name })).toHaveAttribute('aria-selected', 'true');
+  await expect(copy).toBeFocused();
 });
 
 test('карточка без результата показывает подсказку без вкладок и кнопок копирования', async ({ page, openListing }) => {
