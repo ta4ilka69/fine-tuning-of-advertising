@@ -4,7 +4,7 @@ import { AppNotice } from '../../shared/ui/AppNotice';
 import { LoadingState } from '../../shared/ui/LoadingState';
 import { useSession } from './context';
 
-export function SessionGuard({ children, role }: { children: ReactNode; role?: 'admin' }) {
+export function SessionGuard({ children, role, denied }: { children: ReactNode; role?: 'admin'; denied?: ReactNode }) {
   const { state, restore } = useSession();
   if (state.status === 'checking') return <LoadingState label="Проверяем сессию" />;
   if (state.status === 'error') {
@@ -19,7 +19,7 @@ export function SessionGuard({ children, role }: { children: ReactNode; role?: '
     return <AppNotice tone="info" title="Войдите в аккаунт">Для доступа к странице нужен вход.</AppNotice>;
   }
   if (role && state.user.role !== role) {
-    return <AppNotice tone="warning" title="Недостаточно прав">Страница доступна администратору.</AppNotice>;
+    return denied ?? <AppNotice tone="warning" title="Недостаточно прав">Страница доступна администратору.</AppNotice>;
   }
   return children;
 }

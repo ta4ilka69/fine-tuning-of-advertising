@@ -1,6 +1,12 @@
 import { useSyncExternalStore } from 'react';
 
-export type AppPath = '/' | '/login' | '/register' | '/app' | '/app/new' | `/app/listings/${string}`;
+export const adminChannelsPath = '/admin/channels';
+export const newAdminChannelPath = '/admin/channels/new';
+export const adminChannelSettingsPath = (id: string) => `${adminChannelsPath}/${id}` as const;
+export const isAdminChannelSettingsPath = (path: string) => /^\/admin\/channels\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(path);
+
+export type AppPath = '/' | '/login' | '/register' | '/app' | '/app/new' | `/app/listings/${string}`
+  | typeof adminChannelsPath | ReturnType<typeof adminChannelSettingsPath>;
 
 let guard: (() => boolean) | undefined;
 let currentURL = window.location.href;
@@ -55,8 +61,8 @@ function changeURL(url: string, replace: boolean) {
 }
 
 export function navigate(path: AppPath, replace = false) {
-  if (!['/', '/login', '/register', '/app', '/app/new'].includes(path)
-    && !/^\/app\/listings\/[0-9a-f-]{36}$/i.test(path)) throw new TypeError('Неизвестный маршрут');
+  if (!['/', '/login', '/register', '/app', '/app/new', adminChannelsPath, newAdminChannelPath].includes(path)
+    && !/^\/app\/listings\/[0-9a-f-]{36}$/i.test(path) && !isAdminChannelSettingsPath(path)) throw new TypeError('Неизвестный маршрут');
   if (!reversing && window.location.pathname === path && !window.location.search && !window.location.hash) return;
   changeURL(path, replace);
 }

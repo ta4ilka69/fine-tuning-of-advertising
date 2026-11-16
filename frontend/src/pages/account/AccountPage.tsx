@@ -6,7 +6,7 @@ import { useSession } from '../../features/session/context';
 import { AppNotice } from '../../shared/ui/AppNotice';
 import { ListingList } from './ListingList';
 import { ListingDetails } from './ListingDetails';
-import { confirmNavigation, navigate, usePathname, useSearch } from '../../app/navigation';
+import { adminChannelsPath, confirmNavigation, navigate, usePathname, useSearch } from '../../app/navigation';
 import { AppButton } from '../../shared/ui/AppButton';
 import classes from './Listings.module.css';
 import { PageLayout } from '../../shared/ui/PageLayout';
@@ -49,7 +49,10 @@ export default function AccountPage() {
   };
   return (
     <PageLayout header={state.status === 'authenticated'
-      ? { variant: 'user', userName: state.user.login, listingsHref: '/app', onLogout: () => { void signOut(); } }
+      ? {
+        userName: state.user.login, listingsHref: '/app', onLogout: () => { void signOut(); },
+        ...(state.user.role === 'admin' ? { variant: 'admin', channelsHref: adminChannelsPath, currentSection: 'listings' } : { variant: 'user' }),
+      }
       : { variant: 'guest' }}>
       <SessionGuard>
         {state.status === 'authenticated' && (

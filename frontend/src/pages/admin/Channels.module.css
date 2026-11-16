@@ -1,0 +1,57 @@
+.heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-md);
+}
+
+.list {
+  display: grid;
+  gap: var(--mantine-spacing-md);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.card,
+.form {
+  min-width: 0;
+  padding: var(--mantine-spacing-lg);
+}
+
+.form {
+  width: min(100%, 55rem);
+}
+
+.badge {
+  border-radius: var(--mantine-radius-sm);
+  background: var(--app-canvas);
+  color: var(--app-muted);
+  padding: 4px 10px;
+  font-size: var(--mantine-font-size-xs);
+  line-height: 1.5;
+}
+
+.badge[data-active='true'] {
+  background: var(--app-positive);
+  color: var(--app-brand);
+}
+
+.fields {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+@media (max-width: 43.75em) {
+  .heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .card,
+  .form {
+    padding: var(--mantine-spacing-md);
+  }
+}

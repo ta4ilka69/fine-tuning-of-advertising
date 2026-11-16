@@ -4,22 +4,25 @@ import { useSession } from '../features/session/context';
 import { HomePage } from '../pages/home/HomePage';
 import { LoadingState } from '../shared/ui/LoadingState';
 import { PageLayout } from '../shared/ui/PageLayout';
-import { navigate, usePathname } from './navigation';
+import { adminChannelsPath, isAdminChannelSettingsPath, navigate, newAdminChannelPath, usePathname } from './navigation';
 
 const LoginPage = lazy(() => import('../pages/login/LoginPage'));
 const RegisterPage = lazy(() => import('../pages/register/RegisterPage'));
 const AccountPage = lazy(() => import('../pages/account/AccountPage'));
+const AdminChannelsPage = lazy(() => import('../pages/admin/AdminChannelsPage'));
 
 export function AppRoutes() {
   const path = usePathname();
-  const protectedPath = path === '/app' || path === '/app/new' || /^\/app\/listings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(path);
+  const adminPage = path === adminChannelsPath ? 'list' : path === newAdminChannelPath ? 'create' : isAdminChannelSettingsPath(path) ? 'settings' : null;
+  const protectedPath = adminPage !== null || path === '/app' || path === '/app/new' || /^\/app\/listings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(path);
   const previousPath = useRef(path);
   const { state } = useSession();
   useEffect(() => {
-    document.title = path === '/' ? 'Докрутка объявления' : path === '/login' ? 'Вход' : path === '/register' ? 'Регистрация' : path === '/app/new' ? 'Новое объявление' : protectedPath ? 'Мои объявления' : 'Страница не найдена';
+    document.title = adminPage ? { list: 'Площадки', create: 'Новая площадка', settings: 'Настройки площадки' }[adminPage]
+      : path === '/' ? 'Докрутка объявления' : path === '/login' ? 'Вход' : path === '/register' ? 'Регистрация' : path === '/app/new' ? 'Новое объявление' : protectedPath ? 'Мои объявления' : 'Страница не найдена';
     if (previousPath.current !== path) document.getElementById('main-content')?.focus();
     previousPath.current = path;
-  }, [path, protectedPath]);
+  }, [adminPage, path, protectedPath]);
   useEffect(() => {
     if ((path === '/login' || path === '/register') && state.status === 'authenticated') navigate('/app', true);
     if (protectedPath && state.status === 'anonymous') navigate('/login', true);
@@ -29,7 +32,7 @@ export function AppRoutes() {
   if (path === '/login' || path === '/register' || protectedPath) {
     return (
       <Suspense fallback={<PageLayout header={{ variant: 'guest' }}><LoadingState label="Загружаем страницу" /></PageLayout>}>
-        {path === '/login' ? <LoginPage /> : path === '/register' ? <RegisterPage /> : <AccountPage />}
+        {path === '/login' ? <LoginPage /> : path === '/register' ? <RegisterPage /> : adminPage ? <AdminChannelsPage key={path} page={adminPage} /> : <AccountPage />}
       </Suspense>
     );
   }
