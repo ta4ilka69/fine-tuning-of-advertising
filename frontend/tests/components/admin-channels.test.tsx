@@ -32,6 +32,53 @@ test('401 списка перепроверяет сессию, после от�
   expect(sessions).toBe(2);
 });
 
+test('ручной повтор списка может перепроверить истёкшую сессию после автоматической попытки', async () => {
+  let sessions = 0;
+  fetchMock.mockImplementation(async (url) => {
+    if (url === '/api/v1/auth/me') return ++sessions < 3 ? json({ user }) : json({}, 401);
+    expect(url).toBe(api);
+    return json({}, 401);
+  });
+  navigate('/admin/channels');
+  render(<App />);
+  await waitFor(() => {
+    expect(adminCalls()).toHaveLength(2);
+    expect(screen.getByRole('alert')).toHaveTextContent('Не удалось загрузить площадки');
+  });
+  expect(sessions).toBe(2);
+  await userEvent.click(screen.getByRole('button', { name: 'Повторить' }));
+  expect(await screen.findByRole('form', { name: 'Вход в аккаунт' })).toBeVisible();
+  expect(sessions).toBe(3);
+});
+
+test.each([401, 403])('POST %s скрывает форму до перепроверки сессии и возвращает черновик владельцу', async (status) => {
+  let sessions = 0;
+  let restore!: (response: Response) => void;
+  fetchMock.mockImplementation(async (url, options) => {
+    if (url === '/api/v1/auth/me') {
+      if (++sessions === 1) return json({ user });
+      return await new Promise((resolve) => { restore = resolve; });
+    }
+    expect(url).toBe(api);
+    expect(options?.method).toBe('POST');
+    return json({}, status);
+  });
+  navigate('/admin/channels/new');
+  render(<App />);
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Название' }), { target: { value: channel.name } });
+  fireEvent.change(screen.getByRole('textbox', { name: 'Системный промпт' }), { target: { value: channel.instruction } });
+  fireEvent.change(screen.getByRole('textbox', { name: 'Правило 1' }), { target: { value: channel.checklist[0] } });
+  fireEvent.submit(screen.getByRole('form', { name: 'Создание площадки' }));
+  expect(await screen.findByText('Проверяем сессию')).toBeVisible();
+  expect(screen.queryByRole('textbox', { name: 'Название' })).not.toBeInTheDocument();
+  await act(async () => restore(json({ user })));
+  expect(await screen.findByRole('textbox', { name: 'Название' })).toHaveValue(channel.name);
+  expect(screen.getByRole('textbox', { name: 'Системный промпт' })).toHaveValue(channel.instruction);
+  expect(screen.getByRole('textbox', { name: 'Правило 1' })).toHaveValue(channel.checklist[0]);
+  expect(screen.getByRole('alert')).toHaveTextContent('Не удалось создать площадку');
+  expect(adminCalls()).toHaveLength(1);
+});
+
 test('некорректный ответ со списком отклоняется, повтор показывает валидную площадку', async () => {
   fetchMock.mockImplementation(async (url) => {
     if (url === '/api/v1/auth/me') return json({ user });

@@ -32,7 +32,7 @@ export function AppRoutes() {
   if (path === '/login' || path === '/register' || protectedPath) {
     return (
       <Suspense fallback={<PageLayout header={{ variant: 'guest' }}><LoadingState label="Загружаем страницу" /></PageLayout>}>
-        {path === '/login' ? <LoginPage /> : path === '/register' ? <RegisterPage /> : adminPage ? <AdminChannelsPage page={adminPage} path={path} /> : <AccountPage />}
+        {path === '/login' ? <LoginPage /> : path === '/register' ? <RegisterPage /> : adminPage ? <AdminChannelsPage key={path} page={adminPage} /> : <AccountPage />}
       </Suspense>
     );
   }

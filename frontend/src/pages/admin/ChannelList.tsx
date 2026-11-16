@@ -9,19 +9,33 @@ import classes from './Channels.module.css';
 
 type ChannelListState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; items: AdminChannel[] };
 
-export function ChannelList({ onAccessError }: { onAccessError: (error: unknown) => void }) {
+export function ChannelList({ recheck, onDenied }: { recheck: (unauthorized: boolean) => Promise<void> | undefined; onDenied: () => void }) {
   const [state, setState] = useState<ChannelListState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const checkAccess = useEffectEvent(onAccessError);
+  const checkSession = useEffectEvent(recheck);
+  const denyAccess = useEffectEvent(onDenied);
 
   useEffect(() => {
     const controller = new AbortController();
     void adminChannels.list(controller.signal).then((items) => {
-      if (!controller.signal.aborted) setState({ status: 'ready', items });
+      if (controller.signal.aborted) return;
+      setState({ status: 'ready', items });
+      void checkSession(false);
     }, (error: unknown) => {
       if (controller.signal.aborted) return;
+      if (error instanceof RequestError && error.kind === 'http') {
+        if (error.status === 403) { denyAccess(); return; }
+        if (error.status === 401) {
+          const restoration = checkSession(true);
+          if (restoration) {
+            void restoration.then(() => {
+              if (!controller.signal.aborted) setAttempt((value) => value + 1);
+            });
+            return;
+          }
+        }
+      }
       setState({ status: 'error', message: error instanceof RequestError ? error.message : 'Попробуйте ещё раз.' });
-      checkAccess(error);
     });
     return () => controller.abort();
   }, [attempt]);
@@ -40,7 +54,7 @@ export function ChannelList({ onAccessError }: { onAccessError: (error: unknown)
       {state.status === 'error' && (
         <AppNotice tone="error" title="Не удалось загрузить площадки">
           <p>{state.message}</p>
-          <AppButton onClick={() => { setState({ status: 'loading' }); setAttempt((value) => value + 1); }}>Повторить</AppButton>
+          <AppButton onClick={() => { recheck(false); setState({ status: 'loading' }); setAttempt((value) => value + 1); }}>Повторить</AppButton>
         </AppNotice>
       )}
       {state.status === 'ready' && (state.items.length === 0 ? (

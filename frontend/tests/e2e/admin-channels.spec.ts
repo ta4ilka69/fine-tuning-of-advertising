@@ -113,6 +113,10 @@ for (const width of [320, 1440]) {
     await expect(list.getByRole('listitem').filter({ hasText: active.name })).toContainText('Включена');
     await expect(list.getByRole('listitem').filter({ hasText: inactive.name })).toContainText('Выключена');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (width === 320) {
+      const create = page.getByRole('button', { name: 'Создать площадку' });
+      expect((await create.boundingBox())?.width).toBe((await list.boundingBox())?.width);
+    }
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     await list.getByRole('link', { name: `Настройки: ${inactive.name}` }).focus();
     await page.keyboard.press('Enter');
@@ -213,4 +217,41 @@ test('ошибки 422 и 409 отмечают нужные поля, сохра
   expect(calls).toEqual([write, { ...write, checklist: [write.checklist[0], 'Укажи цену.'] }, {
     ...write, name: 'Новая площадка', checklist: [write.checklist[0], 'Укажи цену.'],
   }]);
+});
+
+test('чек-лист управляется с клавиатуры, с нижней кнопки видна общая ошибка отправки', async ({ page }) => {
+  await session(page);
+  await page.route(channelAPI, (route) => {
+    expect(route.request().method()).toBe('POST');
+    assertContract('write', route.request().postDataJSON());
+    return respond(route, 503, problem(503, 'SERVICE_UNAVAILABLE'), 'problem');
+  });
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto(`${path}/new`);
+  await fillForm(page);
+  const add = page.getByRole('button', { name: 'Добавить правило' });
+  await add.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('textbox', { name: 'Правило 3' })).toBeFocused();
+  await page.getByRole('button', { name: 'Удалить правило 3' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('textbox', { name: 'Правило 2' })).toBeFocused();
+
+  await page.getByRole('button', { name: 'Создать площадку' }).click();
+  const alert = page.getByRole('alert');
+  await expect(alert).toContainText('Не удалось создать площадку');
+  await expect(alert).toBeInViewport();
+  await expect(page.getByRole('textbox', { name: 'Правило 2' })).toHaveValue(write.checklist[1]!);
+});
+
+test('ошибка выхода возвращает администратора к заполненной форме', async ({ page }) => {
+  await session(page);
+  await page.route('**/api/v1/auth/logout', (route) => respond(route, 503, problem(503, 'SERVICE_UNAVAILABLE'), 'problem'));
+  await page.goto(`${path}/new`);
+  await fillForm(page);
+  await page.getByRole('button', { name: /Меню пользователя:/ }).click();
+  await page.getByRole('menuitem', { name: 'Выйти' }).click();
+  await expect(page.getByRole('alert')).toContainText('Не удалось выйти');
+  await expect(page.getByRole('textbox', { name: 'Название' })).toHaveValue(` ${write.name} `);
+  await expect(page.getByRole('textbox', { name: 'Правило 2' })).toHaveValue(write.checklist[1]!);
 });
