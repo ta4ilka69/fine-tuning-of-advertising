@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { App } from '../../src/app/App';
@@ -14,8 +14,11 @@ const fetchMock = vi.fn<typeof fetch>();
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 const adminCalls = () => fetchMock.mock.calls.filter(([url]) => url === api);
 
-beforeEach(() => vi.stubGlobal('fetch', fetchMock));
-afterEach(() => { fetchMock.mockReset(); vi.unstubAllGlobals(); navigate('/'); });
+beforeEach(() => {
+  Object.defineProperty(document, 'fonts', { configurable: true, value: new EventTarget() });
+  vi.stubGlobal('fetch', fetchMock);
+});
+afterEach(() => { cleanup(); fetchMock.mockReset(); vi.restoreAllMocks(); vi.unstubAllGlobals(); navigate('/'); });
 
 test('401 списка перепроверяет сессию, после отзыва роли список скрыт', async () => {
   let sessions = 0;
@@ -126,4 +129,114 @@ test('дробный лимит блокирует отправку, повто�
   await act(async () => finish(json(channel, 201)));
   await waitFor(() => expect(screen.getByText('Пока нет площадок')).toBeVisible());
   expect(window.location.pathname).toBe('/admin/channels');
+});
+
+test.each([
+  [401, 'admin'], [401, 'agent'], [401, null], [403, 'admin'], [403, 'agent'],
+] as const)('после PUT %i роль %s проверяется до показа редактора', async (status, role) => {
+  let sessions = 0;
+  let restore!: (response: Response) => void;
+  fetchMock.mockImplementation(async (url, options) => {
+    if (url === '/api/v1/auth/me') {
+      if (++sessions === 1) return json({ user });
+      return await new Promise((resolve) => { restore = resolve; });
+    }
+    if (url === api) return json({ items: [channel] });
+    expect(url).toBe(`${api}/${channel.id}`);
+    expect(options?.method).toBe('PUT');
+    return json({}, status);
+  });
+  const draft = 'Правки администратора';
+  navigate(`/admin/channels/${channel.id}`);
+  render(<App />);
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Системный промпт' }), { target: { value: draft } });
+  fireEvent.submit(screen.getByRole('form', { name: 'Настройки площадки' }));
+  expect(await screen.findByText('Проверяем сессию')).toBeVisible();
+  expect(screen.queryByRole('textbox', { name: 'Системный промпт' })).not.toBeInTheDocument();
+  await act(async () => restore(role ? json({ user: { ...user, role } }) : json({}, 401)));
+  if (role === null) {
+    expect(await screen.findByRole('form', { name: 'Вход в аккаунт' })).toBeVisible();
+    expect(screen.queryByRole('textbox', { name: 'Системный промпт' })).not.toBeInTheDocument();
+  } else if (role === 'agent') {
+    expect(await screen.findByRole('heading', { name: 'Доступ ограничен' })).toBeVisible();
+    expect(screen.queryByRole('textbox', { name: 'Системный промпт' })).not.toBeInTheDocument();
+  } else {
+    expect(await screen.findByRole('textbox', { name: 'Системный промпт' })).toHaveValue(draft);
+    expect(screen.getByRole('alert')).toHaveTextContent('Не удалось сохранить настройки');
+  }
+  expect(adminCalls()).toHaveLength(1);
+});
+
+test('PUT не принимает ответ с прежней версией и сохраняет ввод для повтора', async () => {
+  let writes = 0;
+  const draft = 'Правки администратора';
+  fetchMock.mockImplementation(async (url, options) => {
+    if (url === '/api/v1/auth/me') return json({ user });
+    if (url === api) return json({ items: [channel] });
+    expect(url).toBe(`${api}/${channel.id}`);
+    const { expectedNumber } = JSON.parse(String(options?.body)) as { expectedNumber: number };
+    expect(expectedNumber).toBe(channel.number);
+    return json(++writes === 1 ? channel : { ...channel, instruction: draft, number: channel.number + 1 });
+  });
+  navigate(`/admin/channels/${channel.id}`);
+  render(<App />);
+  const prompt = await screen.findByRole('textbox', { name: 'Системный промпт' });
+  fireEvent.change(prompt, { target: { value: draft } });
+  await userEvent.click(screen.getByRole('button', { name: 'Сохранить настройки' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Сервер вернул неожиданный ответ');
+  expect(prompt).toHaveValue(draft);
+  await userEvent.click(screen.getByRole('button', { name: 'Повторить' }));
+  expect(await screen.findByText('Версия 2')).toBeVisible();
+  expect(prompt).toHaveValue(draft);
+  expect(writes).toBe(2);
+});
+
+test.each([
+  { status: 401, reopen: false },
+  { status: 403, reopen: true },
+])('PUT $status во время неудачного выхода запускает проверку роли (повторный вход в редактор: $reopen)', async ({ status, reopen }) => {
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  let sessions = 0;
+  let finishSave!: (response: Response) => void;
+  let finishLogout!: (response: Response) => void;
+  let finishCheck!: (response: Response) => void;
+  fetchMock.mockImplementation(async (url) => {
+    if (url === '/api/v1/auth/me') {
+      if (++sessions === 1) return json({ user });
+      return await new Promise((resolve) => { finishCheck = resolve; });
+    }
+    if (url === '/api/v1/auth/logout') return await new Promise((resolve) => { finishLogout = resolve; });
+    if (url === api) return json({ items: [channel] });
+    expect(url).toBe(`${api}/${channel.id}`);
+    return await new Promise((resolve) => { finishSave = resolve; });
+  });
+  navigate(`/admin/channels/${channel.id}`);
+  render(<App />);
+  const edit = async () => {
+    const prompt = await screen.findByRole('textbox', { name: 'Системный промпт' });
+    fireEvent.change(prompt, { target: { value: 'Новый промпт' } });
+    fireEvent.submit(screen.getByRole('form', { name: 'Настройки площадки' }));
+  };
+  await screen.findByRole('form', { name: 'Настройки площадки' });
+  if (!reopen) await edit();
+  await userEvent.click(await screen.findByRole('button', { name: /Меню пользователя:/ }));
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Выйти' }));
+  expect(confirm).toHaveBeenCalledTimes(reopen ? 0 : 1);
+  expect(await screen.findByText('Выходим…')).toBeVisible();
+  if (reopen) {
+    act(() => navigate('/admin/channels'));
+    await userEvent.click(await screen.findByRole('link', { name: 'Настройки: Авито' }));
+    await edit();
+  }
+  await act(async () => finishSave(json({}, status)));
+  expect(await screen.findByText('Проверяем сессию')).toBeVisible();
+  expect(screen.queryByRole('textbox', { name: 'Системный промпт' })).not.toBeInTheDocument();
+  expect(sessions).toBe(1);
+  await act(async () => finishLogout(json({}, 503)));
+  expect(await screen.findByText('Проверяем сессию')).toBeVisible();
+  expect(screen.queryByRole('textbox', { name: 'Системный промпт' })).not.toBeInTheDocument();
+  expect(sessions).toBe(2);
+  await act(async () => finishCheck(json({ user: { ...user, role: 'agent' } })));
+  expect(await screen.findByRole('heading', { name: 'Доступ ограничен' })).toBeVisible();
+  expect(screen.queryByRole('textbox', { name: 'Системный промпт' })).not.toBeInTheDocument();
 });

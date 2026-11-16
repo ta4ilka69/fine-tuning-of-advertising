@@ -23,6 +23,14 @@
   width: min(100%, 55rem);
 }
 
+.settingsTitle {
+  overflow-wrap: anywhere;
+}
+
+.form .compactTextarea {
+  min-height: var(--app-control-height);
+}
+
 .badge {
   border-radius: var(--mantine-radius-sm);
   background: var(--app-canvas);
