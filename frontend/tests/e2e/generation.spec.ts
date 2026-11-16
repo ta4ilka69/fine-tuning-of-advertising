@@ -152,10 +152,12 @@ flow('потерянный 202: сверка через GET без повтор�
   expect(starts).toBe(1);
 });
 
-flow('новый результат подтверждает быстрый повтор после потерянного 202 без изменения даты', async ({ page, loginServer, flow }) => {
+for (const update of ['заголовок', 'пояснение к фото'] as const) flow(`новый результат подтверждает быстрый повтор после потерянного 202: ${update}`, async ({ page, loginServer, flow }) => {
   await flow.choose();
-  const result = structuredClone(original.result!);
-  result.channels[0]!.title = 'Обновлённый заголовок';
+  const channel = original.result!.channels[0]!;
+  const result = { channels: [update === 'заголовок' ? { ...channel, title: 'Обновлённый заголовок' } : {
+    ...channel, photos: { top: [{ photo_id: channel.photoIds[0]!, why: 'Хорошо виден размер комнаты' }] },
+  }] };
   let attempts = 0;
   await page.route(`**${listingPath}/generations`, (route) => {
     attempts += 1;
@@ -166,7 +168,8 @@ flow('новый результат подтверждает быстрый по
   await expect.poll(() => loginServer.calls.filter((call) => call.path === listingPath && call.method === 'GET').length).toBeGreaterThan(1);
   await expect(flow.launch()).toBeEnabled();
   await expect(page.getByText('Подготовка завершена', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Обновлённый заголовок' })).toBeVisible();
+  const changed = update === 'заголовок' ? 'Обновлённый заголовок' : 'Хорошо виден размер комнаты';
+  await expect(page.getByText(changed, { exact: true })).toBeVisible();
   await expect(page.getByText('Не удалось подтвердить запуск. Проверьте состояние объявления')).toHaveCount(0);
   expect(attempts).toBe(1);
 });

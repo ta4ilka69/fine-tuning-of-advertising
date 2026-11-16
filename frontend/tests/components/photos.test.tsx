@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { AppProvider } from '../../src/app/AppProvider';
@@ -60,8 +60,10 @@ test('кнопка выбора открывает multiple input, превью 
 
 test('ошибка изображения имеет доступную подпись; удаление возвращает фокус', async () => {
   detail.photos.push(anotherPhoto());
-  await open(); fireEvent.error(screen.getByRole('img', { name: 'room.jpg' }));
-  expect(screen.getByRole('img', { name: 'Не удалось показать превью room.jpg' })).toBeVisible();
+  await open();
+  const gallery = within(screen.getByRole('region', { name: 'Фото · 2 из 20' }));
+  fireEvent.error(gallery.getByRole('img', { name: 'room.jpg' }));
+  expect(gallery.getByRole('img', { name: 'Не удалось показать превью room.jpg' })).toBeVisible();
   await userEvent.click(screen.getByRole('button', { name: 'Удалить фотографию room.jpg' }));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Удалить фотографию second.png' })).toHaveFocus());
 });

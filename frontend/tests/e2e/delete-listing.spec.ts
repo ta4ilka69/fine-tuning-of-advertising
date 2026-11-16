@@ -34,7 +34,8 @@ test('204, двойное подтверждение, блокировка фо�
   await open(page, loginServer.url); let release!: () => void; loginServer.controls.holdListingDelete = new Promise((resolve) => { release = resolve; });
   try {
     await confirm(page).evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
-    await expect(page.getByText('Удаляем объявление', { exact: true })).toBeVisible(); expect(writes(loginServer)).toHaveLength(1);
+    await expect(page.getByText('Удаляем объявление', { exact: true })).toBeVisible();
+    await expect.poll(() => writes(loginServer).length).toBe(1);
     expect(loginServer.calls.find((call) => call.method === 'DELETE')).toMatchObject({ path: `/api/v1/listings/${id}`, query: '?expectedVersion=2', body: null });
     await expect(confirm(page)).toBeDisabled(); await page.keyboard.press('Escape'); await expect(dialog(page)).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Редактировать объявление', exact: true })).toBeDisabled();

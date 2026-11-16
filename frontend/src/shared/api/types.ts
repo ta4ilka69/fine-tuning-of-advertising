@@ -41,7 +41,13 @@ export type PhotoMutation = { version: number; photo: Photo };
 
 export type ListingOverview = ListingSummary & { isApartments: boolean; photos: Photo[] };
 
-export type GenerationResult = { channels: {
+export type GenerationResult = {
+  score?: number;
+  why?: { plus: boolean; text: string }[];
+  channels: ChannelResult[];
+};
+
+export type ChannelResult = {
   channelVersionId: string;
   channel: { id: string; name: string };
   title: string;
@@ -49,7 +55,8 @@ export type GenerationResult = { channels: {
   score: number;
   scoreReason: string;
   photoIds: string[];
-}[] };
+  photos?: { top: { photo_id: string; why: string }[] };
+};
 
 export type Listing = ListingOverview & { data: ListingData; result: GenerationResult | null; generationError: Problem | null };
 
