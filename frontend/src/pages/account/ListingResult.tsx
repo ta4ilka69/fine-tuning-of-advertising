@@ -120,11 +120,13 @@ function RecommendedPhotos({ result, photos, ready }: { result: ChannelResult; p
     const why = result.photos?.top.find(({ photo_id }) => photo_id.toLowerCase() === id)?.why;
     return [{ id, url, name: photo.fileName, why }];
   });
-  if (!recommended.length) return null;
-
   return <Stack gap="sm">
     <Title order={3}>Какие фотографии поставить первыми</Title>
-    <ol className={classes.recommendations} role="list" aria-label="Рекомендованные фотографии">
+    {result.photoIds.length === 0 ? (
+      <Text c="dimmed">Для этой площадки нет рекомендованных фотографий.</Text>
+    ) : recommended.length === 0 ? (
+      <Text c="dimmed">Не удалось показать рекомендованные фотографии. Возможно, они были удалены или превью недоступны.</Text>
+    ) : <ol className={classes.recommendations} role="list" aria-label="Рекомендованные фотографии">
       {recommended.map(({ id, url, name, why }) => (
         <li key={id}>
           <img className={classes.thumbnail} src={url} alt={name} loading="lazy"
@@ -133,7 +135,7 @@ function RecommendedPhotos({ result, photos, ready }: { result: ChannelResult; p
           {why && <Text mt="xs" size="sm">{why}</Text>}
         </li>
       ))}
-    </ol>
+    </ol>}
   </Stack>;
 }
 

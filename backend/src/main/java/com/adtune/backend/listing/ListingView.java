@@ -1,5 +1,6 @@
 package com.adtune.backend.listing;
 
+import com.adtune.backend.db.ListingRepository;
 import com.adtune.backend.db.Listing;
 import com.adtune.backend.db.ListingStatus;
 import com.adtune.backend.photo.PhotoView;
@@ -58,7 +59,9 @@ public record ListingView(
         result,
         generationError != null && status == ListingStatus.failed
             ? Map.of("type", "about:blank", "title", generationError, "status", 502,
-                "code", "GENERATION_FAILED", "requestId", UUID.randomUUID().toString())
+                "code", ListingRepository.GENERATION_TIMEOUT.equals(generationError)
+                    ? "GENERATION_TIMEOUT" : "GENERATION_FAILED",
+                "requestId", UUID.randomUUID().toString())
             : null,
         List.of(),
         createdAt.toString(),
