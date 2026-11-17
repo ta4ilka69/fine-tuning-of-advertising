@@ -1,0 +1,63 @@
+{
+  "params": {
+    "deal": {
+      "type": "sale",
+      "price": 14500000,
+      "saleType": "free",
+      "mortgageAllowed": true
+    },
+    "object": {
+      "type": "flat",
+      "roomsCount": 2,
+      "roomType": "separate",
+      "totalArea": 54,
+      "livingArea": 30,
+      "kitchenArea": 10,
+      "floor": 7,
+      "loggiasCount": 1,
+      "windowsView": "yard",
+      "separateWcsCount": 1,
+      "repairType": "euro"
+    },
+    "building": {
+      "floorsCount": 12,
+      "buildYear": 2008,
+      "materialType": "brick",
+      "ceilingHeight": 2.7,
+      "passengerLiftsCount": 2,
+      "cargoLiftsCount": 1,
+      "parkingType": "underground",
+      "hasBarrierYard": true,
+      "hasConcierge": true
+    },
+    "location": {
+      "address": "Санкт-Петербург, Лесной проспект, 10",
+      "undergrounds": [
+        {
+          "name": "Лесная",
+          "minutes": 7,
+          "transportType": "walk"
+        }
+      ]
+    },
+    "extra": "Окна выходят во двор. Рядом школа № 95 и парк. При продаже остаются кухонный гарнитур и встроенная техника."
+  },
+  "photos": [
+    {
+      "photo_id": "sale-01-living-room",
+      "description": "Светлая гостиная: диван, обеденный стол, большое окно; на полу ламинат."
+    },
+    {
+      "photo_id": "sale-02-kitchen",
+      "description": "Кухня с гарнитуром, встроенными духовкой и варочной панелью."
+    },
+    {
+      "photo_id": "sale-03-bedroom",
+      "description": "Спальня с двуспальной кроватью и шкафом; окно выходит во двор."
+    },
+    {
+      "photo_id": "sale-04-loggia",
+      "description": "Застеклённая лоджия с видом во двор."
+    }
+  ]
+}

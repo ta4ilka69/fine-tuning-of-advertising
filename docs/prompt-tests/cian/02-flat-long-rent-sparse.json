@@ -1,0 +1,48 @@
+{
+  "params": {
+    "deal": {
+      "type": "rent",
+      "price": 65000,
+      "deposit": 65000,
+      "commissionPercent": 50,
+      "prepayMonths": 1,
+      "leaseTerm": "long_term",
+      "utilitiesIncluded": false,
+      "utilitiesPrice": 4000,
+      "metersNotIncluded": true
+    },
+    "object": {
+      "type": "flat",
+      "roomsCount": 1,
+      "totalArea": 35,
+      "floor": 3,
+      "repairType": "cosmetic"
+    },
+    "building": {
+      "floorsCount": 5
+    },
+    "amenities": {
+      "hasFurniture": true,
+      "hasFridge": true,
+      "hasWasher": false
+    },
+    "rules": {
+      "childrenAllowed": true,
+      "petsAllowed": false
+    },
+    "location": {
+      "address": "Санкт-Петербург, улица Маршала Говорова, 24"
+    },
+    "extra": "Долгосрочная аренда. Просмотры по предварительной договорённости."
+  },
+  "photos": [
+    {
+      "photo_id": "rent-01-room",
+      "description": "Жилая комната с диваном, шкафом и окном."
+    },
+    {
+      "photo_id": "rent-02-kitchen",
+      "description": "Небольшая кухня с холодильником, столом и электрической плитой."
+    }
+  ]
+}
