@@ -7,7 +7,7 @@ import { RequestError } from '../../shared/api/errors';
 import { AppButton } from '../../shared/ui/AppButton';
 import { AppNotice } from '../../shared/ui/AppNotice';
 import { ChannelRulesFields } from './ChannelRulesFields';
-import { channelRuleField, channelRulesValidation } from './channel-rules';
+import { channelRulesValidation, channelSettingsField, readLimit, validateLimit } from './channel-rules';
 import classes from './Channels.module.css';
 
 const initialValues = {
@@ -22,28 +22,6 @@ const accessFeedback: Record<401 | 403, Feedback> = {
   401: { title: 'Не удалось создать площадку', message: 'Повторите отправку формы после проверки сессии' },
   403: { title: 'Не удалось создать площадку', message: 'Сервер отклонил запрос на создание площадки' },
 };
-
-function readLimit(value: string) {
-  if (!value.trim()) return null;
-  return /^\d+$/.test(value.trim()) ? Number(value) : NaN;
-}
-
-function validateLimit(value: string) {
-  const limit = readLimit(value);
-  return limit === null || (Number.isSafeInteger(limit) && limit > 0) ? null : 'Введите целое число больше нуля';
-}
-
-function fieldFor(pointer: string, ruleCount: number) {
-  switch (pointer) {
-    case '/name': return 'name';
-    case '/description': return 'description';
-    case '/isActive': return 'isActive';
-    case '/limits':
-    case '/limits/titleLimit': return 'titleLimit';
-    case '/limits/textLimit': return 'textLimit';
-    default: return channelRuleField(pointer, ruleCount);
-  }
-}
 
 export function CreateChannel({ draft, onDraftChange, restore }: {
   draft?: ChannelDraft;
@@ -95,7 +73,7 @@ export function CreateChannel({ draft, onDraftChange, restore }: {
       } else if (error instanceof RequestError && (error.status === 400 || error.status === 422)) {
         const errors: Record<string, string> = {};
         for (const issue of error.fieldErrors ?? []) {
-          const field = fieldFor(issue.field, checklist.length);
+          const field = channelSettingsField(issue.field, checklist.length);
           if (field) errors[field] ??= issue.message;
         }
         form.setErrors(errors);
