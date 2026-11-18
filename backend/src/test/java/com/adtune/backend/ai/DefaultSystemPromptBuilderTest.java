@@ -17,6 +17,7 @@ class DefaultSystemPromptBuilderTest {
     assertThat(prompt)
         .contains("маркетолог по недвижимости")
         .contains("придумывай: не упоминай")
+        .contains("английские слова и машинные значения")
         .contains("0–100")
         .contains("не менее трёх причин")
         .contains("how_to_improve")
@@ -25,9 +26,9 @@ class DefaultSystemPromptBuilderTest {
   }
 
   @Test
-  void userPromptContainsParamsChannelsAndUserAddition() throws Exception {
+  void userPromptHumanizesParamsAndKeepsChannelsAndUserAddition() throws Exception {
     var params = mapper.readTree("""
-        {"deal": "sale", "price": 14500000, "rooms": 2}
+        {"deal": {"type": "sale", "price": 14500000}, "object": {"roomsCount": 2}}
         """);
     AdGenerationRequest request = new AdGenerationRequest(
         params,
@@ -38,22 +39,27 @@ class DefaultSystemPromptBuilderTest {
     String prompt = builder.buildUserPrompt(request);
 
     assertThat(prompt)
-        .contains("\"price\" : 14500000")
+        .contains("Параметры объекта:")
+        .contains("Сделка: продажа; цена 14500000 ₽")
+        .contains("комнат — 2")
         .contains("\"photo_id\" : \"5\"")
         .contains("\"channel_id\" : \"avito\"")
         .contains("\"title_limit\" : 50")
         .contains("Деловой стиль.")
         .contains("Дополнительные указания агента")
-        .contains("Подчеркни тишину двора.");
+        .contains("Подчеркни тишину двора.")
+        .doesNotContain("\"price\"")
+        .doesNotContain("\"roomsCount\"")
+        .doesNotContain("\"type\" : \"sale\"");
   }
 
   @Test
   void userPromptOmitsEmptyAddition() throws Exception {
     AdGenerationRequest request = new AdGenerationRequest(
-        mapper.readTree("{\"rooms\": 1}"), List.of(), List.of(), null);
+        mapper.readTree("{\"object\": {\"roomsCount\": 1}}"), List.of(), List.of(), null);
 
     assertThat(builder.buildUserPrompt(request))
         .doesNotContain("Дополнительные указания агента")
-        .contains("channels");
+        .contains("Площадки");
   }
 }

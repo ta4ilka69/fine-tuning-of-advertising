@@ -103,8 +103,13 @@ public class OpenAiPhotoAnalysisClient implements PhotoAnalysisClient {
           .retrieve()
           .body(byte[].class);
     } catch (RestClientResponseException e) {
+      String body = e.getResponseBodyAsString();
+      log.error("Модель вернула HTTP {} на анализ фото: {}", e.getStatusCode().value(),
+          body.length() > 2000 ? body.substring(0, 2000) : body, e);
       throw new AiClientException(AiClientException.REQUEST_FAILED,
-          "Модель вернула ошибку HTTP " + e.getStatusCode().value(), e);
+          "Модель вернула ошибку HTTP " + e.getStatusCode().value()
+              + (body.isBlank() ? "" : ": " + (body.length() > 500 ? body.substring(0, 500) : body)),
+          e);
     } catch (RestClientException e) {
       throw new AiClientException(AiClientException.REQUEST_FAILED,
           "Не удалось обратиться к модели: " + e.getMessage(), e);
