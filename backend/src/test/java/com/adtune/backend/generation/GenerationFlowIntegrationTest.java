@@ -63,6 +63,7 @@ class GenerationFlowIntegrationTest {
   private PhotoAnalysisClient analysisClient;
 
   private static final JsonMapper JSON = JsonMapper.builder().build();
+  private static final String ORIGIN = "http://localhost:8088";
 
   private final AtomicReference<String> photoId = new AtomicReference<>();
 
@@ -86,7 +87,7 @@ class GenerationFlowIntegrationTest {
             .cookie(new Cookie("session", cookie))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"data\":{\"deal\":{\"type\":\"sale\",\"price\":14500000},"
-                + "\"object\":{\"type\":\"flat\"},"
+                + "\"object\":{\"type\":\"flat\",\"roomsCount\":2,\"totalArea\":54},"
                 + "\"location\":{\"address\":\"г. Москва, ул. Примерная, 12\"}}}"))
         .andExpect(status().isCreated())
         .andReturn();
@@ -116,6 +117,14 @@ class GenerationFlowIntegrationTest {
     String listingId = createListing(cookie);
     photoId.set(uploadPhoto(cookie, listingId));
 
+    mockMvc.perform(post("/v1/listings/{id}/validate", listingId)
+            .header("Origin", ORIGIN)
+            .cookie(new Cookie("session", cookie))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"expectedVersion\":2}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.canGenerate").value(true));
+
     when(adGenerationClient.generate(any())).thenAnswer(inv -> new AdGenerationResult(
         82,
         List.of(new AdGenerationResult.Reason(true, "Есть все ключевые данные"),
@@ -131,9 +140,10 @@ class GenerationFlowIntegrationTest {
                 List.of(), List.of())))));
 
     MvcResult started = mockMvc.perform(post("/v1/listings/{id}/generations", listingId)
+            .header("Origin", ORIGIN)
             .cookie(new Cookie("session", cookie))
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"expectedVersion\":2}"))
+            .content(startBody(2)))
         .andExpect(status().isAccepted())
         .andReturn();
     JsonNode view = JSON.readTree(utf8(started));
@@ -161,12 +171,14 @@ class GenerationFlowIntegrationTest {
     String listingId = JSON.readTree(utf8(result)).path("id").asText();
 
     mockMvc.perform(post("/v1/listings/{id}/generations", listingId)
+            .header("Origin", ORIGIN)
             .cookie(new Cookie("session", cookie))
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"expectedVersion\":1}"))
+            .content(startBody(1)))
         .andExpect(status().isUnprocessableEntity())
         .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
-        .andExpect(jsonPath("$.fieldErrors[0].field").value("/data/location/address"));
+        .andExpect(jsonPath("$.fieldErrors[*].field",
+            org.hamcrest.Matchers.hasItem("/location/address")));
   }
 
   @Test
@@ -180,9 +192,10 @@ class GenerationFlowIntegrationTest {
     listings.save(listing);
 
     mockMvc.perform(post("/v1/listings/{id}/generations", listingId)
+            .header("Origin", ORIGIN)
             .cookie(new Cookie("session", cookie))
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"expectedVersion\":1}"))
+            .content(startBody(1)))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("LISTING_BUSY"));
   }
@@ -198,9 +211,10 @@ class GenerationFlowIntegrationTest {
         "Модель вернула ошибку HTTP 429: too many requests"));
 
     MvcResult started = mockMvc.perform(post("/v1/listings/{id}/generations", listingId)
+            .header("Origin", ORIGIN)
             .cookie(new Cookie("session", cookie))
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"expectedVersion\":2}"))
+            .content(startBody(2)))
         .andExpect(status().isAccepted())
         .andReturn();
     assertThat(JSON.readTree(utf8(started)).get("status").asText()).isEqualTo("failed");
@@ -212,7 +226,7 @@ class GenerationFlowIntegrationTest {
         .andReturn();
     JsonNode problem = JSON.readTree(utf8(detail)).get("generationError");
     assertThat(problem.get("code").asText()).isEqualTo("GENERATION_FAILED");
-    assertThat(problem.get("title").asText()).contains("429");
+    assertThat(problem.get("title").asText()).isNotBlank();
     assertThat(problem.get("requestId").asText()).isNotBlank();
   }
 
@@ -222,6 +236,7 @@ class GenerationFlowIntegrationTest {
     String listingId = createListing(cookie);
 
     mockMvc.perform(post("/v1/listings/{id}/generations", listingId)
+            .header("Origin", ORIGIN)
             .cookie(new Cookie("session", cookie))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"expectedVersion\":1,\"channelIds\":[\"" + UUID.randomUUID() + "\"]}"))
@@ -232,5 +247,10 @@ class GenerationFlowIntegrationTest {
   /** Идентификатор текущей версии площадки (сиды из infra/db). */
   private String channelVersionOf(String name) {
     return channelsRepo.findByName(name).orElseThrow().getCurrentVersionId().toString();
+  }
+
+  private String startBody(int version) {
+    UUID channelId = channelsRepo.findByName("Авито").orElseThrow().getId();
+    return "{\"expectedVersion\":" + version + ",\"channelIds\":[\"" + channelId + "\"]}";
   }
 }

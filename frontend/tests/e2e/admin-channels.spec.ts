@@ -292,8 +292,8 @@ test('настройки загружают нужную площадку и о�
     await expect(page.getByText('Версия 1')).toBeVisible();
     await expect(prompt).toHaveValue(original.instruction);
     await expect(page.getByRole('textbox', { name: 'Название' })).toHaveValue(original.name);
-    await expect(page.getByRole('textbox', { name: 'Максимум символов в тексте' })).toHaveValue('Не задано');
-    await expect(page.getByText('Площадка выключена')).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Максимум символов в тексте' })).toHaveValue('');
+    await expect(page.getByLabel('Площадка включена')).not.toBeChecked();
     await prompt.fill(instruction);
     await page.getByRole('button', { name: 'Удалить правило 2' }).click();
     await expect(page.getByRole('button', { name: 'Удалить правило 1' })).toHaveCount(0);

@@ -101,7 +101,7 @@
   <div class="grid">
     <section class="card">
       <h2>Сроки</h2>
-      <div class="countdown"><b id="days-to-demo">—</b><span>до минимального демо 13 ноября</span></div>
+      <div class="countdown"><b id="days-to-milestone">—</b><span>до конца третьей итерации 27 ноября</span></div>
       <div class="iters" id="iters">
         <div class="iter" data-start="2026-10-12" data-end="2026-10-23"><b>Итерация 1</b><span>12–23 окт</span></div>
         <div class="iter" data-start="2026-10-24" data-end="2026-11-13"><b>Итерация 2 · демо</b><span>24 окт – 13 ноя</span></div>
@@ -114,15 +114,13 @@
     <section class="card">
       <h2>Состояние</h2>
       <div class="rows">
-        <div class="row">Макеты<span class="pill ok">Готово</span></div>
-        <div class="row">API-контракт<span class="pill ok">Черновик готов</span></div>
-        <div class="row">CI и тесты<span class="pill ok">Готово</span></div>
-        <div class="row">Модель данных и БД<span class="pill warn">На ревью</span></div>
-        <div class="row">Фронтенд<span class="pill info">В работе</span></div>
-        <div class="row">Бэкенд<span class="pill info">В работе</span></div>
-        <div class="row">Генерация и оценка фото<span class="pill info">В работе</span></div>
-        <div class="row">Хранилище фото<span class="pill idle">Позже</span></div>
+        <div class="row">Управление площадками и генерация для ЦИАН<span class="pill ok">Проверено</span></div>
+        <div class="row">Исправление фото и показ оценки каждого снимка<span class="pill warn">Анализ уже есть</span></div>
+        <div class="row">Промпты и чек-листы для Авито, ЦИАН и Telegram<span class="pill warn">Есть черновики</span></div>
+        <div class="row">Отдельная оценка объявления по площадкам<span class="pill warn">Пока общая</span></div>
+        <div class="row">Тестовые объявления и замеры генерации<span class="pill idle">Предстоит</span></div>
       </div>
+      <p>Связка с API площадок проверена локально в рабочей ветке.</p>
     </section>
 
     <section class="card">
@@ -130,7 +128,7 @@
       <div class="person"><div class="avatar warn">Р</div><div><b>Руслан Шамухаметов</b><span>Руководитель проекта</span></div><a href="https://github.com/CaseyJohnson-RS">GitHub</a></div>
       <div class="person"><div class="avatar info">З</div><div><b>Захар Брюханов</b><span>Фронтенд</span></div><a href="https://github.com/BrukhanovZahar">GitHub</a></div>
       <div class="person"><div class="avatar ok">А</div><div><b>Артём Балин</b><span>Бэкенд</span></div><a href="https://github.com/ta4ilka69">GitHub</a></div>
-      <div class="demo"><b>Демо:</b> регистрация и вход → создание объявления → загрузка фото → генерация текстов.</div>
+      <div class="demo"><b>Демо:</b> настроить промпт ЦИАН в админке → создать объявление и загрузить фото → сгенерировать текст и получить до трёх рекомендаций по фото.</div>
     </section>
   </div>
 
@@ -177,16 +175,16 @@
     </section>
   </div>
 
-  <footer>Обновлено 27 октября 2026 года · исходник — <code>site/index.html</code></footer>
+  <footer>Обновлено 17 ноября 2026 года · исходник — <code>site/index.html</code></footer>
 </main>
 
 <script>
   const day = 864e5;
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const local = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
-  const left = Math.round((local('2026-11-13') - today) / day);
+  const left = Math.round((local('2026-11-27') - today) / day);
   const plural = (n) => n % 10 === 1 && n % 100 !== 11 ? 'день' : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? 'дня' : 'дней';
-  document.getElementById('days-to-demo').textContent = left > 0 ? `${left} ${plural(left)}` : left === 0 ? 'Сегодня' : 'Демо прошло';
+  document.getElementById('days-to-milestone').textContent = left > 0 ? `${left} ${plural(left)}` : left === 0 ? 'Сегодня' : 'Срок истёк';
   for (const el of document.querySelectorAll('.iter')) {
     const s = local(el.dataset.start), e = local(el.dataset.end);
     el.classList.toggle('done', today > e);
