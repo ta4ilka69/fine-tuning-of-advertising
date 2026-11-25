@@ -5,6 +5,7 @@ CREATE TYPE user_role AS ENUM ('agent', 'admin');
 CREATE TYPE listing_status AS ENUM ('draft', 'generating', 'ready', 'failed');
 CREATE TYPE photo_status AS ENUM ('processing', 'ready', 'failed');
 CREATE TYPE photo_quality AS ENUM ('unfit', 'needs_fix', 'good');
+CREATE TYPE photo_improvement AS ENUM ('clutter');
 
 -- "user" — зарезервированное слово в PostgreSQL, поэтому таблица называется users.
 -- Логин хранится в нижнем регистре, поэтому уникальность без учёта регистра даёт обычный UNIQUE.
@@ -101,10 +102,14 @@ CREATE TABLE photo (
     quality          photo_quality,
     quality_reason   text,
     scene            text,
+    description      text,
+    improvement_type photo_improvement,
+    edit_instruction text,
     created_at       timestamptz NOT NULL DEFAULT now(),
     CHECK (status <> 'ready' OR (thumbnail_s3_key IS NOT NULL AND quality IS NOT NULL
         AND quality_reason IS NOT NULL AND scene IS NOT NULL)),
-    CHECK ((status = 'failed') = (error IS NOT NULL))
+    CHECK ((status = 'failed') = (error IS NOT NULL)),
+    CHECK ((improvement_type IS NULL) = (edit_instruction IS NULL))
 );
 
 CREATE INDEX photo_listing_id_idx ON photo (listing_id);

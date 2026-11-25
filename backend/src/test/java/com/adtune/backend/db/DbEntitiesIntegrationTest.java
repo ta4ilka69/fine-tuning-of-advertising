@@ -1,8 +1,10 @@
 package com.adtune.backend.db;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -131,9 +133,29 @@ class DbEntitiesIntegrationTest {
     assertThat(uploaded.getQuality()).isNull();
 
     uploaded.markReady("photos/thumb.jpg", PhotoQuality.good,
-        "Светлая гостиная", "Гостиная");
+        "Светлая гостиная", "Гостиная",
+        "Светлая гостиная с диваном и большим окном, свет из окна справа",
+        PhotoImprovement.clutter, "Убрать пустую бутылку на журнальном столике");
     Photo ready = photos.save(uploaded);
     assertThat(ready.getStatus()).isEqualTo(PhotoStatus.ready);
     assertThat(photos.countByListingId(listing.getId())).isEqualTo(1);
+
+    Photo loaded = photos.findById(ready.getId()).orElseThrow();
+    assertThat(loaded.getDescription())
+        .isEqualTo("Светлая гостиная с диваном и большим окном, свет из окна справа");
+    assertThat(loaded.getImprovementType()).isEqualTo(PhotoImprovement.clutter);
+    assertThat(loaded.getEditInstruction())
+        .isEqualTo("Убрать пустую бутылку на журнальном столике");
+
+    // Тип улучшения без инструкции схема отвергает.
+    Photo orphan = photos.save(Photo.uploaded(listing.getId(), "photos/original-2.jpg",
+        "original-2.jpg", "image/jpeg", 1_024));
+    orphan.markPersisted();
+    orphan.markReady("photos/thumb-2.jpg", PhotoQuality.good, "—", "Кухня", "Кухня",
+        PhotoImprovement.clutter, null);
+    assertThatThrownBy(() -> photos.save(orphan))
+        .rootCause()
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("violates check constraint");
   }
 }

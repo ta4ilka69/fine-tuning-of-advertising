@@ -3,6 +3,7 @@ package com.adtune.backend.ai.openai;
 import com.adtune.backend.ai.AiClientException;
 import com.adtune.backend.ai.PhotoAnalysisClient;
 import com.adtune.backend.config.AiProperties;
+import com.adtune.backend.db.PhotoImprovement;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,8 +11,10 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.client.RestClient;
@@ -28,23 +31,37 @@ public class OpenAiPhotoAnalysisClient implements PhotoAnalysisClient {
       {
         "type": "object",
         "additionalProperties": false,
-        "required": ["quality", "quality_reason", "scene"],
+        "required": ["quality", "quality_reason", "scene", "description", "improvements"],
         "properties": {
           "quality": { "type": "integer", "minimum": 1, "maximum": 3 },
           "quality_reason": { "type": "string" },
-          "scene": { "type": "string" }
+          "scene": { "type": "string" },
+          "description": { "type": "string" },
+          "improvements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "can_improve", "edit_instruction"],
+              "properties": {
+                "type": { "type": "string", "enum": [%s] },
+                "can_improve": { "type": "boolean" },
+                "edit_instruction": { "type": ["string", "null"] }
+              }
+            }
+          }
         }
       }
       """;
 
   private final RestClient restClient;
-  private final AiProperties.OpenAi settings;
+  private final AiProperties.OpenAi.Model model;
   private final ObjectMapper mapper;
 
   public OpenAiPhotoAnalysisClient(RestClient restClient, AiProperties.OpenAi settings,
       ObjectMapper mapper) {
     this.restClient = restClient;
-    this.settings = settings;
+    this.model = OpenAiAdGenerationClient.normalizeModel(settings.photo());
     this.mapper = mapper;
   }
 
@@ -55,14 +72,7 @@ public class OpenAiPhotoAnalysisClient implements PhotoAnalysisClient {
 
     ObjectNode systemMessage = mapper.createObjectNode();
     systemMessage.put("role", "system");
-    systemMessage.put("content", """
-        Ты оцениваешь фотографии недвижимости для объявления. Оцени фото:
-        3 — хорошее, показывать в начале объявления; 2 — можно улучшить
-        (плохой свет, беспорядок, обрезан кадр); 1 — не подходит для объявления
-        (не о квартире, скриншоты, размытое). В scene коротко напиши, что на фото
-        («Гостиная», «Кухня», «Санузел», «Вид из окна»), на русском.
-        Ответ строго по схеме JSON.
-        """);
+    systemMessage.put("content", systemPrompt());
 
     ArrayNode content = mapper.createArrayNode();
     ObjectNode textPart = mapper.createObjectNode();
@@ -80,7 +90,10 @@ public class OpenAiPhotoAnalysisClient implements PhotoAnalysisClient {
     userMessage.set("content", content);
 
     ObjectNode request = mapper.createObjectNode();
-    request.put("model", settings.model());
+    request.put("model", model.model());
+    if (model.reasoningEffort() != null) {
+      request.put("reasoning_effort", model.reasoningEffort());
+    }
     request.set("messages", mapper.createArrayNode().add(systemMessage).add(userMessage));
     ObjectNode format = mapper.createObjectNode();
     format.put("type", "json_schema");
@@ -88,7 +101,8 @@ public class OpenAiPhotoAnalysisClient implements PhotoAnalysisClient {
     schema.put("name", SCHEMA_NAME);
     schema.put("strict", true);
     try {
-      schema.set("schema", mapper.readTree(RESULT_SCHEMA));
+      schema.set("schema", mapper.readTree(
+          RESULT_SCHEMA.formatted(improvementCodes())));
     } catch (JsonProcessingException e) {
       throw new IllegalStateException("Некорректная встроенная схема", e);
     }
@@ -120,6 +134,54 @@ public class OpenAiPhotoAnalysisClient implements PhotoAnalysisClient {
     return analysis;
   }
 
+  /**
+   * Системный промпт анализа: оценка, описание кадра и разрешённые типы правок
+   * из {@link PhotoImprovement} — вместе с кодами, которые модель вернёт в type.
+   */
+  static String systemPrompt() {
+    return """
+        Ты оцениваешь фотографии недвижимости для объявления. Оцени фото:
+        3 — хорошее, показывать в начале объявления; 2 — можно улучшить
+        (плохой свет, беспорядок, обрезан кадр); 1 — не подходит для объявления
+        (не о квартире, скриншоты, размытое). В scene коротко напиши, что на фото
+        («Гостиная», «Кухня», «Санузел», «Вид из окна»).
+        В description дай подробное описание кадра для копирайтера, который
+        объявление пишет, не видя фотографий: какая комната, состояние ремонта
+        и мебели, свет и атмосфера, примечательные детали (вид из окна,
+        техника, планировочные особенности), и что стоит исправить в кадре,
+        если есть недостатки. Пиши факты, без домыслов.
+        Дополнительно оцени, можно ли улучшить этот кадр разрешёнными типами
+        правок. Для каждого типа ниже укажи, применим ли он к кадру.
+        Разрешённые типы правок (код типа — название и правила поиска):
+        %s
+        В improvements верни по одному объекту на каждый разрешённый тип:
+        type — код типа из списка выше; can_improve — true, если есть хотя бы
+        одна подходящая правка этого типа, иначе false; edit_instruction —
+        при true краткая инструкция для редактора: каждый предмет и его точное
+        положение в кадре (например, «Убрать пустую пластиковую бутылку у правого
+        края кухонной столешницы и две использованные тарелки слева от мойки»);
+        при false — null.
+        Все тексты (quality_reason, scene, description, edit_instruction) —
+        только по-русски.
+        Ответ строго по схеме JSON.
+        """.formatted(improvementRules());
+  }
+
+  /** Блоки «код — «название». правила» по каждому типу правок из каталога. */
+  private static String improvementRules() {
+    return PhotoImprovement.ordered().stream()
+        .map(improvement -> improvement.name() + " — «" + improvement.getEditTitle() + "».\n"
+            + improvement.getPromptRules().strip())
+        .collect(Collectors.joining("\n\n"));
+  }
+
+  /** Коды типов правок для enum-ограничения схемы ответа: "clutter", … */
+  private static String improvementCodes() {
+    return PhotoImprovement.ordered().stream()
+        .map(improvement -> "\"" + improvement.name() + "\"")
+        .collect(Collectors.joining(", "));
+  }
+
   private PhotoAnalysis parse(byte[] rawBody) {
     try {
       JsonNode content = mapper.readTree(rawBody).path("choices").path(0)
@@ -130,9 +192,19 @@ public class OpenAiPhotoAnalysisClient implements PhotoAnalysisClient {
         throw new AiClientException(AiClientException.BAD_RESPONSE,
             "Модель вернула оценку вне диапазона 1–3.");
       }
+      List<PhotoAnalysis.Improvement> improvements = new ArrayList<>();
+      for (JsonNode item : result.path("improvements")) {
+        improvements.add(new PhotoAnalysis.Improvement(
+            item.path("type").asText(null),
+            item.path("can_improve").asBoolean(false),
+            item.path("edit_instruction").isNull() ? null
+                : item.path("edit_instruction").asText(null)));
+      }
       return new PhotoAnalysis(quality,
           result.path("quality_reason").asText(),
-          result.path("scene").asText());
+          result.path("scene").asText(),
+          result.path("description").asText(),
+          improvements);
     } catch (AiClientException e) {
       throw e;
     } catch (IOException | RuntimeException e) {

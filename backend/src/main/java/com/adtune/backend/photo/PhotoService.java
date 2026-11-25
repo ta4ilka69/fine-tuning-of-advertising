@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -184,16 +185,45 @@ public class PhotoService {
         case 2 -> com.adtune.backend.db.PhotoQuality.needs_fix;
         default -> com.adtune.backend.db.PhotoQuality.good;
       };
+      var improvement = firstApplicable(result.improvements());
       photo.markReady(photo.getThumbnailS3Key(), quality,
-          result.qualityReason(), result.scene());
-      log.info("Фото {} проанализировано: quality={}, scene={}",
-          photoId, quality, result.scene());
+          result.qualityReason(), result.scene(), result.description(),
+          improvement == null ? null : improvement.type(),
+          improvement == null ? null : improvement.instruction());
+      log.info("Фото {} проанализировано: quality={}, scene={}, improvement={}",
+          photoId, quality, result.scene(),
+          improvement == null ? "нет" : improvement.type());
     } catch (com.adtune.backend.ai.AiClientException e) {
       log.error("Анализ фото {} не удался: {}", photoId, e.getMessage());
       photo.markFailed("Не удалось оценить фотографию. Удалите её и загрузите заново.");
     }
     photo.markPersisted();
     photos.save(photo);
+  }
+
+  /** Применимое улучшение: среди can_improve берём первое по порядку енама. */
+  static SelectedImprovement firstApplicable(
+      List<com.adtune.backend.ai.PhotoAnalysisClient.PhotoAnalysis.Improvement> improvements) {
+    if (improvements == null) {
+      return null;
+    }
+    for (com.adtune.backend.db.PhotoImprovement type : com.adtune.backend.db.PhotoImprovement.ordered()) {
+      for (var item : improvements) {
+        if (!item.canImprove() || !type.name().equals(item.type())) {
+          continue;
+        }
+        String instruction = item.editInstruction();
+        if (instruction == null || instruction.isBlank()) {
+          continue;
+        }
+        return new SelectedImprovement(type, instruction.trim());
+      }
+    }
+    return null;
+  }
+
+  /** Выбранное улучшение фото: тип и инструкция для редактора. */
+  record SelectedImprovement(com.adtune.backend.db.PhotoImprovement type, String instruction) {
   }
 
   public List<PhotoView> viewsOf(UUID listingId) {

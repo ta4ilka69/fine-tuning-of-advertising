@@ -83,7 +83,8 @@ class PhotoControllerTest {
   @EnumSource(PhotoQuality.class)
   void uploadReturnsCompletedAnalysis(PhotoQuality quality) throws Exception {
     Photo photo = photo();
-    photo.markReady("thumb/x.jpg", quality, "Освещение и резкость", "Гостиная");
+    photo.markReady("thumb/x.jpg", quality, "Освещение и резкость", "Гостиная",
+        "Гостиная с мебелью и светом из окна", null, null);
     when(service.upload(any(), eq(listingId), any(), eq(1)))
         .thenReturn(new PhotoService.MutationResult(2, PhotoView.of(photo)));
 

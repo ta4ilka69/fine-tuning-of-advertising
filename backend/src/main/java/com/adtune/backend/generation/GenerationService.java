@@ -233,10 +233,20 @@ public class GenerationService {
     return new GenerationTask(listing.getId(), startedAt, request, snapshots);
   }
 
+  /** Описание фото для модели: генерация картинки не видит — только этот текст. */
   private String describe(Photo photo) {
     String scene = photo.getScene() == null ? "" : photo.getScene().trim();
-    String reason = photo.getQualityReason() == null ? "" : photo.getQualityReason().trim();
-    return scene.isEmpty() ? reason : (reason.isEmpty() ? scene : scene + ". " + reason);
+    String label = switch (photo.getQuality()) {
+      case good -> "хорошее";
+      case needs_fix -> "среднее";
+      case unfit -> "плохое";
+      case null -> "";
+    };
+    String head = scene.isEmpty() ? label : label.isEmpty() ? scene : scene + " (" + label + ")";
+    String details = photo.getDescription() == null || photo.getDescription().isBlank()
+        ? (photo.getQualityReason() == null ? "" : photo.getQualityReason().trim())
+        : photo.getDescription().trim();
+    return head.isEmpty() ? details : (details.isEmpty() ? head : head + ". " + details);
   }
 
   private record GenerationTask(UUID listingId, OffsetDateTime startedAt, AdGenerationRequest request,

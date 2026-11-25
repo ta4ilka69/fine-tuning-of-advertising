@@ -84,7 +84,10 @@ class PhotoFlowIntegrationTest {
     org.mockito.Mockito.when(analysisClient.analyze(org.mockito.ArgumentMatchers.any(),
             org.mockito.ArgumentMatchers.anyString()))
         .thenReturn(new com.adtune.backend.ai.PhotoAnalysisClient.PhotoAnalysis(
-            3, "Светлая комната", "Гостиная"));
+            3, "Светлая комната", "Гостиная",
+            "Светлая гостиная с диваном и панорамным окном, свет из окна справа",
+            java.util.List.of(new com.adtune.backend.ai.PhotoAnalysisClient.PhotoAnalysis.Improvement(
+                "clutter", true, "Убрать пустую бутылку на журнальном столике"))));
   }
 
   @Test
@@ -104,6 +107,12 @@ class PhotoFlowIntegrationTest {
         .andExpect(jsonPath("$.photo.qualityReason").value("Светлая комната"))
         .andExpect(jsonPath("$.photo.mimeType").value("image/png"))
         .andExpect(jsonPath("$.photo.thumbnailUrl").isNotEmpty())
+        .andExpect(jsonPath("$.photo.qualityLabel").value("хорошее"))
+        .andExpect(jsonPath("$.photo.scene").value("Гостиная"))
+        .andExpect(jsonPath("$.photo.improvementType").value("clutter"))
+        .andExpect(jsonPath("$.photo.improvementLabel").value("почистить кадр"))
+        .andExpect(jsonPath("$.photo.editInstruction")
+            .value("Убрать пустую бутылку на журнальном столике"))
         .andReturn();
     String photoJson = uploaded.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
     String photoId = com.fasterxml.jackson.databind.json.JsonMapper.builder().build()
@@ -115,7 +124,8 @@ class PhotoFlowIntegrationTest {
         .andExpect(jsonPath("$.photos.length()").value(1))
         .andExpect(jsonPath("$.photos[0].status").value("ready"))
         .andExpect(jsonPath("$.photos[0].quality").value("good"))
-        .andExpect(jsonPath("$.photos[0].qualityReason").value("Светлая комната"));
+        .andExpect(jsonPath("$.photos[0].qualityReason").value("Светлая комната"))
+        .andExpect(jsonPath("$.photos[0].improvementLabel").value("почистить кадр"));
 
     // Контент — исходные байты PNG; превью — JPEG.
     mockMvc.perform(get("/v1/listings/{lid}/photos/{pid}/content", listingId, photoId)

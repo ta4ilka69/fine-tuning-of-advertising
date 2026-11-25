@@ -98,9 +98,10 @@ class ListingControllerTest {
     Listing listing = Listing.newDraft(user().getId(), mapper.createObjectNode());
     UUID id = listing.getId();
     Photo rated = Photo.uploaded(id, "orig/rated.jpg", "rated.jpg", "image/jpeg", 1024);
-    rated.markReady("thumb/rated.jpg", PhotoQuality.unfit, "Снимок размыт", "Гостиная");
+    rated.markReady("thumb/rated.jpg", PhotoQuality.unfit, "Снимок размыт", "Гостиная",
+        "Размытый кадр гостиной, деталей не разобрать", null, null);
     Photo unrated = Photo.uploaded(id, "orig/unrated.jpg", "unrated.jpg", "image/jpeg", 1024);
-    unrated.markReady("thumb/unrated.jpg", null, null, null);
+    unrated.markReady("thumb/unrated.jpg", null, null, null, null, null, null);
     Photo failed = Photo.uploaded(id, "orig/failed.jpg", "failed.jpg", "image/jpeg", 1024);
     failed.markFailed("Обработка не удалась");
     when(service.get(any(), eq(id))).thenReturn(ListingView.of(listing,
