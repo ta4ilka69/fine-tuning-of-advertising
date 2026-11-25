@@ -21,19 +21,21 @@ public class DefaultSystemPromptBuilder implements SystemPromptBuilder {
         площадки варианты заголовка, текст объявления, отметки чек-листа, рекомендованный
         порядок фотографий и оценку привлекательности готового объявления.
 
-        Исходные данные приходят в пользовательском сообщении в виде JSON:
-        - «params» — параметры квартиры (данные формы);
+        Исходные данные приходят в пользовательском сообщении:
+        - параметры квартиры списком на русском языке (данные формы);
         - «photos» — описания загруженных фотографий (может отсутствовать или быть пустым);
         - «channels» — выбранные площадки; для каждой: instruction (инструкция площадки,
           приоритетнее общих правил), checklist (правила по порядку), title_limit и
           text_limit (лимиты в символах, могут быть null — лимита нет).
 
         Правила:
-        1. Используй только характеристики из «params» и факты из «photos». Ничего не
-           придумывай: не упоминай ни «евроремонт», ни «тихий двор», ни инфраструктуру,
-           которых нет во входных данных. Пропущенное поле означает «неизвестно», а не
-           «нет».
-        2. Все тексты на русском языке.
+        1. Используй только характеристики из списка параметров и факты из «photos».
+           Ничего не придумывай: не упоминай ни «евроремонт», ни «тихий двор», ни
+           инфраструктуру, которых нет во входных данных. Пропущенное поле означает
+           «неизвестно», а не «нет».
+        2. Все тексты на русском языке. В заголовках и текстах объявлений запрещены
+           английские слова и машинные значения исходных данных: каждое свойство
+           называй по-русски. Адрес допускается в исходном виде.
         3. Заголовки: 2–3 варианта «крючка», каждый укладывается в title_limit, если он
            задан (считай символы). Без капслока, спама и ложных обещаний.
         4. Текст объявления: главные выгоды в начале, короткие абзацы или списки;
@@ -60,20 +62,19 @@ public class DefaultSystemPromptBuilder implements SystemPromptBuilder {
   @Override
   public String buildUserPrompt(AdGenerationRequest request) {
     var root = mapper.createObjectNode();
-    root.set("params", request.params());
     root.set("photos", mapper.valueToTree(request.photos()));
     root.set("channels", mapper.valueToTree(request.channels()));
-    if (request.userPrompt() != null && !request.userPrompt().isBlank()) {
-      root.put("user_prompt", request.userPrompt());
-    }
 
-    StringBuilder sb = new StringBuilder("Исходные данные:\n");
-    sb.append(toPrettyJson(root)).append('\n');
+    StringBuilder sb = new StringBuilder("Исходные данные.\n\n");
+    sb.append("Параметры объекта:\n").append(ParamsHumanizer.humanize(request.params())).append("\n\n");
+    sb.append("Фотографии (photo_id и описание):\n").append(toPrettyJson(root.get("photos"))).append('\n');
+    sb.append("\nПлощадки (channel_id, instruction, checklist, title_limit, text_limit):\n")
+        .append(toPrettyJson(root.get("channels"))).append('\n');
     if (request.userPrompt() != null && !request.userPrompt().isBlank()) {
       sb.append("\nДополнительные указания агента (учти при подготовке всех материалов):\n")
           .append(request.userPrompt().trim()).append('\n');
     }
-    sb.append("\nПодготовь результат по схеме для каждой площадки из «channels».");
+    sb.append("\nПодготовь результат по схеме для каждой площадки из списка площадок выше.");
     return sb.toString();
   }
 
