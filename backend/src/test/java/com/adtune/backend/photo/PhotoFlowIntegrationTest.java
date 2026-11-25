@@ -84,7 +84,8 @@ class PhotoFlowIntegrationTest {
     org.mockito.Mockito.when(analysisClient.analyze(org.mockito.ArgumentMatchers.any(),
             org.mockito.ArgumentMatchers.anyString()))
         .thenReturn(new com.adtune.backend.ai.PhotoAnalysisClient.PhotoAnalysis(
-            3, "Светлая комната", "Гостиная"));
+            3, "Светлая комната", "Гостиная",
+            "Светлая гостиная с диваном и панорамным окном, свет из окна справа"));
   }
 
   @Test

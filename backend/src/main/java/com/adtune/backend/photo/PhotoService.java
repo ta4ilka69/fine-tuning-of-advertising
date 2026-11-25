@@ -185,7 +185,7 @@ public class PhotoService {
         default -> com.adtune.backend.db.PhotoQuality.good;
       };
       photo.markReady(photo.getThumbnailS3Key(), quality,
-          result.qualityReason(), result.scene());
+          result.qualityReason(), result.scene(), result.description());
       log.info("Фото {} проанализировано: quality={}, scene={}",
           photoId, quality, result.scene());
     } catch (com.adtune.backend.ai.AiClientException e) {

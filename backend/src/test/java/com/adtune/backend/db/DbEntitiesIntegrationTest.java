@@ -131,7 +131,8 @@ class DbEntitiesIntegrationTest {
     assertThat(uploaded.getQuality()).isNull();
 
     uploaded.markReady("photos/thumb.jpg", PhotoQuality.good,
-        "Светлая гостиная", "Гостиная");
+        "Светлая гостиная", "Гостиная",
+        "Светлая гостиная с диваном и большим окном, свет из окна справа");
     Photo ready = photos.save(uploaded);
     assertThat(ready.getStatus()).isEqualTo(PhotoStatus.ready);
     assertThat(photos.countByListingId(listing.getId())).isEqualTo(1);

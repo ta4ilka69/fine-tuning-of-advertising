@@ -39,13 +39,15 @@ class OpenAiPhotoAnalysisClientTest {
   @Test
   void sendsImageDataUrlAndParsesAnalysis() throws Exception {
     byte[] png = new byte[] {(byte) 0x89, 'P', 'N', 'G', 1, 2, 3};
-    String content = "{\"quality\":2,\"quality_reason\":\"Тёмный кадр\",\"scene\":\"Кухня\"}";
+    String content = "{\"quality\":2,\"quality_reason\":\"Тёмный кадр\","
+        + "\"scene\":\"Кухня\",\"description\":\"Кухня с тёмным гарнитуром, свет из окна слева\"}";
     String payload = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":"
         + "\"" + content.replace("\"", "\\\"") + "\"}}]}";
 
     server.expect(requestTo(BASE_URL + "/chat/completions"))
         .andExpect(jsonPath("$.model").value("gpt-test"))
         .andExpect(jsonPath("$.response_format.type").value("json_schema"))
+        .andExpect(jsonPath("$.response_format.json_schema.schema.required.length()").value(4))
         .andExpect(jsonPath("$.messages[1].content[1].type").value("image_url"))
         .andExpect(jsonPath("$.messages[1].content[1].image_url.url",
             org.hamcrest.Matchers.startsWith("data:image/png;base64,")))
@@ -56,12 +58,13 @@ class OpenAiPhotoAnalysisClientTest {
     assertThat(analysis.quality()).isEqualTo(2);
     assertThat(analysis.scene()).isEqualTo("Кухня");
     assertThat(analysis.qualityReason()).isEqualTo("Тёмный кадр");
+    assertThat(analysis.description()).isEqualTo("Кухня с тёмным гарнитуром, свет из окна слева");
     server.verify();
   }
 
   @Test
   void rejectsQualityOutOfRange() throws Exception {
-    String content = "{\"quality\":7,\"quality_reason\":\"—\",\"scene\":\"—\"}";
+    String content = "{\"quality\":7,\"quality_reason\":\"—\",\"scene\":\"—\",\"description\":\"—\"}";
     String payload = "{\"choices\":[{\"message\":{\"content\":"
         + "\"" + content.replace("\"", "\\\"") + "\"}}]}";
     server.expect(requestTo(BASE_URL + "/chat/completions"))

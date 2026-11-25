@@ -70,7 +70,8 @@ class GenerationFlowIntegrationTest {
   @BeforeEach
   void stubAnalysis() {
     when(analysisClient.analyze(any(), any()))
-        .thenReturn(new PhotoAnalysisClient.PhotoAnalysis(3, "Светлая комната", "Гостиная"));
+        .thenReturn(new PhotoAnalysisClient.PhotoAnalysis(3, "Светлая комната", "Гостиная",
+            "Светлая гостиная с диваном и панорамным окном, свет из окна справа"));
   }
 
   private String register(String login) throws Exception {

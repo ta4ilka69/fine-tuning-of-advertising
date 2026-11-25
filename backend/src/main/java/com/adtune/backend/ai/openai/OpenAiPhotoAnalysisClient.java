@@ -28,11 +28,12 @@ public class OpenAiPhotoAnalysisClient implements PhotoAnalysisClient {
       {
         "type": "object",
         "additionalProperties": false,
-        "required": ["quality", "quality_reason", "scene"],
+        "required": ["quality", "quality_reason", "scene", "description"],
         "properties": {
           "quality": { "type": "integer", "minimum": 1, "maximum": 3 },
           "quality_reason": { "type": "string" },
-          "scene": { "type": "string" }
+          "scene": { "type": "string" },
+          "description": { "type": "string" }
         }
       }
       """;
@@ -60,7 +61,13 @@ public class OpenAiPhotoAnalysisClient implements PhotoAnalysisClient {
         3 — хорошее, показывать в начале объявления; 2 — можно улучшить
         (плохой свет, беспорядок, обрезан кадр); 1 — не подходит для объявления
         (не о квартире, скриншоты, размытое). В scene коротко напиши, что на фото
-        («Гостиная», «Кухня», «Санузел», «Вид из окна»), на русском.
+        («Гостиная», «Кухня», «Санузел», «Вид из окна»).
+        В description дай подробное описание кадра для копирайтера, который
+        объявление пишет, не видя фотографий: какая комната, состояние ремонта
+        и мебели, свет и атмосфера, примечательные детали (вид из окна,
+        техника, планировочные особенности), и что стоит исправить в кадре,
+        если есть недостатки. Пиши факты, без домыслов.
+        Все тексты (quality_reason, scene, description) — только по-русски.
         Ответ строго по схеме JSON.
         """);
 
@@ -132,7 +139,8 @@ public class OpenAiPhotoAnalysisClient implements PhotoAnalysisClient {
       }
       return new PhotoAnalysis(quality,
           result.path("quality_reason").asText(),
-          result.path("scene").asText());
+          result.path("scene").asText(),
+          result.path("description").asText());
     } catch (AiClientException e) {
       throw e;
     } catch (IOException | RuntimeException e) {

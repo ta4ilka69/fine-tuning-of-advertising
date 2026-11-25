@@ -17,7 +17,9 @@ public interface PhotoAnalysisClient {
    * @param quality       1 — не подходит, 2 — можно улучшить, 3 — хорошо
    * @param qualityReason обоснование оценки и возможные улучшения
    * @param scene         что на фото, например «Гостиная»
+   * @param description   подробное описание кадра для генерации текста:
+   *                      комната, состояние, свет, примечательные детали
    */
-  record PhotoAnalysis(int quality, String qualityReason, String scene) {
+  record PhotoAnalysis(int quality, String qualityReason, String scene, String description) {
   }
 }

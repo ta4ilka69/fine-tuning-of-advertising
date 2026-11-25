@@ -101,6 +101,7 @@ CREATE TABLE photo (
     quality          photo_quality,
     quality_reason   text,
     scene            text,
+    description      text,
     created_at       timestamptz NOT NULL DEFAULT now(),
     CHECK (status <> 'ready' OR (thumbnail_s3_key IS NOT NULL AND quality IS NOT NULL
         AND quality_reason IS NOT NULL AND scene IS NOT NULL)),

@@ -33,6 +33,7 @@ public class Photo implements Persistable<UUID> {
   private PhotoQuality quality;
   private String qualityReason;
   private String scene;
+  private String description;
   private OffsetDateTime createdAt;
 
   public static Photo uploaded(UUID listingId, String s3Key, String fileName,
@@ -97,13 +98,14 @@ public class Photo implements Persistable<UUID> {
     this.thumbnailS3Key = thumbnailS3Key;
   }
 
-  /** Анализ завершён: превью, оценка и описание готовы (CHECK схемы требует все поля). */
+  /** Анализ завершён: превью, оценка и описания готовы (CHECK схемы требует все поля). */
   public void markReady(String thumbnailS3Key, PhotoQuality quality,
-      String qualityReason, String scene) {
+      String qualityReason, String scene, String description) {
     this.thumbnailS3Key = thumbnailS3Key;
     this.quality = quality;
     this.qualityReason = qualityReason;
     this.scene = scene;
+    this.description = description;
     this.status = PhotoStatus.ready;
   }
 
@@ -127,6 +129,10 @@ public class Photo implements Persistable<UUID> {
 
   public String getScene() {
     return scene;
+  }
+
+  public String getDescription() {
+    return description;
   }
 
   public OffsetDateTime getCreatedAt() {
