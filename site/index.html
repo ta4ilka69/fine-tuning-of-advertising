@@ -55,6 +55,10 @@
   .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); }
   .row:first-child { border-top: 0; padding-top: 0; }
 
+  .report ul { margin: 0; padding-left: 20px; }
+  .report li + li { margin-top: 10px; }
+  .report b { font-weight: 600; }
+
   .person { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
   .person:first-of-type { border-top: 0; padding-top: 0; }
   .avatar { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; }
@@ -114,13 +118,13 @@
     <section class="card">
       <h2>Состояние</h2>
       <div class="rows">
-        <div class="row">Управление площадками и генерация для ЦИАН<span class="pill ok">Проверено</span></div>
-        <div class="row">Исправление фото и показ оценки каждого снимка<span class="pill warn">Анализ уже есть</span></div>
-        <div class="row">Промпты и чек-листы для Авито, ЦИАН и Telegram<span class="pill warn">Есть черновики</span></div>
+        <div class="row">Управление площадками через API<span class="pill ok">Готово</span></div>
+        <div class="row">Оценка и подсветка каждого фото<span class="pill ok">Готово</span></div>
+        <div class="row">Промпты для Авито, ЦИАН и Telegram<span class="pill ok">Обновлены</span></div>
+        <div class="row">Исправление фотографий<span class="pill idle">Предстоит</span></div>
         <div class="row">Отдельная оценка объявления по площадкам<span class="pill warn">Пока общая</span></div>
-        <div class="row">Тестовые объявления и замеры генерации<span class="pill idle">Предстоит</span></div>
+        <div class="row">Замеры генерации<span class="pill idle">Предстоит</span></div>
       </div>
-      <p>Связка с API площадок проверена локально в рабочей ветке.</p>
     </section>
 
     <section class="card">
@@ -131,6 +135,17 @@
       <div class="demo"><b>Демо:</b> настроить промпт ЦИАН в админке → создать объявление и загрузить фото → сгенерировать текст и получить до трёх рекомендаций по фото.</div>
     </section>
   </div>
+
+  <section class="card report" id="report-2026-11-25" aria-labelledby="weekly-report-title">
+    <h2 id="weekly-report-title">За неделю: 18–25 ноября</h2>
+    <ul>
+      <li><b>Подключили управление площадками к бэкенду.</b> В админке можно создавать площадки, включать и выключать их, менять инструкции, чек-листы и ограничения длины текста. Настройки сохраняются на сервере и используются при генерации.</li>
+      <li><b>Доработали запуск генерации.</b> Сервер проверяет заполнение объявления, готовность фотографий и выбранные площадки. Добавили обработку зависших генераций по таймауту.</li>
+      <li><b>Изменили передачу характеристик объекта нейросети.</b> Названия полей и значения переводятся в понятный русский текст, чтобы технические обозначения из JSON не попадали в объявления.</li>
+      <li><b>Обновили промпты для Авито, ЦИАН и Telegram.</b> Для ЦИАН также подготовили примеры полной и неполной карточки, чтобы проверять тексты на выдуманные характеристики и условия.</li>
+      <li><b>Добавили отображение оценки каждого фото.</b> Бэкенд возвращает оценку и пояснение, а интерфейс выделяет хорошие фотографии зелёным, требующие доработки жёлтым, неподходящие красным. Подсветка работает в галерее и рекомендациях, оценки сохраняются после обновления страницы.</li>
+    </ul>
+  </section>
 
   <div class="bottom">
     <section class="card">
@@ -175,7 +190,7 @@
     </section>
   </div>
 
-  <footer>Обновлено 17 ноября 2026 года · исходник — <code>site/index.html</code></footer>
+  <footer>Обновлено 25 ноября 2026 года · исходник — <code>site/index.html</code></footer>
 </main>
 
 <script>
