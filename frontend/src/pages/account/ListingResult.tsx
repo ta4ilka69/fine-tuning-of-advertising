@@ -1,5 +1,7 @@
 import { Group, Paper, Stack, Tabs, Text, Title, VisuallyHidden } from '@mantine/core';
 import { useCallback, useLayoutEffect, useRef, useState, type RefCallback, type RefObject } from 'react';
+import { PhotoAssessment } from '../../features/listing-photos/PhotoAssessment';
+import assessment from '../../features/listing-photos/PhotoAssessment.module.css';
 import type { ChannelResult, GenerationResult, Listing, Photo } from '../../shared/api/types';
 import { AppButton } from '../../shared/ui/AppButton';
 import { AppNotice } from '../../shared/ui/AppNotice';
@@ -118,7 +120,7 @@ function RecommendedPhotos({ result, photos, ready }: { result: ChannelResult; p
     const url = photo?.thumbnailUrl;
     if (photo?.status !== 'ready' || !url || previews.failed.has(url)) return [];
     const why = result.photos?.top.find(({ photo_id }) => photo_id.toLowerCase() === id)?.why;
-    return [{ id, url, name: photo.fileName, why }];
+    return [{ id, url, photo, why }];
   });
   return <Stack gap="sm">
     <Title order={3}>Какие фотографии поставить первыми</Title>
@@ -127,11 +129,12 @@ function RecommendedPhotos({ result, photos, ready }: { result: ChannelResult; p
     ) : recommended.length === 0 ? (
       <Text c="dimmed">Не удалось показать рекомендованные фотографии. Возможно, они были удалены или превью недоступны.</Text>
     ) : <ol className={classes.recommendations} role="list" aria-label="Рекомендованные фотографии">
-      {recommended.map(({ id, url, name, why }) => (
-        <li key={id}>
-          <img className={classes.thumbnail} src={url} alt={name} loading="lazy"
+      {recommended.map(({ id, url, photo, why }) => (
+        <li key={id} className={assessment.highlight} data-quality={photo.quality ?? undefined}>
+          <img className={classes.thumbnail} src={url} alt={photo.fileName} loading="lazy"
             onError={() => setPreviews((current) => current.readyResult === readyResult
               ? { readyResult, failed: new Set(current.failed).add(url) } : current)} />
+          {photo.quality && <div className={classes.photoAssessment}><PhotoAssessment photo={photo} /></div>}
           {why && <Text mt="xs" size="sm">{why}</Text>}
         </li>
       ))}

@@ -22,6 +22,7 @@ export async function startSessionServer(host = '127.0.0.1', port = 0) {
     photoError: null as number | 'network' | 'invalid' | 'disconnect-after-write' | null,
     photoErrorCode: 'VERSION_CONFLICT',
     photoCompletion: null as 'ready' | 'failed' | null,
+    photoAssessment: null as Pick<Photo, 'quality' | 'qualityReason'> | null,
     photoImageError: false,
     holdUpload: undefined as Promise<void> | undefined,
     holdDelete: undefined as Promise<void> | undefined,
@@ -125,7 +126,7 @@ export async function startSessionServer(host = '127.0.0.1', port = 0) {
           else {
             const photoId = `70792597-4a2a-4ddb-9d00-${String(100 + calls.filter((call) => call.method === 'POST' && call.path === path).length).padStart(12, '0')}`;
             const photo: Photo = { id: photoId, listingId: id, fileName: uploadedFile.name, mimeType: uploadedFile.type as Photo['mimeType'], sizeBytes: uploadedFile.size,
-              status: 'processing', contentUrl: `/api/v1/listings/${id}/photos/${photoId}/content`, thumbnailUrl: null, error: null };
+              status: 'processing', contentUrl: `/api/v1/listings/${id}/photos/${photoId}/content`, thumbnailUrl: null, quality: null, qualityReason: null, error: null };
             detail.photos.push(photo); detail.version++; detail.status = 'draft'; detail.updatedAt = '2026-11-06T12:00:00Z'; status = 201;
             body = { version: detail.version, photo };
           }
@@ -222,6 +223,7 @@ export async function startSessionServer(host = '127.0.0.1', port = 0) {
         detail.photos.forEach((photo) => {
           if (photo.status !== 'processing') return;
           photo.status = controls.photoCompletion!;
+          if (photo.status === 'ready' && controls.photoAssessment) Object.assign(photo, controls.photoAssessment);
           photo.thumbnailUrl = photo.status === 'ready' ? `/api/v1/listings/${photo.listingId}/photos/${photo.id}/thumbnail` : null;
           photo.error = photo.status === 'failed' ? { type: 'about:blank', title: 'Обработка не удалась', status: 422, code: 'PHOTO_PROCESSING_FAILED', requestId: 'a6cdd08a-a252-48fa-a6c5-73f485bc494e' } : null;
         });

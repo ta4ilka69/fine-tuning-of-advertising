@@ -3,7 +3,7 @@ import { Ajv2020 } from 'ajv/dist/2020.js';
 import type { AnySchemaObject } from 'ajv';
 import addFormats from 'ajv-formats';
 import { describe, expect, test } from 'vitest';
-import { generationResult } from '../fixtures/listings';
+import { generationResult, listingDetails } from '../fixtures/listings';
 
 interface Contract {
   components: { schemas: Record<string, AnySchemaObject> };
@@ -56,6 +56,27 @@ describe('примеры OpenAPI', () => {
     const validate = validator(schema);
     expect(validate(value), ajv.errorsText(validate.errors)).toBe(true);
   });
+});
+
+test('контракт фотографии допускает три оценки и нейтральные состояния', () => {
+  const validate = validator({ $ref: '#/components/schemas/Photo' });
+  const [photo] = listingDetails().photos;
+  const qualityReason = 'Освещение и резкость';
+  expect(validate(photo)).toBe(true);
+  expect(validate({ ...photo, quality: null, qualityReason: null })).toBe(true);
+  for (const quality of ['good', 'needs_fix', 'unfit']) {
+    expect(validate({ ...photo, quality, qualityReason })).toBe(true);
+  }
+  expect(validate({ ...photo, quality: 'unsupported', qualityReason })).toBe(false);
+  const processing = { ...photo, status: 'processing', thumbnailUrl: null, quality: null, qualityReason: null };
+  const failed = { ...processing, status: 'failed', error: {
+    type: 'about:blank', title: 'Обработка не удалась', status: 422, code: 'PHOTO_PROCESSING_FAILED',
+    requestId: 'a6cdd08a-a252-48fa-a6c5-73f485bc494e',
+  } };
+  for (const value of [processing, failed]) {
+    expect(validate(value)).toBe(true);
+    expect(validate({ ...value, quality: 'unfit', qualityReason })).toBe(false);
+  }
 });
 
 test('сохранённый результат и ошибка соответствуют состоянию объявления', () => {

@@ -36,3 +36,44 @@ for (const state of ['empty', 'desktop', 'mobile', 'narrow', 'processing', 'fail
     ] });
   });
 }
+
+for (const width of [320, 1440]) {
+  test(`оценки фотографий на ширине ${width} px @visual`, async ({ page, context, loginServer }) => {
+    const detail = listingDetails();
+    const original = detail.photos[0]!;
+    const photos = [
+      { fileName: 'Гостиная.jpg', quality: 'good', qualityReason: 'Комната хорошо освещена, видна планировка.' },
+      { fileName: 'Кухня.jpg', quality: 'needs_fix', qualityReason: 'Переснимите комнату днём. Откройте шторы и снимайте из угла, чтобы в кадр вошло больше пространства.' },
+      { fileName: 'Спальня.jpg', quality: 'unfit', qualityReason: 'Снимок размыт, детали объекта неразличимы.' },
+      { fileName: 'Прихожая.jpg', quality: null, qualityReason: null },
+    ].map((assessment, index) => {
+      const id = original.id.slice(0, -1) + (index + 1);
+      return { ...original, ...assessment, id,
+        contentUrl: original.contentUrl.replace(original.id, id),
+        thumbnailUrl: original.thumbnailUrl.replace(original.id, id) };
+    });
+    const [livingRoom, kitchen] = photos;
+    const channel = detail.result!.channels[0]!;
+    loginServer.controls.detail = { ...detail, photos, result: { channels: [{
+      ...channel,
+      photoIds: [livingRoom!.id, kitchen!.id],
+      photos: { top: [{ photo_id: livingRoom!.id, why: 'Видна зона отдыха' }] },
+    }] } };
+    await context.addCookies([{ name: 'session', value: 'test-session', url: `${loginServer.url}/api/v1` }]);
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`${loginServer.url}/app/listings/${detail.id}`);
+    await expect(page.getByRole('button', { name: /Меню пользователя/ })).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    await page.mouse.move(width - 1, 0);
+    for (const [name, filename] of [
+      ['Загруженные фотографии', 'photos-quality'],
+      ['Рекомендованные фотографии', 'photos-quality-recommendations'],
+    ] as const) {
+      const list = page.getByRole('list', { name, exact: true });
+      await list.scrollIntoViewIfNeeded();
+      await expect.poll(() => list.locator('img').evaluateAll((images) =>
+        images.every((image) => image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0))).toBe(true);
+      await expect(list).toHaveScreenshot(`${filename}-${width}.png`);
+    }
+  });
+}

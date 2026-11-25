@@ -103,9 +103,10 @@ class PhotoFlowIntegrationTest {
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.version").value(2))
         .andExpect(jsonPath("$.photo.status").value("ready"))
+        .andExpect(jsonPath("$.photo.quality").value("good"))
+        .andExpect(jsonPath("$.photo.qualityReason").value("Светлая комната"))
         .andExpect(jsonPath("$.photo.mimeType").value("image/png"))
         .andExpect(jsonPath("$.photo.thumbnailUrl").isNotEmpty())
-        .andExpect(jsonPath("$.photo.quality").value("good"))
         .andExpect(jsonPath("$.photo.qualityLabel").value("хорошее"))
         .andExpect(jsonPath("$.photo.scene").value("Гостиная"))
         .andExpect(jsonPath("$.photo.improvementType").value("clutter"))
@@ -122,6 +123,8 @@ class PhotoFlowIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.photos.length()").value(1))
         .andExpect(jsonPath("$.photos[0].status").value("ready"))
+        .andExpect(jsonPath("$.photos[0].quality").value("good"))
+        .andExpect(jsonPath("$.photos[0].qualityReason").value("Светлая комната"))
         .andExpect(jsonPath("$.photos[0].improvementLabel").value("почистить кадр"));
 
     // Контент — исходные байты PNG; превью — JPEG.

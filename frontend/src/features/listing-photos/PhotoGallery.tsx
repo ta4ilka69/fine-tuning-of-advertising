@@ -6,6 +6,8 @@ import { AppNotice } from '../../shared/ui/AppNotice';
 import { IconButton } from '../../shared/ui/IconButton';
 import { LoadingState } from '../../shared/ui/LoadingState';
 import { PhotoManager, generationLocked, type PhotoState, type Upload } from './model';
+import { PhotoAssessment } from './PhotoAssessment';
+import assessment from './PhotoAssessment.module.css';
 import classes from './PhotoGallery.module.css';
 
 function Preview({ file, url, name }: { file?: File; url?: string | null; name: string }) {
@@ -25,11 +27,12 @@ function UploadedPhoto({ photo, disabled, deleting, onRemove, buttonRef }: {
   photo: Photo; disabled: boolean; deleting: boolean; onRemove: () => void;
   buttonRef: (element: HTMLButtonElement | null) => void;
 }) {
-  return <li className={classes.photo}>
+  return <li className={`${classes.photo} ${assessment.highlight}`} data-quality={photo.quality ?? undefined}>
     <Preview key={`${photo.id}:${photo.thumbnailUrl}`} url={photo.status === 'ready' ? photo.thumbnailUrl : null} name={photo.fileName} />
     <div className={classes.description}><Text fw={600} className={classes.name}>{photo.fileName}</Text>
-      <Text size="sm" c={photo.status === 'failed' ? 'red.8' : 'dimmed'}>{deleting ? 'Удаляем…' : photo.status === 'processing' ? 'Обрабатывается на сервере…'
-        : photo.status === 'failed' ? 'Обработка не удалась. Удалите фото и загрузите заново.' : 'Готово'}</Text>
+      {(deleting || !photo.quality) && <Text size="sm" c={photo.status === 'failed' ? 'red.8' : 'dimmed'}>{deleting ? 'Удаляем…' : photo.status === 'processing' ? 'Обрабатывается на сервере…'
+        : photo.status === 'failed' ? 'Обработка не удалась. Удалите фото и загрузите заново.' : 'Готово'}</Text>}
+      <PhotoAssessment photo={photo} />
     </div>
     <IconButton ref={buttonRef} label={`Удалить фотографию ${photo.fileName}`} disabled={disabled} loading={deleting} onClick={onRemove}>×</IconButton>
   </li>;

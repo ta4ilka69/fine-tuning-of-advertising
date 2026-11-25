@@ -1,6 +1,8 @@
 package com.adtune.backend.photo;
 
 import com.adtune.backend.db.Photo;
+import com.adtune.backend.db.PhotoImprovement;
+import com.adtune.backend.db.PhotoQuality;
 import com.adtune.backend.db.PhotoStatus;
 import java.util.Map;
 import java.util.UUID;
@@ -9,9 +11,10 @@ import java.util.UUID;
  * Представление фотографии для фронтенда (см. parsePhoto в
  * frontend/src/shared/api/photos.ts): URL — строгие пути /api/v1/...,
  * при failed здесь должен быть валидный Problem.
- * Поля quality/qualityLabel/scene/description и improvement-поля текущий
- * фронтенд ещё не читает (его валидатор игнорирует лишние поля) — для
- * будущего отображения оценки и улучшения в интерфейсе.
+ * Фронтенд читает quality и qualityReason (подпись к оценке в галерее);
+ * qualityLabel, scene, description и improvement-поля — для будущих экранов
+ * (валидатор фронта лишние поля пропускает). Все поля анализа есть только
+ * у готовых фото, иначе null.
  */
 public record PhotoView(
     String id,
@@ -22,16 +25,18 @@ public record PhotoView(
     String status,
     String contentUrl,
     String thumbnailUrl,
-    String quality,
+    PhotoQuality quality,
+    String qualityReason,
     String qualityLabel,
     String scene,
     String description,
-    String improvementType,
+    PhotoImprovement improvementType,
     String improvementLabel,
     String editInstruction,
     Map<String, Object> error) {
 
   public static PhotoView of(Photo photo) {
+    boolean analyzed = photo.getStatus() == PhotoStatus.ready;
     return new PhotoView(
         photo.getId().toString(),
         photo.getListingId().toString(),
@@ -42,13 +47,14 @@ public record PhotoView(
         "/api/v1/listings/" + photo.getListingId() + "/photos/" + photo.getId() + "/content",
         photo.getThumbnailS3Key() == null ? null
             : "/api/v1/listings/" + photo.getListingId() + "/photos/" + photo.getId() + "/thumbnail",
-        photo.getQuality() == null ? null : photo.getQuality().name(),
-        qualityLabel(photo),
-        photo.getScene(),
-        photo.getDescription(),
-        photo.getImprovementType() == null ? null : photo.getImprovementType().name(),
-        photo.getImprovementType() == null ? null : photo.getImprovementType().getLabel(),
-        photo.getEditInstruction(),
+        analyzed ? photo.getQuality() : null,
+        analyzed && photo.getQuality() != null ? photo.getQualityReason() : null,
+        analyzed ? qualityLabel(photo) : null,
+        analyzed ? photo.getScene() : null,
+        analyzed ? photo.getDescription() : null,
+        analyzed ? photo.getImprovementType() : null,
+        analyzed ? improvementLabel(photo) : null,
+        analyzed ? photo.getEditInstruction() : null,
         errorView(photo));
   }
 
@@ -62,6 +68,11 @@ public record PhotoView(
       case needs_fix -> "среднее";
       case unfit -> "плохое";
     };
+  }
+
+  /** Название улучшения по-русски, например «почистить кадр». */
+  private static String improvementLabel(Photo photo) {
+    return photo.getImprovementType() == null ? null : photo.getImprovementType().getLabel();
   }
 
   /** При failed фронтенд ждёт здесь валидный Problem; код — как в их e2e-моке. */
