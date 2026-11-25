@@ -49,7 +49,11 @@ for (const width of [320, 1440]) test(`цвета и текст оценок ф�
     const card = list.getByRole('listitem').filter({ hasText: label });
     await expect(card).toHaveCSS('background-color', color);
     await expect(card.getByText(label, { exact: true })).toBeVisible();
-    await expect(card.getByText(reason, { exact: true })).toBeVisible();
+    const explanation = card.getByText(reason, { exact: true });
+    await expect(explanation).toBeVisible();
+    if (width === 320) {
+      expect((await explanation.boundingBox())!.width / (await card.boundingBox())!.width).toBeGreaterThan(0.8);
+    }
     expect(await card.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

@@ -2763,7 +2763,7 @@
           "quality": {
             "type": ["string", "null"],
             "enum": ["good", "needs_fix", "unfit", null],
-            "description": "Оценка готовой фотографии: good — хорошее фото, needs_fix — можно улучшить, unfit — не подходит. Поле может отсутствовать или быть null, если оценки нет."
+            "description": "Значение good обозначает хорошее фото, needs_fix — фото, которое можно улучшить, unfit — неподходящее фото. Поле может отсутствовать или быть null, если оценки нет."
           },
           "qualityReason": {
             "type": ["string", "null"],
