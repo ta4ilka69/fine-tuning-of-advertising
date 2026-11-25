@@ -2,13 +2,11 @@ package com.adtune.backend.web;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.matchesPattern;
-import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -119,8 +117,10 @@ class GlobalExceptionHandlerTest {
         .andExpect(jsonPath("$.title").value(
             "Не удалось получить результат от модели. Попробуйте повторить позже."))
         .andExpect(jsonPath("$.requestId", matchesPattern(UUID_PATTERN)))
-        .andExpect(content().string(not(containsString("403"))))
-        .andExpect(content().string(not(containsString("host.docker.internal"))));
+        .andExpect(jsonPath("$.status").value(502))
+        .andExpect(jsonPath("$.type").value("about:blank"))
+        .andExpect(jsonPath("$.instance").value("/v1/ai/demo"))
+        .andExpect(jsonPath("$.detail").doesNotExist());
   }
 
   @Test

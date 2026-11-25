@@ -18,6 +18,7 @@ class DefaultSystemPromptBuilderTest {
         .contains("маркетолог по недвижимости")
         .contains("придумывай: не упоминай")
         .contains("английские слова и машинные значения")
+        .contains("сколько требует инструкция площадки")
         .contains("0–100")
         .contains("не менее трёх причин")
         .contains("how_to_improve")

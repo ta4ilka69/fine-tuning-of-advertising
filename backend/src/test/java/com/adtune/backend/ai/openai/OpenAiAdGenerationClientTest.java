@@ -38,7 +38,8 @@ class OpenAiAdGenerationClientTest {
 
   @BeforeEach
   void setUp() {
-    AiProperties.OpenAi settings = new AiProperties.OpenAi(BASE_URL, "test-key", "gpt-test", "low");
+    AiProperties.OpenAi settings = new AiProperties.OpenAi(BASE_URL, "test-key",
+        new AiProperties.OpenAi.Model("gpt-test", "low"), new AiProperties.OpenAi.Model("gpt-test", null));
     // Сначала общий конфиг (base url, конвертеры, таймаут), затем мок-сервер:
     // bindTo подменяет request factory билдера и должен остаться последним.
     restClientBuilder = OpenAiAdGenerationClient.configureRestClient(
@@ -180,7 +181,8 @@ class OpenAiAdGenerationClientTest {
 
   @Test
   void rejectsBlankApiKeyBeforeRequest() throws Exception {
-    AiProperties.OpenAi settings = new AiProperties.OpenAi(BASE_URL, "", "gpt-test", null);
+    AiProperties.OpenAi settings = new AiProperties.OpenAi(BASE_URL, "",
+        new AiProperties.OpenAi.Model("gpt-test", null), new AiProperties.OpenAi.Model("gpt-test", null));
     OpenAiAdGenerationClient noKeyClient = new OpenAiAdGenerationClient(
         restClientBuilder.build(), settings, new DefaultSystemPromptBuilder(), wireMapper);
 
@@ -191,7 +193,8 @@ class OpenAiAdGenerationClientTest {
 
   @Test
   void omitsReasoningEffortWhenNotConfigured() throws Exception {
-    AiProperties.OpenAi settings = new AiProperties.OpenAi(BASE_URL, "test-key", "gpt-4o-mini", null);
+    AiProperties.OpenAi settings = new AiProperties.OpenAi(BASE_URL, "test-key",
+        new AiProperties.OpenAi.Model("gpt-4o-mini", null), new AiProperties.OpenAi.Model("gpt-test", null));
     OpenAiAdGenerationClient gpt4Client = new OpenAiAdGenerationClient(
         restClientBuilder.build(), settings, new DefaultSystemPromptBuilder(), wireMapper);
 
@@ -205,13 +208,20 @@ class OpenAiAdGenerationClientTest {
   }
 
   @Test
-  void rejectsInvalidReasoningEffortAtConstruction() {
-    AiProperties.OpenAi settings = new AiProperties.OpenAi(BASE_URL, "test-key", "gpt-test", "ultra");
-    assertThatThrownBy(() -> new OpenAiAdGenerationClient(
-        restClientBuilder.build(), settings, new DefaultSystemPromptBuilder(), wireMapper))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("reasoning-effort")
-        .hasMessageContaining("ultra");
+  void sendsAnyConfiguredReasoningEffortAsIs() throws Exception {
+    // Значения зависят от модели: какие принимает модель, решает провайдер, а не бэкенд.
+    AiProperties.OpenAi settings = new AiProperties.OpenAi(BASE_URL, "test-key",
+        new AiProperties.OpenAi.Model("gpt-test", " None "),
+        new AiProperties.OpenAi.Model("gpt-test", null));
+    OpenAiAdGenerationClient noneClient = new OpenAiAdGenerationClient(
+        restClientBuilder.build(), settings, new DefaultSystemPromptBuilder(), wireMapper);
+
+    server.expect(requestTo(BASE_URL + "/chat/completions"))
+        .andExpect(jsonPath("$.reasoning_effort").value("none"))
+        .andRespond(withSuccess(chatResponseWithContent(minimalResultJson()), MediaType.APPLICATION_JSON));
+
+    noneClient.generate(sampleRequest());
+    server.verify();
   }
 
   private String minimalResultJson() {

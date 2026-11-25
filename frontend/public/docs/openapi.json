@@ -2747,6 +2747,89 @@
                 "type": "null"
               }
             ]
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "unfit",
+                  "needs_fix",
+                  "good"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "qualityLabel": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "плохое",
+                  "среднее",
+                  "хорошее"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scene": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "improvementType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "clutter"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "improvementLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "editInstruction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -2761,7 +2844,7 @@
           "thumbnailUrl",
           "error"
         ],
-        "description": "URL проверяет сессию, не является публичным адресом. processing — готовится превью и нейросеть оценивает фото; failed — обработка не удалась, фото удаляют и загружают заново. Порядок фото — порядок загрузки. Предел 15 МБ трактуется как 15 000 000 байт.",
+        "description": "URL проверяет сессию, не является публичным адресом. processing — готовится превью и нейросеть оценивает фото; failed — обработка не удалась, фото удаляют и загружают заново. Порядок фото — порядок загрузки. Предел 15 МБ трактуется как 15 000 000 байт. Анализ: quality/qualityLabel (закрытый список оценок), scene и description появляются после обработки; improvementType/improvementLabel/editInstruction — найденное улучшение (null, если улучшать нечего).",
         "allOf": [
           {
             "if": {

@@ -9,8 +9,9 @@ import java.util.UUID;
  * Представление фотографии для фронтенда (см. parsePhoto в
  * frontend/src/shared/api/photos.ts): URL — строгие пути /api/v1/...,
  * при failed здесь должен быть валидный Problem.
- * Поля quality/qualityLabel/scene/description текущий фронтенд ещё не читает
- * (его валидатор игнорирует лишние поля) — для будущего отображения оценки.
+ * Поля quality/qualityLabel/scene/description и improvement-поля текущий
+ * фронтенд ещё не читает (его валидатор игнорирует лишние поля) — для
+ * будущего отображения оценки и улучшения в интерфейсе.
  */
 public record PhotoView(
     String id,
@@ -25,6 +26,9 @@ public record PhotoView(
     String qualityLabel,
     String scene,
     String description,
+    String improvementType,
+    String improvementLabel,
+    String editInstruction,
     Map<String, Object> error) {
 
   public static PhotoView of(Photo photo) {
@@ -42,6 +46,9 @@ public record PhotoView(
         qualityLabel(photo),
         photo.getScene(),
         photo.getDescription(),
+        photo.getImprovementType() == null ? null : photo.getImprovementType().name(),
+        photo.getImprovementType() == null ? null : photo.getImprovementType().getLabel(),
+        photo.getEditInstruction(),
         errorView(photo));
   }
 

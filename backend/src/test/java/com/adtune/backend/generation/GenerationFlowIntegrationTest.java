@@ -71,7 +71,8 @@ class GenerationFlowIntegrationTest {
   void stubAnalysis() {
     when(analysisClient.analyze(any(), any()))
         .thenReturn(new PhotoAnalysisClient.PhotoAnalysis(3, "Светлая комната", "Гостиная",
-            "Светлая гостиная с диваном и панорамным окном, свет из окна справа"));
+            "Светлая гостиная с диваном и панорамным окном, свет из окна справа",
+            java.util.List.of()));
   }
 
   private String register(String login) throws Exception {

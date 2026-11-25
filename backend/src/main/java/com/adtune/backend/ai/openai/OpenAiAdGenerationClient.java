@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
-import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
@@ -40,8 +39,6 @@ public class OpenAiAdGenerationClient implements AdGenerationClient {
 
   private static final Logger log = LoggerFactory.getLogger(OpenAiAdGenerationClient.class);
   private static final String SCHEMA_NAME = "ad_generation_result";
-  private static final Set<String> ALLOWED_REASONING_EFFORTS =
-      Set.of("minimal", "low", "medium", "high");
 
   /**
    * Схема ответа модели. Ключи совпадают с JSON-представлением
@@ -110,7 +107,8 @@ public class OpenAiAdGenerationClient implements AdGenerationClient {
       """;
 
   private final RestClient restClient;
-  private final AiProperties.OpenAi settings;
+  private final String apiKey;
+  private final AiProperties.OpenAi.Model model;
   private final SystemPromptBuilder promptBuilder;
   private final ObjectMapper jsonMapper;
   private final JsonNode resultSchema;
@@ -132,7 +130,8 @@ public class OpenAiAdGenerationClient implements AdGenerationClient {
       SystemPromptBuilder promptBuilder,
       ObjectMapper jsonMapper) {
     this.restClient = restClient;
-    this.settings = normalize(settings);
+    this.apiKey = settings.apiKey();
+    this.model = normalizeModel(settings.generation());
     this.promptBuilder = promptBuilder;
     this.jsonMapper = jsonMapper;
     try {
@@ -142,22 +141,18 @@ public class OpenAiAdGenerationClient implements AdGenerationClient {
     }
   }
 
-  /** Проверяет reasoning_effort и превращает пустое значение в null (не отправлять). */
-  private static AiProperties.OpenAi normalize(AiProperties.OpenAi settings) {
-    String effort = settings.reasoningEffort();
+  /**
+   * Превращает пустой reasoning_effort в null (не отправлять), остальное
+   * обрезает по краям и приводит к нижнему регистру. Набор значений зависит
+   * от модели и меняется вместе с линейками, поэтому бэкенд его не ограничивает:
+   * неверное значение отвергнет сам провайдер с точным списком допустимых.
+   */
+  static AiProperties.OpenAi.Model normalizeModel(AiProperties.OpenAi.Model model) {
+    String effort = model.reasoningEffort();
     if (effort == null || effort.isBlank()) {
-      return new AiProperties.OpenAi(
-          settings.baseUrl(), settings.apiKey(), settings.model(), null);
+      return new AiProperties.OpenAi.Model(model.model(), null);
     }
-    String normalized = effort.trim().toLowerCase();
-    if (!ALLOWED_REASONING_EFFORTS.contains(normalized)) {
-      throw new IllegalStateException(
-          "Недопустимое значение adtune.ai.openai.reasoning-effort: '" + effort
-              + "'. Допустимо: " + String.join(", ", ALLOWED_REASONING_EFFORTS)
-              + " или пусто (не отправлять параметр).");
-    }
-    return new AiProperties.OpenAi(
-        settings.baseUrl(), settings.apiKey(), settings.model(), normalized);
+    return new AiProperties.OpenAi.Model(model.model(), effort.trim().toLowerCase());
   }
 
   /** Настраивает билдер RestClient под wire-формат OpenAI (snake_case, таймаут, ключ). */
@@ -181,7 +176,7 @@ public class OpenAiAdGenerationClient implements AdGenerationClient {
 
   @Override
   public AdGenerationResult generate(AdGenerationRequest request) {
-    if (settings.apiKey() == null || settings.apiKey().isBlank()) {
+    if (apiKey == null || apiKey.isBlank()) {
       throw new AiClientException(AiClientException.NOT_CONFIGURED,
           "Не задан ключ доступа к модели (OPENAI_API_KEY). Проверьте backend/.env.");
     }
@@ -190,27 +185,27 @@ public class OpenAiAdGenerationClient implements AdGenerationClient {
     }
 
     log.info("Запуск генерации: модель={}, площадки={}, фото={} шт., полей в params={}",
-        settings.model(),
+        model.model(),
         request.channels().stream().map(ChannelAiInput::channelId).toList(),
         request.photos().size(),
         request.params() == null ? 0 : request.params().size());
 
     ChatRequest chatRequest = new ChatRequest(
-        settings.model(),
+        model.model(),
         List.of(
             new ChatMessage("system", promptBuilder.buildSystemPrompt()),
             new ChatMessage("user", promptBuilder.buildUserPrompt(request))),
         new ResponseFormat("json_schema",
             new JsonSchemaFormat(SCHEMA_NAME, Boolean.TRUE, resultSchema)),
-        settings.reasoningEffort());
+        model.reasoningEffort());
 
     long startedAt = System.nanoTime();
     ChatResponse response = callModel(chatRequest);
     String content = extractContent(response);
     AdGenerationResult result = parseResult(content);
     log.info("Модель {} (reasoning={}) вернула результат за {} мс: score={}, площадок={}, {}",
-        settings.model(),
-        settings.reasoningEffort() == null ? "default" : settings.reasoningEffort(),
+        model.model(),
+        model.reasoningEffort() == null ? "default" : model.reasoningEffort(),
         (System.nanoTime() - startedAt) / 1_000_000,
         result.score(), result.channels().size(),
         usageSummary(response.usage()));
