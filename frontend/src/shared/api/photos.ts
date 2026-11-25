@@ -28,9 +28,12 @@ export function parsePhoto(value: unknown, listingId: string): Photo {
   if ((value.contentUrl !== null && !contentUrl) || (value.thumbnailUrl !== null && !thumbnailUrl)
     || (value.status === 'ready' && (!contentUrl || !thumbnailUrl))
     || (value.status === 'failed' ? !error : value.error !== null)) throw new TypeError('Некорректная фотография');
+  const { quality: rating, qualityReason: reason } = value;
+  const quality = value.status === 'ready' && (rating === 'good' || rating === 'needs_fix' || rating === 'unfit') ? rating : null;
+  const qualityReason = quality && typeof reason === 'string' ? reason.trim() || null : null;
   return {
     id: value.id, listingId, fileName: value.fileName, mimeType: value.mimeType as Photo['mimeType'],
-    sizeBytes: value.sizeBytes, status: value.status as Photo['status'], contentUrl, thumbnailUrl, error: error || null,
+    sizeBytes: value.sizeBytes, status: value.status as Photo['status'], contentUrl, thumbnailUrl, quality, qualityReason, error: error || null,
   };
 }
 

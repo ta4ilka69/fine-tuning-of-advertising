@@ -25,6 +25,8 @@ export type ListingSummary = {
   updatedAt: string;
 };
 
+export type PhotoQuality = 'good' | 'needs_fix' | 'unfit';
+
 export type Photo = {
   id: string;
   listingId: string;
@@ -34,6 +36,8 @@ export type Photo = {
   status: 'processing' | 'ready' | 'failed';
   contentUrl: string | null;
   thumbnailUrl: string | null;
+  quality: PhotoQuality | null;
+  qualityReason: string | null;
   error: Problem | null;
 };
 

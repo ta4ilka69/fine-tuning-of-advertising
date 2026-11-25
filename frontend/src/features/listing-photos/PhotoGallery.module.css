@@ -89,3 +89,16 @@
   .preview { flex-basis: 48px; height: 48px; }
   .select { padding: 16px; align-items: stretch; }
 }
+
+@media (max-width: 480px) {
+  .photo[data-quality] {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+  }
+
+  .photo[data-quality] .description { display: contents; }
+  .photo[data-quality] .preview { grid-area: 1 / 1; }
+  .photo[data-quality] .name { grid-area: 1 / 2; }
+  .photo[data-quality] > button { grid-area: 1 / 3; }
+  .photo[data-quality] .description > :not(.name) { grid-column: 1 / -1; }
+}

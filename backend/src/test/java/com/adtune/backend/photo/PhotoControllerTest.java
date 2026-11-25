@@ -12,11 +12,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.adtune.backend.auth.AuthService;
 import com.adtune.backend.db.AppUser;
 import com.adtune.backend.db.Photo;
+import com.adtune.backend.db.PhotoQuality;
 import com.adtune.backend.web.ApiProblem;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.mock.web.MockMultipartFile;
@@ -66,12 +69,31 @@ class PhotoControllerTest {
         .andExpect(jsonPath("$.version").value(2))
         .andExpect(jsonPath("$.photo.id").isNotEmpty())
         .andExpect(jsonPath("$.photo.status").value("processing"))
+        .andExpect(jsonPath("$.photo.quality").doesNotExist())
+        .andExpect(jsonPath("$.photo.qualityReason").doesNotExist())
         .andExpect(jsonPath("$.photo.mimeType").value("image/jpeg"))
         .andExpect(jsonPath("$.photo.sizeBytes").value(1024))
         .andExpect(jsonPath("$.photo.contentUrl",
             org.hamcrest.Matchers.startsWith("/api/v1/listings/" + listingId + "/photos/")))
         .andExpect(jsonPath("$.photo.thumbnailUrl",
             org.hamcrest.Matchers.endsWith("/thumbnail")));
+  }
+
+  @ParameterizedTest
+  @EnumSource(PhotoQuality.class)
+  void uploadReturnsCompletedAnalysis(PhotoQuality quality) throws Exception {
+    Photo photo = photo();
+    photo.markReady("thumb/x.jpg", quality, "Освещение и резкость", "Гостиная");
+    when(service.upload(any(), eq(listingId), any(), eq(1)))
+        .thenReturn(new PhotoService.MutationResult(2, PhotoView.of(photo)));
+
+    mockMvc.perform(multipart("/v1/listings/{id}/photos", listingId)
+            .file(new MockMultipartFile("file", "flat.jpg", "image/jpeg", new byte[] {1, 2, 3}))
+            .param("expectedVersion", "1"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.photo.status").value("ready"))
+        .andExpect(jsonPath("$.photo.quality").value(quality.name()))
+        .andExpect(jsonPath("$.photo.qualityReason").value("Освещение и резкость"));
   }
 
   @Test

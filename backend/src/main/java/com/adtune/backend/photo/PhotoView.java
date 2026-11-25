@@ -1,6 +1,7 @@
 package com.adtune.backend.photo;
 
 import com.adtune.backend.db.Photo;
+import com.adtune.backend.db.PhotoQuality;
 import com.adtune.backend.db.PhotoStatus;
 import java.util.Map;
 import java.util.UUID;
@@ -19,9 +20,12 @@ public record PhotoView(
     String status,
     String contentUrl,
     String thumbnailUrl,
+    PhotoQuality quality,
+    String qualityReason,
     Map<String, Object> error) {
 
   public static PhotoView of(Photo photo) {
+    PhotoQuality quality = photo.getStatus() == PhotoStatus.ready ? photo.getQuality() : null;
     return new PhotoView(
         photo.getId().toString(),
         photo.getListingId().toString(),
@@ -32,6 +36,8 @@ public record PhotoView(
         "/api/v1/listings/" + photo.getListingId() + "/photos/" + photo.getId() + "/content",
         photo.getThumbnailS3Key() == null ? null
             : "/api/v1/listings/" + photo.getListingId() + "/photos/" + photo.getId() + "/thumbnail",
+        quality,
+        quality == null ? null : photo.getQualityReason(),
         errorView(photo));
   }
 

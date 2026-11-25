@@ -1,0 +1,27 @@
+.highlight[data-quality] {
+  border: 1px solid var(--photo-quality-ink);
+  background: var(--photo-quality-background);
+}
+
+.highlight[data-quality='good'] {
+  --photo-quality-ink: var(--app-brand);
+  --photo-quality-background: var(--app-positive);
+}
+
+.highlight[data-quality='needs_fix'] {
+  --photo-quality-ink: var(--app-warning);
+  --photo-quality-background: var(--app-warningBg);
+}
+
+.highlight[data-quality='unfit'] {
+  --photo-quality-ink: var(--app-error);
+  --photo-quality-background: var(--app-errorBg);
+}
+
+.assessment {
+  overflow-wrap: anywhere;
+}
+
+.assessment .label {
+  color: var(--photo-quality-ink);
+}
