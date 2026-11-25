@@ -12,6 +12,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.adtune.backend.auth.AuthService;
 import com.adtune.backend.db.AppUser;
+import com.adtune.backend.db.Listing;
+import com.adtune.backend.db.Photo;
+import com.adtune.backend.db.PhotoQuality;
+import com.adtune.backend.photo.PhotoView;
 import com.adtune.backend.web.ApiProblem;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -87,6 +91,34 @@ class ListingControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items").isArray())
         .andExpect(jsonPath("$.nextCursor").doesNotExist());
+  }
+
+  @Test
+  void getReturnsPhotoQualityAndProcessingErrorSeparately() throws Exception {
+    Listing listing = Listing.newDraft(user().getId(), mapper.createObjectNode());
+    UUID id = listing.getId();
+    Photo rated = Photo.uploaded(id, "orig/rated.jpg", "rated.jpg", "image/jpeg", 1024);
+    rated.markReady("thumb/rated.jpg", PhotoQuality.unfit, "Снимок размыт", "Гостиная");
+    Photo unrated = Photo.uploaded(id, "orig/unrated.jpg", "unrated.jpg", "image/jpeg", 1024);
+    unrated.markReady("thumb/unrated.jpg", null, null, null);
+    Photo failed = Photo.uploaded(id, "orig/failed.jpg", "failed.jpg", "image/jpeg", 1024);
+    failed.markFailed("Обработка не удалась");
+    when(service.get(any(), eq(id))).thenReturn(ListingView.of(listing,
+        List.of(PhotoView.of(rated), PhotoView.of(unrated), PhotoView.of(failed))));
+
+    mockMvc.perform(get("/v1/listings/{id}", id))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.photos[0].status").value("ready"))
+        .andExpect(jsonPath("$.photos[0].quality").value("unfit"))
+        .andExpect(jsonPath("$.photos[0].qualityReason").value("Снимок размыт"))
+        .andExpect(jsonPath("$.photos[0].error").doesNotExist())
+        .andExpect(jsonPath("$.photos[1].status").value("ready"))
+        .andExpect(jsonPath("$.photos[1].quality").doesNotExist())
+        .andExpect(jsonPath("$.photos[1].qualityReason").doesNotExist())
+        .andExpect(jsonPath("$.photos[2].status").value("failed"))
+        .andExpect(jsonPath("$.photos[2].quality").doesNotExist())
+        .andExpect(jsonPath("$.photos[2].qualityReason").doesNotExist())
+        .andExpect(jsonPath("$.photos[2].error.code").value("PHOTO_PROCESSING_FAILED"));
   }
 
   @Test

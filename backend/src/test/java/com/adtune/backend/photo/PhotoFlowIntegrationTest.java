@@ -100,6 +100,8 @@ class PhotoFlowIntegrationTest {
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.version").value(2))
         .andExpect(jsonPath("$.photo.status").value("ready"))
+        .andExpect(jsonPath("$.photo.quality").value("good"))
+        .andExpect(jsonPath("$.photo.qualityReason").value("Светлая комната"))
         .andExpect(jsonPath("$.photo.mimeType").value("image/png"))
         .andExpect(jsonPath("$.photo.thumbnailUrl").isNotEmpty())
         .andReturn();
@@ -111,7 +113,9 @@ class PhotoFlowIntegrationTest {
     mockMvc.perform(get("/v1/listings/{id}", listingId).cookie(new Cookie("session", cookie)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.photos.length()").value(1))
-        .andExpect(jsonPath("$.photos[0].status").value("ready"));
+        .andExpect(jsonPath("$.photos[0].status").value("ready"))
+        .andExpect(jsonPath("$.photos[0].quality").value("good"))
+        .andExpect(jsonPath("$.photos[0].qualityReason").value("Светлая комната"));
 
     // Контент — исходные байты PNG; превью — JPEG.
     mockMvc.perform(get("/v1/listings/{lid}/photos/{pid}/content", listingId, photoId)

@@ -25,6 +25,37 @@ for (const width of [320, 390, 768, 1440]) test(`фото: доступност�
   expect(deletion.query).toBe('?expectedVersion=2'); expect(deletion.cookie).toContain('session=test-session');
 });
 
+for (const width of [320, 1440]) test(`цвета и текст оценок фотографий на ширине ${width} px`, async ({ page, loginServer }) => {
+  const detail = listingDetails();
+  const original = detail.photos[0]!;
+  const assessments = [
+    { quality: 'good', label: 'Хорошее фото', color: 'rgb(232, 243, 237)', reason: 'Комната хорошо освещена, видна планировка.' },
+    { quality: 'needs_fix', label: 'Можно улучшить', color: 'rgb(255, 244, 216)', reason: 'Переснимите комнату днём. Откройте шторы и снимайте из угла, чтобы в кадр вошло больше пространства.' },
+    { quality: 'unfit', label: 'Не подходит', color: 'rgb(255, 240, 238)', reason: 'Снимок размыт, детали объекта неразличимы.' },
+  ];
+  const rated = assessments.map(({ quality, reason }, index) => {
+    const photoId = original.id.slice(0, -1) + (index + 2);
+    return { ...original, id: photoId, fileName: `room-${index + 2}.jpg`, quality, qualityReason: reason,
+      contentUrl: original.contentUrl.replace(original.id, photoId), thumbnailUrl: original.thumbnailUrl.replace(original.id, photoId) };
+  });
+  loginServer.controls.detail = { ...detail, photos: [original, ...rated] };
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto(`${loginServer.url}/app/listings/${id}`);
+  const list = page.getByRole('list', { name: 'Загруженные фотографии' });
+  const unrated = list.getByRole('listitem').filter({ hasText: original.fileName });
+  await expect(unrated.getByText('Готово')).toBeVisible();
+  await expect(unrated).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  for (const { label, reason, color } of assessments) {
+    const card = list.getByRole('listitem').filter({ hasText: label });
+    await expect(card).toHaveCSS('background-color', color);
+    await expect(card.getByText(label, { exact: true })).toBeVisible();
+    await expect(card.getByText(reason, { exact: true })).toBeVisible();
+    expect(await card.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
 test('настоящий multipart: смешанный набор, очередь, версии и обработка', async ({ page, loginServer }) => {
   let release!: () => void; loginServer.controls.holdUpload = new Promise((done) => { release = done; });
   await page.goto(`${loginServer.url}/app/listings/${id}`);
@@ -41,10 +72,20 @@ test('настоящий multipart: смешанный набор, очеред�
   for (const call of loginServer.calls.filter((entry) => entry.method === 'POST')) {
     expect(call.contentType).toMatch(/^multipart\/form-data; boundary=/); expect(call.cookie).toContain('session=test-session'); expect(call.origin).toBe(loginServer.url);
   }
+  const uploaded = page.getByRole('list', { name: 'Загруженные фотографии' }).getByRole('listitem').filter({ hasText: 'Гостиная.jpg' });
+  await expect(uploaded).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  loginServer.controls.photoAssessment = { quality: 'needs_fix', qualityReason: 'Снимите комнату при дневном свете.' };
   loginServer.controls.photoCompletion = 'ready';
   await expect(page.getByText('Обрабатывается на сервере…')).toHaveCount(0);
   await expect(page.getByRole('img', { name: 'Кухня.jpg', exact: true })).toBeVisible();
+  await expect(uploaded).toHaveCSS('background-color', 'rgb(255, 244, 216)');
+  await expect(uploaded.getByText('Можно улучшить')).toBeVisible();
+  await expect(uploaded.getByText('Снимите комнату при дневном свете.')).toBeVisible();
   const count = reads(loginServer).length; await page.waitForTimeout(1800); expect(reads(loginServer)).toHaveLength(count);
+  await page.reload();
+  await expect(uploaded).toHaveCSS('background-color', 'rgb(255, 244, 216)');
+  await expect(uploaded.getByText('Можно улучшить')).toBeVisible();
+  await expect(uploaded.getByText('Снимите комнату при дневном свете.')).toBeVisible();
   await page.getByRole('button', { name: 'Удалить фотографию Гостиная.jpg', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Фото · 2 из 20' })).toBeVisible();
   expect(loginServer.calls.filter((call) => call.method === 'DELETE')[0]!.query).toBe('?expectedVersion=4');
@@ -87,6 +128,9 @@ test('processing → failed, ошибка изображения и успешн
   await page.goto(`${loginServer.url}/app/listings/${id}`); await expect(page.getByRole('img', { name: 'Не удалось показать превью room.jpg' })).toBeVisible();
   await page.getByLabel('Фотографии объявления', { exact: true }).setInputFiles(file()); loginServer.controls.photoCompletion = 'failed';
   await expect(page.getByText('Обработка не удалась. Удалите фото и загрузите заново.')).toBeVisible();
+  const failed = page.getByRole('list', { name: 'Загруженные фотографии' }).getByRole('listitem').filter({ hasText: 'Гостиная.jpg' });
+  await expect(failed).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(failed.getByText('Не подходит')).toHaveCount(0);
   loginServer.controls.photoError = 422; await page.getByRole('button', { name: 'Удалить фотографию Гостиная.jpg', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Продолжить очередь' })).toBeVisible();
   await expect(page.getByText('Обработка не удалась. Удалите фото и загрузите заново.')).toBeVisible();

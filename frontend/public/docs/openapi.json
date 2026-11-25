@@ -595,6 +595,8 @@
                           "status": "ready",
                           "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/content",
                           "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/thumbnail",
+                          "quality": "good",
+                          "qualityReason": "Комната хорошо освещена, видна планировка.",
                           "error": null
                         },
                         {
@@ -606,6 +608,8 @@
                           "status": "ready",
                           "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/content",
                           "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/thumbnail",
+                          "quality": "needs_fix",
+                          "qualityReason": "Снимите комнату при дневном свете.",
                           "error": null
                         }
                       ],
@@ -704,6 +708,8 @@
                           "status": "ready",
                           "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/content",
                           "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/thumbnail",
+                          "quality": "good",
+                          "qualityReason": "Комната хорошо освещена, видна планировка.",
                           "error": null
                         },
                         {
@@ -715,6 +721,8 @@
                           "status": "ready",
                           "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/content",
                           "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/thumbnail",
+                          "quality": "needs_fix",
+                          "qualityReason": "Снимите комнату при дневном свете.",
                           "error": null
                         }
                       ],
@@ -845,6 +853,8 @@
                           "status": "ready",
                           "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/content",
                           "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/thumbnail",
+                          "quality": "good",
+                          "qualityReason": "Комната хорошо освещена, видна планировка.",
                           "error": null
                         },
                         {
@@ -856,6 +866,8 @@
                           "status": "ready",
                           "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/content",
                           "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/thumbnail",
+                          "quality": "needs_fix",
+                          "qualityReason": "Снимите комнату при дневном свете.",
                           "error": null
                         }
                       ],
@@ -947,6 +959,8 @@
                           "status": "ready",
                           "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/content",
                           "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/thumbnail",
+                          "quality": "good",
+                          "qualityReason": "Комната хорошо освещена, видна планировка.",
                           "error": null
                         },
                         {
@@ -958,6 +972,8 @@
                           "status": "ready",
                           "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/content",
                           "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/thumbnail",
+                          "quality": "needs_fix",
+                          "qualityReason": "Снимите комнату при дневном свете.",
                           "error": null
                         }
                       ],
@@ -1207,6 +1223,8 @@
                         "status": "processing",
                         "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/content",
                         "thumbnailUrl": null,
+                        "quality": null,
+                        "qualityReason": null,
                         "error": null
                       }
                     }
@@ -1633,6 +1651,8 @@
                           "status": "ready",
                           "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/content",
                           "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/34b5feac-b144-489c-92d0-f8c621e94f3f/thumbnail",
+                          "quality": "good",
+                          "qualityReason": "Комната хорошо освещена, видна планировка.",
                           "error": null
                         },
                         {
@@ -1644,6 +1664,8 @@
                           "status": "ready",
                           "contentUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/content",
                           "thumbnailUrl": "/api/v1/listings/e0766ca4-57cc-49b5-ac65-a2d3110235ce/photos/7d1c2f0e-5b8a-4c39-9e61-2a4f8b7c3d10/thumbnail",
+                          "quality": "needs_fix",
+                          "qualityReason": "Снимите комнату при дневном свете.",
                           "error": null
                         }
                       ],
@@ -2738,6 +2760,15 @@
               }
             ]
           },
+          "quality": {
+            "type": ["string", "null"],
+            "enum": ["good", "needs_fix", "unfit", null],
+            "description": "Оценка готовой фотографии: good — хорошее фото, needs_fix — можно улучшить, unfit — не подходит. Поле может отсутствовать или быть null, если оценки нет."
+          },
+          "qualityReason": {
+            "type": ["string", "null"],
+            "description": "Пояснение к оценке фотографии. Может отсутствовать или быть null."
+          },
           "error": {
             "anyOf": [
               {
@@ -2799,6 +2830,12 @@
             },
             "then": {
               "properties": {
+                "quality": {
+                  "type": "null"
+                },
+                "qualityReason": {
+                  "type": "null"
+                },
                 "error": {
                   "type": "null"
                 }
@@ -2815,6 +2852,12 @@
             },
             "then": {
               "properties": {
+                "quality": {
+                  "type": "null"
+                },
+                "qualityReason": {
+                  "type": "null"
+                },
                 "error": {
                   "$ref": "#/components/schemas/Problem"
                 }

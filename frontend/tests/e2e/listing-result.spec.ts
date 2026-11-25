@@ -65,6 +65,18 @@ const scoredResult = {
   }],
 };
 
+test('рекомендация показывает ту же оценку, что и галерея', async ({ page, openListing }) => {
+  const photo = { ...room, quality: 'good', qualityReason: 'Комната хорошо освещена.' };
+  await openListing({ ...listingDetails(), photos: [photo], result: scoredResult });
+  for (const name of ['Рекомендованные фотографии', 'Загруженные фотографии']) {
+    const card = page.getByRole('list', { name }).getByRole('listitem').filter({ has: page.getByRole('img', { name: room.fileName }) });
+    await expect(card).toHaveCSS('background-color', 'rgb(232, 243, 237)');
+    await expect(card.getByText('Хорошее фото')).toBeVisible();
+    await expect(card.getByText(photo.qualityReason)).toBeVisible();
+  }
+  await expect(page.getByRole('list', { name: 'Рекомендованные фотографии' }).getByText('Виден общий план гостиной')).toBeVisible();
+});
+
 for (const width of [320, 390, 1440]) {
   test(`оценка и рекомендации площадок на ширине ${width} px`, async ({ page, openListing }) => {
     await page.setViewportSize({ width, height: 900 });

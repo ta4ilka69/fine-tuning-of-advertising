@@ -47,6 +47,27 @@ test('Listing проверяет фото, их уникальность, лим
   expect(parsePhoto({ ...photo, status: 'failed', error: { type: 'about:blank', title: 'Ошибка', status: 422, code: 'FAILED', requestId: photo.id } }, id).status).toBe('failed');
 });
 
+test.each(['good', 'needs_fix', 'unfit'] as const)('загрузка и чтение объявления сохраняют оценку %s', async (quality) => {
+  const rated = { ...photo, quality, qualityReason: 'Освещение и резкость' };
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(response({ version: 3, photo: rated }))
+    .mockResolvedValueOnce(response({ ...detail, version: 3, photos: [rated] }, 200)));
+  expect(await photos.upload(id, file(), 2)).toEqual({ version: 3, photo: rated });
+  expect((await listings.get(id)).photos).toEqual([rated]);
+});
+
+test('Photo допускает отсутствие оценки и игнорирует оценку до завершения обработки', () => {
+  const source = detail.photos[0]!;
+  expect(parsePhoto(source, id)).toMatchObject({ quality: null, qualityReason: null });
+  expect(parsePhoto({ ...source, quality: 'unknown', qualityReason: 'Пояснение' }, id))
+    .toMatchObject({ quality: null, qualityReason: null });
+  expect(parsePhoto({ ...source, quality: 'good' }, id)).toMatchObject({ quality: 'good', qualityReason: null });
+  expect(parsePhoto({ ...source, quality: 'good', qualityReason: '  ' }, id)).toMatchObject({ quality: 'good', qualityReason: null });
+  const processing = { ...source, status: 'processing', quality: 'unfit', qualityReason: 'Снимок размыт' };
+  expect(parsePhoto(processing, id)).toMatchObject({ quality: null, qualityReason: null });
+  const error = { type: 'about:blank', title: 'Ошибка', status: 422, code: 'FAILED', requestId: photo.id };
+  expect(parsePhoto({ ...processing, status: 'failed', error }, id)).toMatchObject({ quality: null, qualityReason: null, error });
+});
+
 test('API передаёт FormData, cookie-политику и версию без Content-Type', async () => {
   const fetchMock = vi.fn().mockResolvedValue(response({ version: 3, photo })); vi.stubGlobal('fetch', fetchMock);
   const image = file(); const controller = new AbortController();

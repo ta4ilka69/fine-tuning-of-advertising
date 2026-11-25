@@ -21,8 +21,11 @@
 .reasonSign[data-plus='true'] { color: var(--app-brand); }
 .recommendations { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--mantine-spacing-md); padding: 0; margin: 0; list-style: none; counter-reset: recommendations; }
 .recommendations li { position: relative; counter-increment: recommendations; }
+.recommendations li[data-quality] { padding: var(--mantine-spacing-sm); border-radius: var(--mantine-radius-lg); }
 .recommendations li::before { content: counter(recommendations); position: absolute; inset-block-start: var(--mantine-spacing-xs); inset-inline-start: var(--mantine-spacing-xs); min-inline-size: 1.75rem; padding: 0.125rem 0.375rem; border-radius: var(--mantine-radius-sm); background: var(--app-surface); color: var(--app-brand); text-align: center; font-weight: 600; }
+.recommendations li[data-quality]::before { inset-block-start: var(--mantine-spacing-md); inset-inline-start: var(--mantine-spacing-md); }
 .thumbnail { display: block; inline-size: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: var(--mantine-radius-md); background: var(--app-canvas); }
+.photoAssessment { margin-block-start: var(--mantine-spacing-sm); }
 @media (max-width: 48em) {
   .result[data-assessed] .overview, .recommendations { grid-template-columns: minmax(0, 1fr); }
 }
