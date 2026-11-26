@@ -274,9 +274,10 @@ test('после восстановления сессии показана ош
   const error = page.getByRole('alert');
   await expect(error).toContainText('Не удалось проверить исправление');
   await expect(error).not.toContainText('Сессия завершилась');
-  await error.getByRole('button', { name: 'Повторить' }).click();
+  await error.getByRole('button', { name: 'Повторить' }).press('Enter');
   await expect(panel(page).getByRole('button', { name: 'Применить исправление' })).toBeEnabled();
   await expect(error).toHaveCount(0);
+  await expect(page.getByRole('main')).toBeFocused();
 });
 
 test('текущий API показывает анализ без запуска исправления', async ({ page, loginServer }) => {

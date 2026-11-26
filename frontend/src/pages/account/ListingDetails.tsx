@@ -55,7 +55,12 @@ export function ListingDetails({ id, recheck, suspended = false }: { id: string;
       {!editing && <ListingResult listing={item} />}
       <PhotoGallery manager={manager} state={state} /></>
       : error ? <AppNotice tone="error" title="Не удалось загрузить объявление"><p>{error}</p>
-        <AppButton disabled={state.reading || retrySeconds > 0} onClick={() => { recheck(false); void manager.refresh(); }}>
+        <AppButton disabled={state.reading || retrySeconds > 0} onClick={(event) => {
+          const document = event.currentTarget.ownerDocument;
+          if (event.currentTarget === document.activeElement) document.getElementById('main-content')?.focus();
+          recheck(false);
+          void manager.refresh();
+        }}>
           {retrySeconds ? `Повторить через ${retrySeconds} с` : 'Повторить'}
         </AppButton></AppNotice>
         : <LoadingState label="Загружаем объявление" />}
