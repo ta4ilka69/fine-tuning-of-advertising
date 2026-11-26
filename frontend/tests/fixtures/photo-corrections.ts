@@ -20,6 +20,7 @@ export function correctableListing() {
     ...listing,
     photos,
     photoCorrection: null as PhotoCorrection | null,
+    photoCorrectionRevision: 0,
   };
 }
 

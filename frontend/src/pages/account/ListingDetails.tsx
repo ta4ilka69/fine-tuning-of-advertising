@@ -21,7 +21,8 @@ export function ListingDetails({ id, recheck, suspended = false }: { id: string;
   const [editing, setEditing] = useState<Listing>();
   const [manager] = useState(() => new PhotoManager(id, recheck));
   const state = useSyncExternalStore(manager.subscribe, manager.snapshot);
-  const { listing: item, error } = state;
+  const item = state.listing;
+  const error = state.correction?.accessError ?? state.error;
   useLayoutEffect(() => {
     if (!suspended) manager.start();
     return () => manager.stop();

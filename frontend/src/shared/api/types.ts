@@ -80,6 +80,7 @@ export type Listing = ListingOverview & {
   result: GenerationResult | null;
   generationError: Problem | null;
   photoCorrection?: PhotoCorrection | null;
+  photoCorrectionRevision?: number;
 };
 
 export type ListingPage = { items: ListingSummary[]; nextCursor: string | null };

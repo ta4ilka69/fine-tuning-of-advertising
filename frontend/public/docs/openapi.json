@@ -1488,7 +1488,7 @@
         "tags": [
           "Фотографии"
         ],
-        "description": "Предлагаемое расширение контракта. Операция ещё не реализована на бэкенде. Требуется сессия владельца объявления и доверенный Origin. Для другого владельца или отсутствующего объекта ответ 404. При несовпадении expectedVersion возвращается 409 VERSION_CONFLICT с currentVersion. Исходное фото должно быть ready, а тип правки должен совпадать с improvementType фото. При отсутствии предложения или неподдерживаемом типе возвращается 422 PHOTO_CORRECTION_NOT_OFFERED. Инструкция берётся из анализа на сервере. Повтор разрешён для текущей попытки в failed с тем же фото и типом и указанным retryCorrectionId. Повтор атомарно заменяет неудачную попытку новой. Сервер выполняет проверки и постановку в очередь атомарно. Если есть текущая попытка, обычный запуск возвращает 409 PHOTO_CORRECTION_ACTIVE. Если попытка для повтора уже устарела, возвращается 409 PHOTO_CORRECTION_CHANGED. Повторное использование correctionId возвращает 409 PHOTO_CORRECTION_DUPLICATE без постановки в очередь. Во время генерации возвращается 409 LISTING_BUSY. Запуск сохраняет version, status и result объявления. Попытка переходит из processing в ready при наличии корректного JPEG или PNG до 15 000 000 байт либо в failed с ошибкой в формате Problem. По истечении серверного тайм-аута попытка переходит в failed с PHOTO_CORRECTION_TIMEOUT, а запоздалый результат отбрасывается. Пока попытка в processing или ready, редактирование, загрузка и удаление фото, удаление объявления и генерация заблокированы (409 PHOTO_CORRECTION_ACTIVE). При failed эти действия доступны. Временный файл хранится отдельно от photos, не участвует в генерации и не расходует лимит 20 фото. При недоступности исправления сервер отвечает 503 PHOTO_CORRECTION_UNAVAILABLE.",
+        "description": "Предлагаемое расширение контракта. Операция ещё не реализована на бэкенде. Требуется сессия владельца объявления и доверенный Origin. Для другого владельца или отсутствующего объекта ответ 404. При несовпадении expectedVersion возвращается 409 VERSION_CONFLICT с currentVersion. Исходное фото должно быть ready, а тип правки должен совпадать с improvementType фото. При отсутствии предложения или неподдерживаемом типе возвращается 422 PHOTO_CORRECTION_NOT_OFFERED. Инструкция берётся из анализа на сервере. Повтор разрешён для текущей попытки в failed с тем же фото и типом и указанным retryCorrectionId. Повтор атомарно заменяет неудачную попытку новой. Сервер выполняет проверки и постановку в очередь атомарно. Если есть текущая попытка, обычный запуск возвращает 409 PHOTO_CORRECTION_ACTIVE. Если попытка для повтора уже устарела, возвращается 409 PHOTO_CORRECTION_CHANGED. Повторное использование correctionId возвращает 409 PHOTO_CORRECTION_DUPLICATE без постановки в очередь. Во время генерации возвращается 409 LISTING_BUSY. Запуск сохраняет version, status и result объявления. Попытка переходит из processing в ready при наличии корректного JPEG или PNG до 15 000 000 байт либо в failed с ошибкой в формате Problem. По истечении серверного тайм-аута попытка переходит в failed с PHOTO_CORRECTION_TIMEOUT, а запоздалый результат отбрасывается. Пока попытка в processing или ready, редактирование, загрузка и удаление фото, удаление объявления и генерация заблокированы (409 PHOTO_CORRECTION_ACTIVE). При failed эти действия доступны. Временный файл хранится отдельно от photos, не участвует в генерации и не расходует лимит 20 фото. При недоступности исправления сервер отвечает 503 PHOTO_CORRECTION_UNAVAILABLE. При несовпадении expectedCorrectionRevision возвращается 409 PHOTO_CORRECTION_CHANGED. Сервер проверяет ревизию и меняет её в той же транзакции, что и состояние попытки.",
         "parameters": [
           {
             "$ref": "#/components/parameters/id"
@@ -1512,11 +1512,11 @@
         },
         "responses": {
           "202": {
-            "description": "Попытка принята. В photoCorrection возвращается состояние этой попытки.",
+            "description": "Попытка принята. Возвращаются её состояние и новая ревизия исправления.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Listing"
+                  "$ref": "#/components/schemas/PhotoCorrectionAccepted"
                 }
               }
             }
@@ -1578,11 +1578,11 @@
         ],
         "responses": {
           "200": {
-            "description": "Отказ принят. Возвращается объявление с photoCorrection=null.",
+            "description": "Отказ принят. Возвращается объявление с photoCorrection=null. Ревизия исправления увеличена на 1.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Listing"
+                  "$ref": "#/components/schemas/PhotoCorrectionResolved"
                 }
               }
             }
@@ -1651,11 +1651,11 @@
         },
         "responses": {
           "200": {
-            "description": "Исправленный вариант применён. Возвращается объявление с новой версией.",
+            "description": "Исправленный вариант применён. Возвращается объявление с новой версией. Ревизия исправления увеличена на 1.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Listing"
+                  "$ref": "#/components/schemas/PhotoCorrectionApplied"
                 }
               }
             }
@@ -3483,7 +3483,13 @@
                 "type": "null"
               }
             ],
-            "description": "Предлагаемое расширение. Одна текущая попытка на объявление. Пока сервер не поддерживает расширение, поле отсутствует и клиент не отправляет запрос на запуск. После реализации сервер всегда возвращает поле: null означает, что текущей попытки нет."
+            "description": "Предлагаемое расширение. Одна текущая попытка на объявление. Старый сервер не возвращает поля photoCorrection и photoCorrectionRevision. При поддержке исправления оба поля присутствуют во всех ответах Listing. Значение photoCorrection=null означает, что текущей попытки нет."
+          },
+          "photoCorrectionRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Ревизия попытки исправления данного объявления. Начальное значение 0. Сервер увеличивает её на 1 атомарно при запуске, повторе, применении и отказе, а также при удалении исходного фото со связанной попыткой. Фоновая смена статуса её не меняет. Поле возвращается вместе с photoCorrection."
           }
         },
         "additionalProperties": false,
@@ -3553,7 +3559,15 @@
               }
             }
           }
-        ]
+        ],
+        "dependentRequired": {
+          "photoCorrection": [
+            "photoCorrectionRevision"
+          ],
+          "photoCorrectionRevision": [
+            "photoCorrection"
+          ]
+        }
       },
       "ListingSummary": {
         "type": "object",
@@ -4502,10 +4516,17 @@
             "type": "string",
             "format": "uuid",
             "description": "UUID текущей неудачной попытки для повтора. Для первичного запуска поле отсутствует."
+          },
+          "expectedCorrectionRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Ревизия исправления из последнего снимка объявления. Проверяется вместе с expectedVersion, даже если текущей попытки нет."
           }
         },
         "required": [
           "expectedVersion",
+          "expectedCorrectionRevision",
           "improvementType",
           "correctionId"
         ],
@@ -4612,6 +4633,69 @@
               "properties": {
                 "error": {},
                 "previewUrl": false
+              }
+            }
+          }
+        ]
+      },
+      "PhotoCorrectionAccepted": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Listing"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "photoCorrection": {
+                "$ref": "#/components/schemas/PhotoCorrection"
+              },
+              "photoCorrectionRevision": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "photoCorrection",
+              "photoCorrectionRevision"
+            ]
+          }
+        ]
+      },
+      "PhotoCorrectionResolved": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Listing"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "photoCorrection": {
+                "type": "null"
+              },
+              "photoCorrectionRevision": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "photoCorrection",
+              "photoCorrectionRevision"
+            ]
+          }
+        ]
+      },
+      "PhotoCorrectionApplied": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PhotoCorrectionResolved"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": "draft"
               }
             }
           }

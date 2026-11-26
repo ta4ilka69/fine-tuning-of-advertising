@@ -1,12 +1,12 @@
 import { Stack, Text, Title } from '@mantine/core';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefCallback } from 'react';
 import type { Photo } from '../../shared/api/types';
 import { AppButton } from '../../shared/ui/AppButton';
 import { AppNotice } from '../../shared/ui/AppNotice';
 import { IconButton } from '../../shared/ui/IconButton';
 import { LoadingState } from '../../shared/ui/LoadingState';
 import { useRetrySeconds } from '../../shared/ui/use-retry-seconds';
-import { PhotoManager, correctionActionAvailable, listingLocked, type PhotoState, type Upload } from './model';
+import { PhotoManager, correctionActionAvailable, generationLocked, listingLocked, type PhotoState, type Upload } from './model';
 import { PhotoAssessment } from './PhotoAssessment';
 import { PhotoCorrectionPanel } from './PhotoCorrectionPanel';
 import assessment from './PhotoAssessment.module.css';
@@ -25,10 +25,11 @@ function Preview({ file, url, name }: { file?: File; url?: string | null; name: 
     : file || url ? <img ref={image} src={url ?? undefined} alt={name} onError={() => setFailed(true)} /> : <span aria-hidden="true">Фото</span>}</div>;
 }
 
-function UploadedPhoto({ photo, disabled, deleting, onRemove, buttonRef, onCorrect, correctDisabled, correctionUnavailable }: {
+function UploadedPhoto({ photo, disabled, deleting, onRemove, buttonRef, onCorrect, correctButtonRef, correctDisabled, correctionUnavailable }: {
   photo: Photo; disabled: boolean; deleting: boolean; onRemove: () => void;
   buttonRef: (element: HTMLButtonElement | null) => void;
-  onCorrect?: () => void; correctDisabled: boolean; correctionUnavailable: boolean;
+  onCorrect?: (button: HTMLButtonElement) => void;
+  correctButtonRef: RefCallback<HTMLElement>; correctDisabled: boolean; correctionUnavailable: boolean;
 }) {
   return <li className={`${classes.photo} ${assessment.highlight}`} data-quality={photo.quality ?? undefined} data-improvement={photo.improvementType ?? undefined}>
     <Preview key={`${photo.id}:${photo.thumbnailUrl}`} url={photo.status === 'ready' ? photo.thumbnailUrl : null} name={photo.fileName} />
@@ -36,8 +37,8 @@ function UploadedPhoto({ photo, disabled, deleting, onRemove, buttonRef, onCorre
       {(deleting || !photo.quality) && <Text size="sm" c={photo.status === 'failed' ? 'red.8' : 'dimmed'}>{deleting ? 'Удаляем…' : photo.status === 'processing' ? 'Обрабатывается на сервере…'
         : photo.status === 'failed' ? 'Обработка не удалась. Удалите фото и загрузите заново.' : 'Готово'}</Text>}
       <PhotoAssessment photo={photo} />
-      {onCorrect && <div><AppButton className={classes.correct} size="xs" intent="secondary" disabled={correctDisabled}
-        aria-label={`Исправить с ИИ: ${photo.fileName}`} onClick={onCorrect}>Исправить с ИИ</AppButton></div>}
+      {onCorrect && <div><AppButton ref={correctButtonRef} className={classes.correct} size="xs" intent="secondary" disabled={correctDisabled}
+        aria-label={`Исправить с ИИ: ${photo.fileName}`} onClick={(event) => onCorrect(event.currentTarget)}>Исправить с ИИ</AppButton></div>}
       {correctionUnavailable && photo.improvementType && <Text size="sm" c="dimmed">Исправление пока недоступно</Text>}
     </div>
     <IconButton ref={buttonRef} label={`Удалить фотографию ${photo.fileName}`} disabled={disabled} loading={deleting} onClick={onRemove}>×</IconButton>
@@ -58,7 +59,12 @@ export function PhotoGallery({ manager, state }: { manager: PhotoManager; state:
   const input = useRef<HTMLInputElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const correctionHeading = useRef<HTMLHeadingElement>(null);
-  const focusCorrection = useRef(false);
+  const correctionActionSource = useRef<HTMLButtonElement>(undefined);
+  const removedCorrectionFocus = useRef(false);
+  const trackCorrectionFocus = useCallback<RefCallback<HTMLElement>>((control) => {
+    if (!control) return;
+    return () => { if (control === control.ownerDocument.activeElement) removedCorrectionFocus.current = true; };
+  }, []);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const focusTarget = useRef<{ id: string; index: number } | undefined>(undefined);
   const listing = state.listing!;
@@ -72,17 +78,24 @@ export function PhotoGallery({ manager, state }: { manager: PhotoManager; state:
   const feedback = state.correction;
   const seconds = useRetrySeconds(feedback?.retryAt);
   const pollSeconds = useRetrySeconds(feedback?.pollRetryAt);
-  const correctionDisabled = !correctionActionAvailable(state) || seconds > 0;
-  const changeCorrection = (action: Parameters<PhotoManager['changeCorrection']>[0], photoId: string, correctionId?: string) => {
-    focusCorrection.current = true;
+  const canCorrect = (action: Parameters<PhotoManager['changeCorrection']>[0]) => correctionActionAvailable(state, action) && seconds === 0;
+  const changeCorrection = (action: Parameters<PhotoManager['changeCorrection']>[0], button: HTMLButtonElement, photoId: string, correctionId?: string) => {
+    correctionActionSource.current = button;
     void manager.changeCorrection(action, photoId, correctionId);
+    if (manager.snapshot().correction?.phase !== 'sending') correctionActionSource.current = undefined;
   };
   useLayoutEffect(() => {
-    if (!focusCorrection.current || feedback?.phase) return;
-    focusCorrection.current = false;
-    if (feedback?.message) return;
+    if (feedback?.phase) return;
+    const source = correctionActionSource.current;
+    const removed = removedCorrectionFocus.current;
+    correctionActionSource.current = undefined;
+    removedCorrectionFocus.current = false;
     const target = correctionHeading.current ?? heading.current;
-    target?.focus();
+    if (!target || (!source && !removed)) return;
+    const { activeElement, body } = target.ownerDocument;
+    if (activeElement !== body && activeElement !== source) return;
+    if (feedback?.message && source?.isConnected && !source.disabled) source.focus();
+    else target.focus();
   }, [correction, feedback]);
   useEffect(() => {
     if (!state.removed || focusTarget.current?.id !== state.removed || state.reading || state.deleting) return;
@@ -103,9 +116,11 @@ export function PhotoGallery({ manager, state }: { manager: PhotoManager; state:
         </AppButton>
       </AppNotice>}
       {correction && correctionPhoto && <PhotoCorrectionPanel correction={correction} photo={correctionPhoto} heading={correctionHeading}
-        disabled={correctionDisabled} onRetry={() => changeCorrection('retry', correction.photoId, correction.id)}
-        onApply={() => changeCorrection('apply', correction.photoId, correction.id)}
-        onDiscard={() => changeCorrection('discard', correction.photoId, correction.id)} />}
+        trackFocus={trackCorrectionFocus} disabled={!canCorrect('discard')} retryDisabled={!canCorrect('retry')}
+        refreshing={state.reading || pollSeconds > 0} onRefresh={manager.refresh}
+        onRetry={(button) => changeCorrection('retry', button, correction.photoId, correction.id)}
+        onApply={(button) => changeCorrection('apply', button, correction.photoId, correction.id)}
+        onDiscard={(button) => changeCorrection('discard', button, correction.photoId, correction.id)} />}
       {state.editing && <Text c="dimmed">Загрузка и удаление фотографий недоступны, пока открыта форма редактирования.</Text>}
       {state.editing && listing.status === 'generating' && <AppNotice tone="info" title="Идёт генерация">Добавлять и удалять фотографии можно после её завершения.</AppNotice>}
       {state.error && <AppNotice tone="error" title="Очередь остановлена"><p>{state.error}</p>
@@ -125,13 +140,13 @@ export function PhotoGallery({ manager, state }: { manager: PhotoManager; state:
       {!listing.photos.length && !state.uploads.length && <Text c="dimmed">Фотографий пока нет</Text>}
       <ul className={classes.photos} aria-label="Загруженные фотографии">
         {listing.photos.map((photo, index) => <UploadedPhoto key={photo.id} photo={photo} disabled={disabled} deleting={state.deleting === photo.id}
-          correctionUnavailable={correctionUnavailable} correctDisabled={correctionDisabled} onCorrect={correction === null && photo.improvementType === 'clutter'
-            ? () => changeCorrection('start', photo.id) : undefined}
+          correctionUnavailable={correctionUnavailable} correctButtonRef={trackCorrectionFocus} correctDisabled={!canCorrect('start')}
+          onCorrect={correction === null && photo.improvementType === 'clutter' ? (button) => changeCorrection('start', button, photo.id) : undefined}
           buttonRef={(element) => { if (element) buttons.current.set(photo.id, element); else buttons.current.delete(photo.id); }}
           onRemove={() => { focusTarget.current = { id: photo.id, index }; manager.remove(photo.id); }} />)}
       </ul>
       {state.uploads.length > 0 && <div><Title order={3} size="h4" mb="sm">Очередь загрузки</Title><ul className={classes.photos} aria-label="Очередь загрузки">
-        {state.uploads.map((entry) => <QueuedPhoto key={entry.key} entry={entry} locked={locked} onDismiss={() => manager.dismiss(entry.key)} />)}
+        {state.uploads.map((entry) => <QueuedPhoto key={entry.key} entry={entry} locked={generationLocked(state)} onDismiss={() => manager.dismiss(entry.key)} />)}
       </ul></div>}
       <Text size="sm" c="dimmed">Файлы после загрузки обрабатываются на сервере. Фотографии сохраняют порядок загрузки.</Text>
       <div role="status" aria-live="polite" aria-atomic="true" className={classes.live}>{state.announcement}</div>

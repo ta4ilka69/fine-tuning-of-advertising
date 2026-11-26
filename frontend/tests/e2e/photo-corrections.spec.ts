@@ -36,11 +36,13 @@ async function mockCorrections(page: Page, detail: Detail) {
     });
     if (version !== detail.version) return sendError(409, 'VERSION_CONFLICT');
     if (url.pathname === correctionsPath && method === 'POST') {
+      if (body?.expectedCorrectionRevision !== detail.photoCorrectionRevision) return sendError(409, 'PHOTO_CORRECTION_CHANGED');
       const key = String(body?.correctionId);
       if (attempted.has(key)) return sendError(409, 'PHOTO_CORRECTION_DUPLICATE');
       if (active && (active.status !== 'failed' || body?.retryCorrectionId !== active.id)) return sendError(409, 'PHOTO_CORRECTION_ACTIVE');
       attempted.add(key);
       detail.photoCorrection = processing(key);
+      detail.photoCorrectionRevision++;
       return route.fulfill({ status: 202, json: detail });
     }
     if (!active || !url.pathname.startsWith(`${correctionsPath}/${active.id}`)) return sendError(409, 'PHOTO_CORRECTION_CHANGED');
@@ -56,6 +58,7 @@ async function mockCorrections(page: Page, detail: Detail) {
       detail.status = 'draft';
     }
     detail.photoCorrection = null;
+    detail.photoCorrectionRevision++;
     return route.fulfill({ status: 200, json: detail });
   });
   return calls;
@@ -95,7 +98,7 @@ test('анализ в двух списках, восстановление, о�
   await startButton(page).click();
   await expect(panel(page).getByText('Исправляем фотографию')).toBeVisible();
   const firstId = detail.photoCorrection!.id;
-  expect(calls[0]?.body).toEqual({ improvementType: 'clutter', correctionId: firstId, expectedVersion: 2 });
+  expect(calls[0]?.body).toEqual({ improvementType: 'clutter', correctionId: firstId, expectedVersion: 2, expectedCorrectionRevision: 0 });
   await expect(page.getByRole('button', { name: 'Редактировать объявление' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Удалить объявление', exact: true })).toBeDisabled();
   await expect(gallery.getByRole('button', { name: 'Удалить фотографию Гостиная.jpg' })).toBeDisabled();
@@ -104,8 +107,11 @@ test('анализ в двух списках, восстановление, о�
   await page.reload();
   await expect(panel(page).getByText('Исправляем фотографию')).toBeVisible();
   expect(calls).toHaveLength(1);
+  await panel(page).getByRole('button', { name: 'Отменить исправление' }).focus();
   detail.photoCorrection = ready(firstId);
   await expect(panel(page).getByRole('button', { name: 'Применить исправление' })).toBeEnabled();
+  await expect(panel(page).getByRole('heading', { name: 'Исправление фото' })).toBeFocused();
+  await expect(page.getByRole('status').filter({ hasText: 'Исправленный вариант готов к сравнению.' })).toHaveCount(1);
   await expect(panel(page).getByRole('img', { name: 'Исходное фото' })).toHaveAttribute('src', sourcePhoto.contentUrl);
   await expect(panel(page).getByRole('img', { name: 'Исправленный вариант' })).toHaveAttribute('src', ready(firstId).previewUrl);
   await expect(gallery.getByRole('img', { name: 'Гостиная.jpg' })).toBeVisible();
@@ -125,7 +131,7 @@ test('анализ в двух списках, восстановление, о�
   await expect(panel(page).getByText('Исправляем фотографию')).toBeVisible();
   const thirdId = String(calls[3]?.body?.correctionId);
   expect(thirdId).not.toBe(secondId);
-  expect(calls[3]?.body).toMatchObject({ retryCorrectionId: secondId, expectedVersion: 2 });
+  expect(calls[3]?.body).toMatchObject({ retryCorrectionId: secondId, expectedVersion: 2, expectedCorrectionRevision: 3 });
   detail.photoCorrection = ready(thirdId);
   await panel(page).getByRole('button', { name: 'Применить исправление' }).click();
   await expect(gallery.getByRole('img', { name: 'Гостиная после правки.jpg' })).toBeVisible();
@@ -149,13 +155,86 @@ test('конфликт в другой вкладке обновляет кар�
   const apply = panel(page).getByRole('button', { name: 'Применить исправление' });
   await expect(apply).toBeEnabled();
   detail.photoCorrection = null;
+  detail.photoCorrectionRevision++;
   detail.photos = [];
   detail.version++;
-  await apply.click();
+  await apply.press('Enter');
   await expect(page.getByRole('alert')).toContainText('Состояние объявления изменилось');
   await expect(page.getByText('Фотографий пока нет')).toBeVisible();
   await expect(panel(page)).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Фото · 0 из 20' })).toBeFocused();
   expect(calls).toHaveLength(1);
+});
+
+test('активную правку можно завершить при остановленной очереди загрузки', async ({ page, loginServer }) => {
+  const detail = correctableListing();
+  loginServer.controls.detail = detail;
+  let release!: () => void;
+  loginServer.controls.holdUpload = new Promise((resolve) => { release = resolve; });
+  await mockCorrections(page, detail);
+  const image = await readFile(editedImage);
+  const uploads = () => loginServer.calls.filter(({ method, path }) => method === 'POST' && path === `/api/v1/listings/${id}/photos`).length;
+  try {
+    await page.goto(`${loginServer.url}/app/listings/${id}`);
+    await page.getByLabel('Фотографии объявления', { exact: true }).setInputFiles([
+      { name: 'Кухня.jpg', mimeType: 'image/jpeg', buffer: image },
+      { name: 'Спальня.jpg', mimeType: 'image/jpeg', buffer: image },
+    ]);
+    await expect.poll(uploads).toBe(1);
+    detail.photoCorrection = ready();
+    detail.photoCorrectionRevision = 1;
+    loginServer.controls.photoError = 409;
+    loginServer.controls.photoErrorCode = 'PHOTO_CORRECTION_ACTIVE';
+    release();
+    await expect(panel(page).getByRole('button', { name: 'Применить исправление' })).toBeEnabled();
+    const queue = page.getByRole('list', { name: 'Очередь загрузки' });
+    await queue.getByRole('button', { name: 'Убрать из очереди Спальня.jpg' }).click();
+    await expect(queue.getByText('Спальня.jpg')).toHaveCount(0);
+    await panel(page).getByRole('button', { name: 'Оставить исходное фото' }).click();
+    await expect(panel(page)).toHaveCount(0);
+    await expect(queue.getByText('Кухня.jpg')).toBeVisible();
+    expect(uploads()).toBe(1);
+    loginServer.controls.photoError = null;
+    await page.getByRole('button', { name: 'Продолжить очередь' }).click();
+    await expect.poll(uploads).toBe(2);
+  } finally { release(); }
+});
+
+test('устаревший запуск отклоняется даже при прежней версии объявления', async ({ page, loginServer }) => {
+  const detail = correctableListing();
+  loginServer.controls.detail = detail;
+  const calls = await mockCorrections(page, detail);
+  await page.goto(`${loginServer.url}/app/listings/${id}`);
+  await expect(startButton(page)).toBeEnabled();
+  detail.photoCorrectionRevision = 2;
+  await startButton(page).click();
+  await expect(page.getByRole('alert')).toContainText('Состояние объявления изменилось');
+  await expect(panel(page)).toHaveCount(0);
+  await startButton(page).click();
+  await expect(panel(page).getByText('Исправляем фотографию')).toBeVisible();
+  expect(calls.map(({ body, version }) => [version, body?.expectedCorrectionRevision])).toEqual([[2, 0], [2, 2]]);
+});
+
+test('повтор загрузки предпросмотра сначала сверяет актуальность правки', async ({ page, loginServer }) => {
+  const detail = correctableListing();
+  const active = ready();
+  detail.photoCorrection = active;
+  detail.photoCorrectionRevision = 1;
+  loginServer.controls.detail = detail;
+  let previews = 0;
+  await page.route((url) => url.pathname === active.previewUrl, async (route) => {
+    previews++;
+    await route.fulfill({ status: 404 });
+  });
+  await page.goto(`${loginServer.url}/app/listings/${id}`);
+  const retry = panel(page).getByRole('button', { name: 'Загрузить фото снова' });
+  await expect(retry).toBeEnabled();
+  detail.photoCorrection = null;
+  detail.photoCorrectionRevision = 2;
+  await retry.press('Enter');
+  await expect(panel(page)).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Фото · 1 из 20' })).toBeFocused();
+  expect(previews).toBe(1);
 });
 
 test('текущий API показывает анализ без запуска исправления', async ({ page, loginServer }) => {
