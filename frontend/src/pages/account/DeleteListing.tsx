@@ -1,7 +1,7 @@
 import { Modal, Stack, Text } from '@mantine/core';
 import { useEffect, useRef, useState } from 'react';
 import { navigate } from '../../app/navigation';
-import { generationLocked, PhotoManager, type PhotoState } from '../../features/listing-photos/model';
+import { listingLocked, PhotoManager, type PhotoState } from '../../features/listing-photos/model';
 import { AppButton } from '../../shared/ui/AppButton';
 import { AppNotice } from '../../shared/ui/AppNotice';
 import { LoadingState } from '../../shared/ui/LoadingState';
@@ -15,7 +15,7 @@ export function DeleteListing({ manager, state, suspended }: { manager: PhotoMan
   useEffect(() => { if (opened && !suspended) cancelButton.current?.focus(); }, [opened, phase, suspended]);
   const close = () => { setOpened(false); manager.cancelListingDelete(); };
   return <>
-    <AppButton intent="quiet" disabled={suspended || (!deletion && (generationLocked(state) || state.reading || !state.verified || !!state.deleting || state.uploads.some((entry) => !!entry.file)))}
+    <AppButton intent="quiet" disabled={suspended || (!deletion && (listingLocked(state) || state.reading || !state.verified || !!state.deleting || state.uploads.some((entry) => !!entry.file)))}
       onClick={() => { if (manager.beginListingDelete()) setOpened(true); }}>Удалить объявление</AppButton>
     {!opened && deletion && <Text role="status" size="sm">{pending ? 'Запрос выполняется.' : deletion.error || 'Результат удаления ещё не подтверждён.'} Откройте «Удалить объявление», чтобы проверить состояние.</Text>}
     <Modal opened={opened && !suspended && !!deletion && phase !== 'deleted'} onClose={close} title="Удалить объявление?" centered size={480} attributes={{ header: { role: 'presentation' } }} styles={{ title: { fontSize: '1.5rem', fontWeight: 600, lineHeight: '1.33333' } }}

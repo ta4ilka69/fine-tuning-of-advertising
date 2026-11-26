@@ -134,7 +134,8 @@ function RecommendedPhotos({ result, photos, ready }: { result: ChannelResult; p
           <img className={classes.thumbnail} src={url} alt={photo.fileName} loading="lazy"
             onError={() => setPreviews((current) => current.readyResult === readyResult
               ? { readyResult, failed: new Set(current.failed).add(url) } : current)} />
-          {photo.quality && <div className={classes.photoAssessment}><PhotoAssessment photo={photo} /></div>}
+          {(photo.quality || photo.improvementType || photo.scene || photo.description)
+            && <div className={classes.photoAssessment}><PhotoAssessment photo={photo} /></div>}
           {why && <Text mt="xs" size="sm">{why}</Text>}
         </li>
       ))}

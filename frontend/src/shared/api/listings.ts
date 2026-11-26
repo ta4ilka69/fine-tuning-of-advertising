@@ -1,7 +1,7 @@
 import { request } from './client';
 import { isRecord, parseProblem } from './errors';
 import type { ChannelResult, GenerationResult, Listing, ListingPage, ListingSummary } from './types';
-import { parsePhoto } from './photos';
+import { parsePhoto, parsePhotoCorrection } from './photos';
 import type { ListingData } from './listing-data';
 import { isListingData } from './validate-listing-data';
 
@@ -116,6 +116,8 @@ export function parseListing(value: unknown): Listing {
     isApartments: isRecord(object) && object.type === 'flat' && object.isApartments === true,
     photos: parsedPhotos, data: value.data, result: value.result === null ? null : parseGenerationResult(value.result),
     generationError: value.generationError === null ? null : parseProblem(value.generationError, Number((value.generationError as Record<string, unknown>).status))!,
+    ...(value.photoCorrection !== undefined && { photoCorrection: value.photoCorrection === null
+      ? null : parsePhotoCorrection(value.photoCorrection, String(value.id), parsedPhotos) }),
   };
 }
 

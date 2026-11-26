@@ -1,13 +1,14 @@
 import { Checkbox, Group, Loader, Paper, Stack, Text, Title } from '@mantine/core';
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { generation, type Channel } from '../../shared/api/generation';
 import { RequestError } from '../../shared/api/errors';
 import type { FieldIssue } from '../../shared/api/types';
 import { photoRequirement } from '../../features/listing-photos/generation';
-import { generationLocked, type PhotoManager, type PhotoState } from '../../features/listing-photos/model';
+import { correctionLocked, generationLocked, type PhotoManager, type PhotoState } from '../../features/listing-photos/model';
 import { AppButton } from '../../shared/ui/AppButton';
 import { AppNotice } from '../../shared/ui/AppNotice';
 import { LoadingState } from '../../shared/ui/LoadingState';
+import { useRetrySeconds } from '../../shared/ui/use-retry-seconds';
 import classes from './Listings.module.css';
 
 type Channels = { status: 'loading' | 'error' } | { status: 'loaded'; items: Channel[] };
@@ -15,20 +16,6 @@ type Channels = { status: 'loading' | 'error' } | { status: 'loaded'; items: Cha
 function Issues({ issues }: { issues: FieldIssue[] }) {
   return <ul className={classes.generationIssues}>{issues.map((issue, index) =>
     <li key={`${issue.field}:${issue.code}:${index}`}>{issue.message}</li>)}</ul>;
-}
-
-function useRetrySeconds(until: number | undefined) {
-  const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    if (!until) return;
-    const timer = setInterval(() => {
-      const current = Date.now();
-      setNow(current);
-      if (current >= until) clearInterval(timer);
-    }, 250);
-    return () => clearInterval(timer);
-  }, [until]);
-  return until ? Math.max(0, Math.ceil((until - now) / 1000)) : 0;
 }
 
 export function ListingGeneration({ manager, state, suspended, recheck }: {
@@ -62,7 +49,8 @@ export function ListingGeneration({ manager, state, suspended, recheck }: {
   const seconds = useRetrySeconds(feedback?.retryAt);
   const pollSeconds = useRetrySeconds(feedback?.pollRetryAt);
   const waiting = generationLocked(state);
-  const blocked = waiting || suspended || !state.verified || !!state.listingDeletion || !!state.deleting || state.uploads.some((entry) => entry.file);
+  const correcting = correctionLocked(state);
+  const blocked = waiting || correcting || suspended || !state.verified || !!state.listingDeletion || !!state.deleting || state.uploads.some((entry) => entry.file);
   const photoHint = photoRequirement(item);
   const loading = feedback?.phase === 'validating' ? 'Проверяем данные объявления'
     : feedback?.phase === 'starting' ? 'Отправляем запрос на генерацию'
@@ -70,6 +58,7 @@ export function ListingGeneration({ manager, state, suspended, recheck }: {
   return <Paper component="section" withBorder radius="lg" className={classes.generation} aria-labelledby="generation-heading">
     <Stack gap="md">
       <Title id="generation-heading" order={2}>Подготовка объявления</Title>
+      {correcting && <Text size="sm">Завершите <a href="#photos-heading">исправление фотографии</a>, чтобы запустить генерацию.</Text>}
       {loading && <LoadingState label={loading} />}
       {item.status === 'generating' && <AppNotice tone="info" title="Идёт генерация">
         <Group gap="sm" mb="xs"><Loader size="sm" aria-hidden="true" /><Text size="sm">Готовим тексты и рекомендации</Text></Group>

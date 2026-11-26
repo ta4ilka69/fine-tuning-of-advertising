@@ -71,6 +71,45 @@
   gap: 12px;
 }
 
+.correction {
+  padding: clamp(12px, 3vw, 24px);
+  border: 1px solid var(--app-border-color);
+  border-radius: 12px;
+  background: var(--app-canvas);
+  overflow-wrap: anywhere;
+}
+
+.comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.comparison figure {
+  margin: 0;
+  min-width: 0;
+}
+
+.comparison figcaption {
+  margin-block-end: 6px;
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+}
+
+.comparison img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 360px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: var(--app-surface);
+}
+
+.correct {
+  margin-block-start: 8px;
+}
+
 .input,
 .live {
   position: absolute;
@@ -91,14 +130,16 @@
 }
 
 @media (max-width: 480px) {
-  .photo[data-quality] {
+  .comparison { grid-template-columns: minmax(0, 1fr); }
+
+  .photo:is([data-quality], [data-improvement]) {
     display: grid;
     grid-template-columns: 48px minmax(0, 1fr) auto;
   }
 
-  .photo[data-quality] .description { display: contents; }
-  .photo[data-quality] .preview { grid-area: 1 / 1; }
-  .photo[data-quality] .name { grid-area: 1 / 2; }
-  .photo[data-quality] > button { grid-area: 1 / 3; }
-  .photo[data-quality] .description > :not(.name) { grid-column: 1 / -1; }
+  .photo:is([data-quality], [data-improvement]) .description { display: contents; }
+  .photo:is([data-quality], [data-improvement]) .preview { grid-area: 1 / 1; }
+  .photo:is([data-quality], [data-improvement]) .name { grid-area: 1 / 2; }
+  .photo:is([data-quality], [data-improvement]) > button { grid-area: 1 / 3; }
+  .photo:is([data-quality], [data-improvement]) .description > :not(.name) { grid-column: 1 / -1; }
 }

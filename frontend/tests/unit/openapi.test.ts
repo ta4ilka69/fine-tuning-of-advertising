@@ -4,6 +4,7 @@ import type { AnySchemaObject } from 'ajv';
 import addFormats from 'ajv-formats';
 import { describe, expect, test } from 'vitest';
 import { generationResult, listingDetails } from '../fixtures/listings';
+import { correctableListing, failed, processing, ready } from '../fixtures/photo-corrections';
 
 interface Contract {
   components: { schemas: Record<string, AnySchemaObject> };
@@ -111,4 +112,16 @@ test('контракт допускает пустые пояснения в с�
     }],
   };
   expect(validate(result), ajv.errorsText(validate.errors)).toBe(true);
+});
+
+test('контракт объявления принимает старые снимки и требует результат или ошибку по состоянию правки', () => {
+  const validate = validator({ $ref: '#/components/schemas/Listing' });
+  expect(validate(listingDetails())).toBe(true);
+  const listing = correctableListing();
+  for (const photoCorrection of [null, processing(), ready(), failed()]) {
+    expect(validate({ ...listing, photoCorrection }), ajv.errorsText(validate.errors)).toBe(true);
+  }
+  for (const photoCorrection of [{ ...ready(), status: 'processing' }, { ...processing(), status: 'ready' }, { ...processing(), status: 'failed' }]) {
+    expect(validate({ ...listing, photoCorrection })).toBe(false);
+  }
 });
