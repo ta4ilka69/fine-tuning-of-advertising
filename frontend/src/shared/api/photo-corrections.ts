@@ -13,7 +13,6 @@ export function matchesCorrectionResolution(before: Listing, current: Listing, p
   const sourceIndex = before.photos.findIndex((photo) => photo.id === photoId);
   return sourceIndex >= 0 && before.photoCorrectionRevision !== undefined && current.photoCorrectionRevision === before.photoCorrectionRevision + 1
     && current.id === before.id && current.photoCorrection === null && current.version === before.version + Number(apply)
-    && (!apply || (current.status === 'draft' && (!before.result || !!current.result)))
     && current.photos.length === before.photos.length
     && current.photos.every((photo, index) => apply && index === sourceIndex
       ? !before.photos.some((item) => item.id === photo.id) : photo.id === before.photos[index]!.id);
@@ -47,7 +46,8 @@ export const photoCorrections = {
       signal, status: 200,
       response: (value) => {
         const current = parseListing(value);
-        if (!matchesCorrectionResolution(listing, current, correction.photoId, apply)) {
+        if (!matchesCorrectionResolution(listing, current, correction.photoId, apply)
+          || (apply && (current.status !== 'draft' || (listing.result && !current.result)))) {
           throw new TypeError('Неожиданное состояние исправления');
         }
         return current;

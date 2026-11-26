@@ -256,6 +256,29 @@ test('ручная сверка после ошибки опроса сохра�
   await expect(page.getByRole('heading', { name: 'Фото · 1 из 20' })).toBeFocused();
 });
 
+test('после восстановления сессии показана ошибка последней сверки', async ({ page, loginServer }) => {
+  const detail = correctableListing();
+  detail.photoCorrection = ready();
+  detail.photoCorrectionRevision = 1;
+  loginServer.controls.detail = detail;
+  await mockCorrections(page, detail);
+  const failures: number[] = [];
+  await page.route((url) => url.pathname === `/api/v1/listings/${id}`, (route) => {
+    const status = failures.shift();
+    return status ? route.fulfill({ status }) : route.fallback();
+  });
+  await page.goto(`${loginServer.url}/app/listings/${id}`);
+  await expect(panel(page).getByRole('button', { name: 'Применить исправление' })).toBeEnabled();
+  failures.push(401, 503);
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  const error = page.getByRole('alert');
+  await expect(error).toContainText('Не удалось проверить исправление');
+  await expect(error).not.toContainText('Сессия завершилась');
+  await error.getByRole('button', { name: 'Повторить' }).click();
+  await expect(panel(page).getByRole('button', { name: 'Применить исправление' })).toBeEnabled();
+  await expect(error).toHaveCount(0);
+});
+
 test('текущий API показывает анализ без запуска исправления', async ({ page, loginServer }) => {
   loginServer.controls.detail = { ...listingDetails(), photos: correctableListing().photos };
   await page.goto(`${loginServer.url}/app/listings/${id}`);

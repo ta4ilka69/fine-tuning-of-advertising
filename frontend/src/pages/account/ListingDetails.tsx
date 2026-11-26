@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, useSyncEx
 import { AppButton } from '../../shared/ui/AppButton';
 import { AppNotice } from '../../shared/ui/AppNotice';
 import { LoadingState } from '../../shared/ui/LoadingState';
+import { useRetrySeconds } from '../../shared/ui/use-retry-seconds';
 import { ListingCard } from './ListingList';
 import classes from './Listings.module.css';
 import { DeleteListing } from './DeleteListing';
@@ -22,7 +23,8 @@ export function ListingDetails({ id, recheck, suspended = false }: { id: string;
   const [manager] = useState(() => new PhotoManager(id, recheck));
   const state = useSyncExternalStore(manager.subscribe, manager.snapshot);
   const item = state.listing;
-  const error = state.correction?.accessError ?? state.error;
+  const error = state.correction?.accessError ?? state.correction?.pollError ?? state.error;
+  const retrySeconds = useRetrySeconds(state.inaccessible ? state.correction?.pollRetryAt : undefined);
   useLayoutEffect(() => {
     if (!suspended) manager.start();
     return () => manager.stop();
@@ -52,7 +54,10 @@ export function ListingDetails({ id, recheck, suspended = false }: { id: string;
       {!editing && <ListingGeneration manager={manager} state={state} suspended={suspended} recheck={recheck} />}
       {!editing && <ListingResult listing={item} />}
       <PhotoGallery manager={manager} state={state} /></>
-      : error ? <AppNotice tone="error" title="Не удалось загрузить объявление"><p>{error}</p><AppButton disabled={state.reading} onClick={() => { recheck(false); manager.refresh(); }}>Повторить</AppButton></AppNotice>
+      : error ? <AppNotice tone="error" title="Не удалось загрузить объявление"><p>{error}</p>
+        <AppButton disabled={state.reading || retrySeconds > 0} onClick={() => { recheck(false); void manager.refresh(); }}>
+          {retrySeconds ? `Повторить через ${retrySeconds} с` : 'Повторить'}
+        </AppButton></AppNotice>
         : <LoadingState label="Загружаем объявление" />}
   </Stack>;
 }

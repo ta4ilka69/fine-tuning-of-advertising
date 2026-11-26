@@ -76,6 +76,7 @@ test('применение проверяет версию, замену сло�
     .mockResolvedValueOnce(json({ ...applied, photos: [sourcePhoto] }, 200))
     .mockResolvedValueOnce(json({ ...applied, photos: [] }, 200))
     .mockResolvedValueOnce(json({ ...applied, result: null }, 200))
+    .mockResolvedValueOnce(json({ ...applied, status: 'generating' }, 200))
     .mockResolvedValueOnce(json({ ...applied, photoCorrectionRevision: 1 }, 200));
   vi.stubGlobal('fetch', fetch);
   const signal = new AbortController().signal;
@@ -84,7 +85,7 @@ test('применение проверяет версию, замену сло�
   expect(fetch.mock.calls[0]).toEqual([`${correctionsPath}/${correctionId}/apply`, expect.objectContaining({
     method: 'POST', signal, body: '{"expectedVersion":2}',
   })]);
-  for (let index = 0; index < 5; index++) await expect(apply()).rejects.toMatchObject({ kind: 'invalid-response' });
+  for (let index = 0; index < 6; index++) await expect(apply()).rejects.toMatchObject({ kind: 'invalid-response' });
 });
 
 test('отмена запроса при уходе защищает новый снимок от запоздавшего ответа', async () => {
@@ -167,17 +168,17 @@ test('поздний запуск подтверждается после пер
   expect(manager.snapshot().announcement).toBe('Исправленный вариант готов к сравнению.');
 });
 
-test.each(['applied', 'deleted'] as const)('после потери ответа на применение сверяется состав галереи: %s', async (outcome) => {
+test.each(['applied', 'generating', 'deleted'] as const)('после потери ответа на применение сверяется состав галереи: %s', async (outcome) => {
   const active = { ...listing, photoCorrection: ready(), photoCorrectionRevision: 1 };
   const corrected = { ...listing.photos[0]!, id: correctedPhotoId };
-  const final = { ...listing, version: 3, status: 'draft' as const, photoCorrectionRevision: 2,
+  const final = { ...listing, version: 3, status: outcome === 'generating' ? 'generating' as const : 'draft' as const, photoCorrectionRevision: 2,
     photos: outcome === 'deleted' ? [] : [corrected] };
   vi.spyOn(photoCorrections, 'resolve').mockRejectedValue(new RequestError('network'));
   vi.spyOn(listings, 'get').mockResolvedValueOnce(active).mockResolvedValue(final);
   const manager = await state();
   await manager.changeCorrection('apply', sourcePhoto.id, correctionId);
   await vi.waitFor(() => expect(manager.snapshot().listing).toEqual(final));
-  if (outcome === 'applied') {
+  if (outcome !== 'deleted') {
     expect(manager.snapshot().correction).toBeUndefined();
     expect(manager.snapshot().announcement).toBe('Исправленная фотография применена.');
   } else {

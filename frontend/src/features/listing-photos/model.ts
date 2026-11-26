@@ -599,13 +599,16 @@ export class PhotoManager {
       const inaccessible = status === 401 || status === 403 || (read && status === 404);
       if (read && status === 401 && correctionLocked(this.state)) {
         this.deletes = [];
-        this.update({ verified: false, inaccessible: true, correction: { ...this.state.correction, accessError: error } });
+        this.update({ verified: false, inaccessible: true, correction: { ...this.state.correction,
+          accessError: error, pollError: undefined, pollRetryAt: undefined,
+        } });
         this.recheck(true);
         return;
       }
       if (read && correctionLocked(this.state) && !inaccessible) {
         const retryAfter = failure instanceof RequestError ? failure.retryAfterSeconds : undefined;
         this.update({ verified: false, correction: { ...this.state.correction,
+          accessError: undefined,
           pollError: 'Не удалось проверить исправление. Проверьте подключение и попробуйте снова',
           pollRetryAt: retryAfter ? Date.now() + retryAfter * 1000 : undefined,
         } });
@@ -622,8 +625,8 @@ export class PhotoManager {
       this.deletes = [];
       this.update({ paused: true, verified: false, inaccessible, error,
         ...(inaccessible && deletionPhase === 'busy' && { listingDeletion: undefined }),
-        ...(inaccessible && this.state.correction?.accessError && {
-          correction: { ...this.state.correction, accessError: undefined },
+        ...(inaccessible && this.state.correction && {
+          correction: { ...this.state.correction, accessError: undefined, pollError: undefined, pollRetryAt: undefined },
         }),
         uploads: this.state.uploads.map((entry) => entry.key === upload?.key ? {
           ...entry, state: uncertain ? 'uncertain' : 'error',
