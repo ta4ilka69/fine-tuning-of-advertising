@@ -2,7 +2,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { PhotoManager, listingLocked } from '../../src/features/listing-photos/model';
 import { listings, parseListing } from '../../src/shared/api/listings';
 import { photoCorrections } from '../../src/shared/api/photo-corrections';
-import { parsePhoto } from '../../src/shared/api/photos';
+import { parsePhoto, photos } from '../../src/shared/api/photos';
 import { RequestError } from '../../src/shared/api/errors';
 import { listingDetails } from '../fixtures/listings';
 import { analysis, correctableListing, correctionId, correctedPhotoId, correctionsPath, failed, processing, ready, sourcePhoto } from '../fixtures/photo-corrections';
@@ -151,4 +151,74 @@ test('снимок с прежней ревизией не восстанавл�
   await manager.refresh();
   expect(manager.snapshot().listing).toEqual(finished);
   expect(manager.snapshot().verified).toBe(false);
+});
+
+test('поздний запуск подтверждается после первого GET без изменений', async () => {
+  const start = vi.spyOn(photoCorrections, 'start').mockRejectedValue(new RequestError('network'));
+  vi.spyOn(listings, 'get').mockResolvedValueOnce(listing).mockResolvedValueOnce(listing)
+    .mockImplementation(async () => ({ ...listing, photoCorrection: ready(start.mock.calls[0]![3]), photoCorrectionRevision: 1 }));
+  const manager = await state();
+  await manager.changeCorrection('start', sourcePhoto.id);
+  await vi.waitFor(() => expect(manager.snapshot().correction?.phase).toBeUndefined());
+  expect(manager.snapshot().correction?.message).toBeTruthy();
+  expect(listingLocked(manager.snapshot())).toBe(false);
+  await manager.refresh();
+  expect(manager.snapshot().correction).toBeUndefined();
+  expect(manager.snapshot().announcement).toBe('Исправленный вариант готов к сравнению.');
+});
+
+test.each(['applied', 'deleted'] as const)('после потери ответа на применение сверяется состав галереи: %s', async (outcome) => {
+  const active = { ...listing, photoCorrection: ready(), photoCorrectionRevision: 1 };
+  const corrected = { ...listing.photos[0]!, id: correctedPhotoId };
+  const final = { ...listing, version: 3, status: 'draft' as const, photoCorrectionRevision: 2,
+    photos: outcome === 'deleted' ? [] : [corrected] };
+  vi.spyOn(photoCorrections, 'resolve').mockRejectedValue(new RequestError('network'));
+  vi.spyOn(listings, 'get').mockResolvedValueOnce(active).mockResolvedValue(final);
+  const manager = await state();
+  await manager.changeCorrection('apply', sourcePhoto.id, correctionId);
+  await vi.waitFor(() => expect(manager.snapshot().listing).toEqual(final));
+  if (outcome === 'applied') {
+    expect(manager.snapshot().correction).toBeUndefined();
+    expect(manager.snapshot().announcement).toBe('Исправленная фотография применена.');
+  } else {
+    expect(manager.snapshot().correction?.message).toContain('Не удалось подтвердить действие');
+    expect(manager.snapshot().announcement).not.toBe('Исправленная фотография применена.');
+  }
+});
+
+test('401 при сверке исправления не оставляет ошибку очереди после входа', async () => {
+  const active = { ...listing, photoCorrection: ready(), photoCorrectionRevision: 1 };
+  vi.spyOn(listings, 'get').mockResolvedValueOnce(active).mockRejectedValueOnce(new RequestError('http', 401))
+    .mockResolvedValue(active);
+  const recheck = vi.fn();
+  const manager = await state(recheck);
+  await manager.refresh();
+  expect(recheck).toHaveBeenLastCalledWith(true);
+  expect(manager.snapshot()).toMatchObject({ inaccessible: true, correction: { accessError: expect.any(String) } });
+  manager.stop();
+  manager.start();
+  await vi.waitFor(() => expect(manager.snapshot().verified).toBe(true));
+  expect(manager.snapshot().correction).toBeUndefined();
+  expect(manager.snapshot().error).toBeUndefined();
+});
+
+test('прерванная при выходе загрузка не блокирует исправление после восстановления', async () => {
+  const active = { ...listing, photoCorrection: ready(), photoCorrectionRevision: 1 };
+  vi.spyOn(listings, 'get').mockResolvedValueOnce(listing).mockResolvedValue(active);
+  const upload = vi.spyOn(photos, 'upload').mockImplementation((_id, _file, _version, signal) => new Promise((_resolve, reject) => {
+    signal!.addEventListener('abort', () => reject(new RequestError('aborted')), { once: true });
+  }));
+  const discard = vi.spyOn(photoCorrections, 'resolve').mockResolvedValue({ ...listing, photoCorrectionRevision: 2 });
+  const manager = await state();
+  manager.add(['Загрузка.jpg', 'Ожидает.jpg'].map((name) => new File(['jpeg'], name, { type: 'image/jpeg' })));
+  expect(manager.snapshot().uploads[0]?.state).toBe('uploading');
+  manager.stop();
+  manager.start();
+  await vi.waitFor(() => expect(manager.snapshot().listing).toEqual(active));
+  expect(manager.snapshot().uploads.map(({ state, file }) => [state, !!file])).toEqual([['uncertain', false], ['waiting', true]]);
+  await manager.changeCorrection('discard', sourcePhoto.id, correctionId);
+  expect(discard).toHaveBeenCalledOnce();
+  expect(manager.snapshot().listing?.photoCorrection).toBeNull();
+  expect(manager.snapshot().paused).toBe(true);
+  expect(upload).toHaveBeenCalledOnce();
 });

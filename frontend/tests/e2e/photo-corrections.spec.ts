@@ -237,6 +237,25 @@ test('повтор загрузки предпросмотра сначала с
   expect(previews).toBe(1);
 });
 
+test('ручная сверка после ошибки опроса сохраняет клавиатурный фокус', async ({ page, loginServer }) => {
+  const detail = correctableListing();
+  detail.photoCorrection = processing();
+  detail.photoCorrectionRevision = 1;
+  loginServer.controls.detail = detail;
+  await mockCorrections(page, detail);
+  await page.goto(`${loginServer.url}/app/listings/${id}`);
+  await expect(panel(page).getByText('Исправляем фотографию')).toBeVisible();
+  loginServer.controls.detailError = 503;
+  const retry = page.getByRole('button', { name: 'Проверить исправление' });
+  await expect(retry).toBeEnabled();
+  loginServer.controls.detailError = null;
+  detail.photoCorrection = ready();
+  await retry.press('Enter');
+  await expect(panel(page).getByRole('button', { name: 'Применить исправление' })).toBeEnabled();
+  await expect(retry).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Фото · 1 из 20' })).toBeFocused();
+});
+
 test('текущий API показывает анализ без запуска исправления', async ({ page, loginServer }) => {
   loginServer.controls.detail = { ...listingDetails(), photos: correctableListing().photos };
   await page.goto(`${loginServer.url}/app/listings/${id}`);

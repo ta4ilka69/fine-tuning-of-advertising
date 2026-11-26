@@ -111,7 +111,10 @@ export function PhotoGallery({ manager, state }: { manager: PhotoManager; state:
       {feedback?.phase === 'checking' && !feedback.pollError && <LoadingState label="Проверяем состояние исправления" />}
       {feedback?.message && <AppNotice tone={seconds ? 'warning' : 'error'} title={feedback.message} />}
       {feedback?.pollError && <AppNotice tone="error" title={feedback.pollError}>
-        <AppButton intent="secondary" disabled={state.reading || pollSeconds > 0} onClick={manager.refresh}>
+        <AppButton intent="secondary" disabled={state.reading || pollSeconds > 0} onClick={(event) => {
+          if (event.currentTarget === event.currentTarget.ownerDocument.activeElement) heading.current?.focus();
+          void manager.refresh();
+        }}>
           {pollSeconds ? `Проверить через ${pollSeconds} с` : 'Проверить исправление'}
         </AppButton>
       </AppNotice>}

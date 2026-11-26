@@ -4,7 +4,7 @@ import { RequestError } from '../../shared/api/errors';
 import { listings } from '../../shared/api/listings';
 import type { ListingData } from '../../shared/api/listing-data';
 import { photos } from '../../shared/api/photos';
-import { photoCorrections } from '../../shared/api/photo-corrections';
+import { matchesCorrectionResolution, photoCorrections } from '../../shared/api/photo-corrections';
 import type { Listing } from '../../shared/api/types';
 
 export function fileError(file: Pick<File, 'type' | 'size'>) {
@@ -27,7 +27,7 @@ export type ListingDeletion = {
   error?: string;
 };
 type CorrectionAction = 'start' | 'retry' | 'apply' | 'discard';
-type CorrectionCommand = { action: CorrectionAction; id: string; photoId: string; version: number; revision: number };
+type CorrectionCommand = { action: CorrectionAction; id: string; photoId: string; listing: Listing };
 
 export type PhotoState = {
   listingDeletion?: ListingDeletion;
@@ -83,11 +83,9 @@ export function correctionActionAvailable(state: PhotoState, action: CorrectionA
 }
 
 function confirmedCorrection(command: CorrectionCommand, listing: Listing) {
-  if (!completesCorrection(command.action)) return listing.photoCorrection?.id === command.id;
-  const sourceRemains = listing.photos.some((photo) => photo.id === command.photoId);
-  const applied = command.action === 'apply';
-  return listing.photoCorrection === null && listing.photoCorrectionRevision === command.revision + 1
-    && listing.version === command.version + Number(applied) && sourceRemains !== applied;
+  if (!completesCorrection(command.action)) return listing.photoCorrection?.id === command.id
+    && listing.photoCorrectionRevision === command.listing.photoCorrectionRevision! + 1;
+  return matchesCorrectionResolution(command.listing, listing, command.photoId, command.action === 'apply');
 }
 
 const comparisonReady = 'Исправленный вариант готов к сравнению.';
@@ -169,6 +167,12 @@ export class PhotoManager {
     }
     if (this.state.listingDeletion && ['deleting', 'checking'].includes(this.state.listingDeletion.phase)) {
       this.update({ listingDeletion: { ...this.state.listingDeletion, phase: 'uncertain', error: 'Запрос прерван. Сначала проверьте состояние объявления.' } });
+    }
+    if (this.state.uploads.some((entry) => entry.state === 'uploading')) {
+      const error = 'Загрузка прервана. Проверьте галерею перед повторной загрузкой файла.';
+      this.update({ paused: true, verified: false, error, uploads: this.state.uploads.map((entry) =>
+        entry.state === 'uploading' ? { ...entry, file: undefined, state: 'uncertain', error } : entry),
+      });
     }
     this.controller?.abort();
     clearTimeout(this.timer);
@@ -378,7 +382,7 @@ export class PhotoManager {
     let command: CorrectionCommand | undefined;
     try {
       const id = completesCorrection(action) ? correction!.id : crypto.randomUUID();
-      command = { action, id, photoId, version: listing.version, revision: listing.photoCorrectionRevision };
+      command = { action, id, photoId, listing };
       this.update({ correction: { phase: 'sending', command } });
       const current = action === 'start' || action === 'retry'
         ? await photoCorrections.start(listing, photoId, improvement!, id, expectedCorrectionId, controller.signal)
@@ -550,14 +554,16 @@ export class PhotoManager {
         const correction = this.state.correction;
         const command = correction?.command;
         const completed = command && confirmedCorrection(command, current);
+        const pending = !completed && command && current.version === command.listing.version
+          && current.photoCorrectionRevision === command.listing.photoCorrectionRevision;
         const comparison = current.photoCorrection?.status === 'ready'
           && (listing?.photoCorrection?.status !== 'ready' || listing.photoCorrection.id !== current.photoCorrection.id
             || this.state.announcement === comparisonReady);
         if (completed && command.action === 'apply') this.clearGenerationFeedback();
         this.update({ listing: current, uploads, verified: true, inaccessible: false,
           ...(removed ? { removed } : {}),
-          ...(correction && { correction: !completed && (correction.message || correction.retryAt)
-            ? { message: correction.message, retryAt: correction.retryAt } : undefined }),
+          ...(correction && { correction: !completed && (correction.message || correction.retryAt || pending)
+            ? { message: correction.message, retryAt: correction.retryAt, command: pending ? command : undefined } : undefined }),
           ...(this.state.generation && { generation: { ...this.state.generation,
             ...(checked && { phase: undefined, reconciliation: undefined, message: confirmed ? undefined : launch.message }),
             pollError: undefined, pollRetryAt: undefined,
@@ -591,6 +597,12 @@ export class PhotoManager {
       const status = failure instanceof RequestError ? failure.status : undefined;
       const uncertain = !read && (!(failure instanceof RequestError) || failure.kind !== 'http' || (status ?? 0) >= 500);
       const inaccessible = status === 401 || status === 403 || (read && status === 404);
+      if (read && status === 401 && correctionLocked(this.state)) {
+        this.deletes = [];
+        this.update({ verified: false, inaccessible: true, correction: { ...this.state.correction, accessError: error } });
+        this.recheck(true);
+        return;
+      }
       if (read && correctionLocked(this.state) && !inaccessible) {
         const retryAfter = failure instanceof RequestError ? failure.retryAfterSeconds : undefined;
         this.update({ verified: false, correction: { ...this.state.correction,
