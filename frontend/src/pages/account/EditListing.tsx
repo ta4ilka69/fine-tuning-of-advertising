@@ -3,13 +3,14 @@ import { useEffect, useRef, useState } from 'react';
 import { ListingForm } from '../../features/listing-form/ListingForm';
 import { labels, fieldKey, fieldOptions } from '../../features/listing-form/fields';
 import type { ListingFormValues } from '../../features/listing-form/model';
-import type { PhotoManager, PhotoState } from '../../features/listing-photos/model';
+import { hasPendingCorrection, type PhotoManager, type PhotoState } from '../../features/listing-photos/model';
 import { RequestError } from '../../shared/api/errors';
 import type { Listing } from '../../shared/api/types';
 import { AppButton } from '../../shared/ui/AppButton';
 import { AppNotice } from '../../shared/ui/AppNotice';
+import { useRetrySeconds } from '../../shared/ui/use-retry-seconds';
 
-type Block = 'conflict' | 'busy' | 'access';
+type Block = 'conflict' | 'busy' | 'access' | 'correction';
 
 function localText(values: ListingFormValues) {
   return [...Object.entries(labels).flatMap(([path, label]) => {
@@ -29,8 +30,10 @@ export default function EditListing({ initial, manager, state, onCancel, recheck
   const [snapshot, setSnapshot] = useState(initial);
   const [revision, setRevision] = useState(0);
   const locked = state.listing?.status === 'generating';
-  const pollDeferred = !!state.generation?.pollRetryAt;
-  const observed = state.inaccessible ? 'access' : locked ? 'busy' : state.listing && state.listing.version !== snapshot.version && state.listing.version !== state.editSavedVersion ? 'conflict' : undefined;
+  const correcting = hasPendingCorrection(state.listing);
+  const correctionPollSeconds = useRetrySeconds(state.correction?.pollRetryAt);
+  const pollDeferred = !!state.generation?.pollRetryAt || correctionPollSeconds > 0;
+  const observed = state.inaccessible ? 'access' : locked ? 'busy' : correcting ? 'correction' : state.listing && state.listing.version !== snapshot.version && state.listing.version !== state.editSavedVersion ? 'conflict' : undefined;
   const [block, setBlock] = useState<Block | undefined>(observed);
   const [confirm, setConfirm] = useState(false);
   const [copy, setCopy] = useState<string>();
@@ -41,7 +44,7 @@ export default function EditListing({ initial, manager, state, onCancel, recheck
   const dirty = useRef(false);
   const active = useRef<AbortController | null>(null);
   const [previous, setPrevious] = useState(observed);
-  if (previous !== observed) { setPrevious(observed); if (observed) setBlock(observed); }
+  if (previous !== observed) { setPrevious(observed); if (observed || previous === 'correction') setBlock(observed); }
   const [wasSuspended, setWasSuspended] = useState(suspended);
   if (wasSuspended !== suspended) { setWasSuspended(suspended); if (suspended) setReading(false); }
   useEffect(() => {
@@ -58,12 +61,13 @@ export default function EditListing({ initial, manager, state, onCancel, recheck
     try {
       const current = await manager.reloadEdit(controller.signal);
       if (controller.signal.aborted) return;
+      const busy = current.status === 'generating' ? 'busy' : hasPendingCorrection(current) ? 'correction' : undefined;
       if (replace) {
         if (dirty.current && local) setCopy(localText(local));
         setSnapshot(current); setRevision((value) => value + 1); dirty.current = false;
-        setBlock(current.status === 'generating' ? 'busy' : undefined);
+        setBlock(busy);
       } else if (current.version !== snapshot.version) setBlock('conflict');
-      else setBlock(current.status === 'generating' ? 'busy' : undefined);
+      else setBlock(busy);
     } catch (failure) {
       if (controller.signal.aborted) return;
       setError('Не удалось загрузить актуальное состояние. Ваши правки остались в форме. Повторите запрос.');
@@ -72,10 +76,14 @@ export default function EditListing({ initial, manager, state, onCancel, recheck
   };
   const requestReplace = () => { if (dirty.current) setConfirm(true); else void reload(true); };
   const notice = <>
-    {block && <AppNotice tone={block === 'conflict' ? 'warning' : 'info'} title={block === 'conflict' ? 'Объявление изменилось в другом окне' : block === 'busy' ? 'Идёт генерация' : 'Доступ к объявлению изменился'}>
+    {block && <AppNotice tone={block === 'conflict' ? 'warning' : 'info'} title={block === 'conflict' ? 'Объявление изменилось в другом окне'
+      : block === 'busy' ? 'Идёт генерация' : block === 'correction' ? 'Исправляется фотография' : 'Доступ к объявлению изменился'}>
       <Stack gap="sm">
-        <Text>{block === 'conflict' ? 'Ваши правки остались в форме. Загрузите актуальные данные перед новым сохранением.' : block === 'busy' ? 'Изменение недоступно до завершения генерации. Ваши правки остались в форме.' : 'Ваши правки остались в форме. Проверьте доступ перед сохранением.'}</Text>
-        <div>{block === 'busy' && <AppButton intent="secondary" disabled={reading || suspended || pollDeferred} onClick={() => { void reload(false); }}>Проверить состояние</AppButton>}</div>
+        <Text>{block === 'conflict' ? 'Ваши правки остались в форме. Загрузите актуальные данные перед новым сохранением.'
+          : block === 'busy' ? 'Изменение недоступно до завершения генерации. Ваши правки остались в форме.'
+            : block === 'correction' ? 'Ваши правки остались в форме. Завершите исправление фотографии в другом окне, чтобы сохранить данные.'
+              : 'Ваши правки остались в форме. Проверьте доступ перед сохранением.'}</Text>
+        <div>{(block === 'busy' || block === 'correction') && <AppButton intent="secondary" disabled={reading || suspended || pollDeferred} onClick={() => { void reload(false); }}>Проверить состояние</AppButton>}</div>
         <div><AppButton intent="secondary" loading={reading} disabled={suspended || pollDeferred} onClick={requestReplace}>Загрузить актуальные данные</AppButton></div>
         {local && <div><AppButton intent="quiet" onClick={() => { setCopy(localText(local)); setShowCopy(true); }}>Посмотреть мои правки</AppButton></div>}
       </Stack>
@@ -91,7 +99,7 @@ export default function EditListing({ initial, manager, state, onCancel, recheck
       onSaved={() => { dirty.current = false; }} onUnauthorized={() => recheck(true)}
       onFailure={(failure) => {
         if (!(failure instanceof RequestError)) return;
-        if (failure.status === 409) setBlock(failure.code === 'LISTING_BUSY' ? 'busy' : 'conflict');
+        if (failure.status === 409) setBlock(failure.code === 'LISTING_BUSY' ? 'busy' : failure.code === 'PHOTO_CORRECTION_ACTIVE' ? 'correction' : 'conflict');
         if (failure.status === 403 || failure.status === 404) setBlock('access');
       }} />
     <Modal opened={confirm && !suspended} onClose={() => setConfirm(false)} title="Загрузить актуальные данные?" centered>

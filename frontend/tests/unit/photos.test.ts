@@ -190,7 +190,8 @@ test('generating блокирует записи до подтверждения
 test('уход отменяет запрос и не отправляет остаток очереди после позднего ответа', async () => {
   vi.spyOn(listings, 'get').mockResolvedValue(overview()); const pending = deferred<Awaited<ReturnType<typeof photos.upload>>>();
   const upload = vi.spyOn(photos, 'upload').mockReturnValue(pending.promise); const value = manager(); await loaded(value);
-  value.add([file(), file()]); const before = value.snapshot(); value.stop();
+  value.add([file(), file()]); value.stop(); const before = value.snapshot();
+  expect(before.uploads.map((entry) => entry.state)).toEqual(['uncertain', 'waiting']);
   expect(upload.mock.calls[0]![3]!.aborted).toBe(true); pending.resolve({ version: 3, photo });
   await Promise.resolve(); await Promise.resolve(); expect(value.snapshot()).toBe(before); expect(upload).toHaveBeenCalledOnce();
   value.add([file()]); value.remove(photo.id); value.resume(); value.refresh(); expect(upload).toHaveBeenCalledOnce();

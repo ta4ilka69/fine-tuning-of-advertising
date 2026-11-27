@@ -4,6 +4,7 @@ import { RequestError } from '../../shared/api/errors';
 import { listings } from '../../shared/api/listings';
 import type { ListingData } from '../../shared/api/listing-data';
 import { photos } from '../../shared/api/photos';
+import { matchesCorrectionResolution, photoCorrections } from '../../shared/api/photo-corrections';
 import type { Listing } from '../../shared/api/types';
 
 export function fileError(file: Pick<File, 'type' | 'size'>) {
@@ -25,9 +26,21 @@ export type ListingDeletion = {
   phase: 'confirm' | 'deleting' | 'uncertain' | 'checking' | 'conflict' | 'busy' | 'denied' | 'missing' | 'error' | 'deleted';
   error?: string;
 };
+type CorrectionAction = 'start' | 'retry' | 'apply' | 'discard';
+type CorrectionCommand = { action: CorrectionAction; id: string; photoId: string; listing: Listing };
+
 export type PhotoState = {
   listingDeletion?: ListingDeletion;
   generation?: GenerationState;
+  correction?: {
+    phase?: 'sending' | 'checking';
+    command?: CorrectionCommand;
+    accessError?: string;
+    message?: string;
+    pollError?: string;
+    retryAt?: number;
+    pollRetryAt?: number;
+  };
   listing?: Listing;
   editing?: boolean;
   editSavedVersion?: number;
@@ -46,11 +59,65 @@ export function generationLocked(state: PhotoState) {
   return !!state.generation?.phase || state.listing?.status === 'generating';
 }
 
+export function hasPendingCorrection(listing: Listing | undefined) {
+  return listing?.photoCorrection?.status === 'processing' || listing?.photoCorrection?.status === 'ready';
+}
+
+export function correctionLocked(state: PhotoState) {
+  return !!state.correction?.phase || hasPendingCorrection(state.listing);
+}
+
+export function listingLocked(state: PhotoState) {
+  return generationLocked(state) || correctionLocked(state);
+}
+
+function completesCorrection(action: CorrectionAction) {
+  return action === 'apply' || action === 'discard';
+}
+
+export function correctionActionAvailable(state: PhotoState, action: CorrectionAction) {
+  const completes = completesCorrection(action);
+  return state.verified && !state.inaccessible && !state.editing && !state.listingDeletion
+    && !state.deleting && !state.uploads.some((entry) => entry.state === 'uploading' || (!completes && entry.file))
+    && (completes || !state.reading) && !generationLocked(state) && !state.correction?.phase;
+}
+
+function confirmedCorrection(command: CorrectionCommand, listing: Listing) {
+  if (!completesCorrection(command.action)) return listing.photoCorrection?.id === command.id
+    && listing.photoCorrectionRevision === command.listing.photoCorrectionRevision! + 1;
+  return matchesCorrectionResolution(command.listing, listing, command.photoId, command.action === 'apply');
+}
+
+const comparisonReady = 'Исправленный вариант готов к сравнению.';
+
+function correctionAnnouncement(action: CorrectionAction, listing: Listing) {
+  if (action === 'apply') return 'Исправленная фотография применена.';
+  if (action === 'discard') return 'Исходная фотография сохранена.';
+  return listing.photoCorrection?.status === 'ready' ? comparisonReady : 'Исправление фотографии запущено.';
+}
+
+function staleListing(current: Listing, previous: Listing | undefined) {
+  return !!previous && (current.version < previous.version
+    || (current.photoCorrectionRevision !== undefined && previous.photoCorrectionRevision !== undefined
+      && current.photoCorrectionRevision < previous.photoCorrectionRevision));
+}
+
+function correctionError(error: RequestError | undefined) {
+  if (error?.status === 405 || error?.status === 501 || (error?.status === 404 && (!error.code || error.code === 'NOT_FOUND'))
+    || error?.code === 'PHOTO_CORRECTION_UNAVAILABLE') return 'Исправление фотографий пока недоступно';
+  if (error?.status === 409) return 'Состояние объявления изменилось. Проверьте фотографии перед новой попыткой';
+  if (error?.status === 404) return 'Фотография или исправление больше недоступны';
+  if (error?.status === 403) return 'Нет доступа к исправлению этой фотографии';
+  if (error?.status === 422) return 'Сервер не может применить выбранную правку';
+  return 'Не удалось подтвердить действие. Проверьте состояние фотографии перед новой попыткой';
+}
+
 function message(error: unknown) {
   if (!(error instanceof RequestError)) return 'Не удалось выполнить запрос. Попробуйте ещё раз.';
   if (error.status === 401) return 'Сессия завершилась. Проверяем доступ.';
   if (error.status === 403) return 'Нет доступа к этому объявлению.';
   if (error.status === 404) return 'Объявление не найдено или фотография больше недоступна.';
+  if (error.code === 'PHOTO_CORRECTION_ACTIVE') return 'Завершите исправление фотографии перед изменением объявления.';
   if (error.status === 409) return error.code === 'LISTING_BUSY'
     ? 'Идёт генерация. Дождитесь её завершения.'
     : 'Объявление изменилось. Очередь остановлена, загружаем текущую версию.';
@@ -95,8 +162,17 @@ export class PhotoManager {
     } else if (this.state.generation?.phase === 'validating') {
       this.update({ generation: undefined });
     }
+    if (this.state.correction?.phase === 'sending') {
+      this.update({ correction: { ...this.state.correction, phase: 'checking' } });
+    }
     if (this.state.listingDeletion && ['deleting', 'checking'].includes(this.state.listingDeletion.phase)) {
       this.update({ listingDeletion: { ...this.state.listingDeletion, phase: 'uncertain', error: 'Запрос прерван. Сначала проверьте состояние объявления.' } });
+    }
+    if (this.state.uploads.some((entry) => entry.state === 'uploading')) {
+      const error = 'Загрузка прервана. Проверьте галерею перед повторной загрузкой файла.';
+      this.update({ paused: true, verified: false, error, uploads: this.state.uploads.map((entry) =>
+        entry.state === 'uploading' ? { ...entry, file: undefined, state: 'uncertain', error } : entry),
+      });
     }
     this.controller?.abort();
     clearTimeout(this.timer);
@@ -104,7 +180,7 @@ export class PhotoManager {
   }
 
   add(files: File[]) {
-    if (!this.active || this.state.listingDeletion || this.state.editing || !this.state.verified || generationLocked(this.state) || this.state.inaccessible) return;
+    if (!this.active || this.state.listingDeletion || this.state.editing || !this.state.verified || listingLocked(this.state) || this.state.inaccessible) return;
     let count = this.count();
     const uploads = files.map((file): Upload => {
       const error = fileError(file) ?? (count >= 20 ? 'Можно добавить не больше 20 фотографий.' : undefined);
@@ -117,7 +193,7 @@ export class PhotoManager {
 
   beginEdit() {
     if (!this.active || this.state.listingDeletion || this.running || !this.state.verified || this.state.inaccessible
-      || generationLocked(this.state) || this.deletes.length || this.state.uploads.some((entry) => entry.file)) return;
+      || listingLocked(this.state) || this.deletes.length || this.state.uploads.some((entry) => entry.file)) return;
     this.update({ editing: true, editSavedVersion: undefined });
     return this.state.listing;
   }
@@ -142,8 +218,11 @@ export class PhotoManager {
     try {
       const listing = await listings.get(this.id, controller.signal);
       if (controller.signal.aborted || signal.aborted) throw new DOMException('Отменено', 'AbortError');
-      if (listing.version < (this.state.listing?.version ?? 0)) throw new RequestError('invalid-response', 200);
-      this.update({ listing, verified: true, inaccessible: false, paused: false, error: undefined });
+      if (staleListing(listing, this.state.listing)) throw new RequestError('invalid-response', 200);
+      const correction = this.state.correction;
+      this.update({ listing, verified: true, inaccessible: false, paused: false, error: undefined,
+        ...(correction && { correction: { message: correction.message, retryAt: correction.retryAt } }),
+      });
       this.recheck(false);
       return listing;
     } finally {
@@ -153,7 +232,7 @@ export class PhotoManager {
   }
 
   async saveEdit(data: ListingData, expectedVersion: number, signal: AbortSignal) {
-    if (!this.active || !this.state.editing || this.saving || this.state.inaccessible) throw new Error('Редактирование недоступно');
+    if (!this.active || !this.state.editing || this.saving || this.state.inaccessible || correctionLocked(this.state)) throw new Error('Редактирование недоступно');
     this.interruptRead();
     this.saving = true;
     try {
@@ -163,13 +242,16 @@ export class PhotoManager {
       if (listing.version !== expectedVersion) this.clearGenerationFeedback();
       this.recheck(false);
       return listing;
+    } catch (failure) {
+      if (failure instanceof RequestError && failure.code === 'PHOTO_CORRECTION_ACTIVE') this.refreshNeeded = true;
+      throw failure;
     } finally { this.saving = false; void this.pump(); }
   }
 
   beginListingDelete() {
     if (this.state.listingDeletion) return this.state.listingDeletion;
     if (!this.active || this.running || this.saving || this.state.editing || !this.state.verified || this.state.inaccessible
-      || generationLocked(this.state) || !this.state.listing || this.deletes.length || this.state.uploads.some((entry) => entry.file)) return;
+      || listingLocked(this.state) || !this.state.listing || this.deletes.length || this.state.uploads.some((entry) => entry.file)) return;
     clearTimeout(this.timer);
     const listing = this.state.listing;
     const deletion: ListingDeletion = { listing, phase: 'confirm' };
@@ -187,7 +269,7 @@ export class PhotoManager {
 
   async confirmListingDelete() {
     const deletion = this.state.listingDeletion;
-    if (!this.active || !deletion || generationLocked(this.state) || !['confirm', 'error'].includes(deletion.phase)) return;
+    if (!this.active || !deletion || listingLocked(this.state) || !['confirm', 'error'].includes(deletion.phase)) return;
     const controller = new AbortController();
     this.controller = controller;
     this.recheck(false);
@@ -202,13 +284,15 @@ export class PhotoManager {
       const status = failure instanceof RequestError ? failure.status : undefined;
       const code = failure instanceof RequestError ? failure.code : undefined;
       const phase = status === 401 ? 'uncertain' : status === 403 ? 'denied' : status === 404 ? 'missing'
-        : status === 409 ? code === 'LISTING_BUSY' ? 'busy' : 'conflict'
+        : status === 409 ? code === 'LISTING_BUSY' || code === 'PHOTO_CORRECTION_ACTIVE' ? 'busy' : 'conflict'
           : failure instanceof RequestError && failure.kind === 'http' && (status ?? 0) < 500 ? 'error' : 'uncertain';
       const error = phase === 'uncertain' ? 'Не удалось подтвердить удаление. Проверьте подключение и состояние объявления перед новой попыткой.'
         : phase === 'denied' ? 'У вас нет доступа к удалению этого объявления.'
           : phase === 'missing' ? 'Объявление больше недоступно. Вернитесь к списку.'
             : phase === 'conflict' ? 'Объявление изменилось в другом окне. Загрузите актуальную карточку и заново подтвердите удаление.'
-              : phase === 'busy' ? 'Удаление недоступно, пока идёт генерация. Дождитесь её завершения и проверьте состояние.'
+              : phase === 'busy' ? code === 'PHOTO_CORRECTION_ACTIVE'
+                ? 'Завершите исправление фотографии перед удалением объявления.'
+                : 'Удаление недоступно, пока идёт генерация. Дождитесь её завершения и проверьте состояние.'
                 : 'Не удалось удалить объявление. Данные сохранены. Повторите попытку вручную.';
       this.update({ listingDeletion: { ...deletion, phase, error }, ...(['denied', 'missing', 'conflict', 'uncertain', 'busy'].includes(phase) ? { verified: false } : {}) });
       if (status === 401) this.recheck(true);
@@ -227,10 +311,11 @@ export class PhotoManager {
     try {
       const listing = await listings.get(this.id, controller.signal);
       if (controller.signal.aborted || !this.active) return;
-      if (listing.version < deletion.listing.version) throw new RequestError('invalid-response', 200);
+      if (staleListing(listing, this.state.listing)) throw new RequestError('invalid-response', 200);
       this.update({ listing, verified: true, inaccessible: false, listingDeletion: { listing,
-        phase: listing.status === 'generating' ? 'busy' : 'confirm',
-        error: listing.status === 'generating' ? 'Дождитесь завершения генерации и проверьте состояние.' : 'Актуальная карточка загружена. Проверьте данные и подтвердите удаление ещё раз.',
+        phase: listing.status === 'generating' || hasPendingCorrection(listing) ? 'busy' : 'confirm',
+        error: hasPendingCorrection(listing) ? 'Завершите исправление фотографии перед удалением объявления.'
+          : listing.status === 'generating' ? 'Дождитесь завершения генерации и проверьте состояние.' : 'Актуальная карточка загружена. Проверьте данные и подтвердите удаление ещё раз.',
       } });
       this.recheck(false);
       void this.pump();
@@ -253,7 +338,7 @@ export class PhotoManager {
 
   remove(photoId: string) {
     if (!this.active || this.state.listingDeletion || this.state.editing || !this.state.verified || this.state.inaccessible || this.state.paused
-      || generationLocked(this.state) || this.deletes.includes(photoId) || this.state.deleting === photoId
+      || listingLocked(this.state) || this.deletes.includes(photoId) || this.state.deleting === photoId
       || !this.state.listing?.photos.some((photo) => photo.id === photoId)) return;
     this.deletes.push(photoId);
     void this.pump();
@@ -262,19 +347,76 @@ export class PhotoManager {
   refresh = () => {
     if (!this.active || this.state.listingDeletion || this.running || this.saving || this.pollDelay() > 0) return;
     this.refreshNeeded = true;
-    void this.pump();
+    return this.pump();
   };
 
   resume = () => {
-    if (!this.active || this.state.listingDeletion || this.state.editing || !this.state.verified || this.state.inaccessible || generationLocked(this.state)) return;
+    if (!this.active || this.state.listingDeletion || this.state.editing || !this.state.verified || this.state.inaccessible || listingLocked(this.state)) return;
     this.update({ paused: false, error: undefined, uploads: this.state.uploads.map((entry) => entry.state === 'error' ? { ...entry, state: 'waiting', error: undefined } : entry) });
     void this.pump();
   };
 
+  refreshCorrection = () => {
+    const listing = this.state.listing;
+    if (listing?.photoCorrection !== undefined || listing?.photos.some((photo) => photo.improvementType)) this.refresh();
+  };
+
+  async changeCorrection(action: CorrectionAction, photoId: string, expectedCorrectionId?: string) {
+    const { listing } = this.state;
+    const interruptRead = this.state.reading && completesCorrection(action);
+    if (!this.active || !listing || listing.photoCorrectionRevision === undefined || (this.running && !interruptRead)
+      || this.saving || this.deletes.length || !correctionActionAvailable(this.state, action)
+      || (this.state.correction?.retryAt ?? 0) > Date.now()) return;
+    const correction = listing.photoCorrection;
+    const photo = listing.photos.find((item) => item.id === photoId && item.status === 'ready');
+    if (!photo || (action === 'start' ? correction !== null : correction?.id !== expectedCorrectionId || correction?.photoId !== photoId)) return;
+    if ((action === 'retry' && correction?.status !== 'failed') || (action === 'apply' && correction?.status !== 'ready')) return;
+    const improvement = action === 'retry' ? correction?.improvementType : photo.improvementType;
+    if ((action === 'start' || action === 'retry') && !improvement) return;
+
+    if (interruptRead) this.interruptRead();
+    clearTimeout(this.timer);
+    this.running = true;
+    const controller = new AbortController();
+    this.controller = controller;
+    let command: CorrectionCommand | undefined;
+    try {
+      const id = completesCorrection(action) ? correction!.id : crypto.randomUUID();
+      command = { action, id, photoId, listing };
+      this.update({ correction: { phase: 'sending', command } });
+      const current = action === 'start' || action === 'retry'
+        ? await photoCorrections.start(listing, photoId, improvement!, id, expectedCorrectionId, controller.signal)
+        : await photoCorrections.resolve(listing, correction!, action, controller.signal);
+      if (controller.signal.aborted) return;
+      if (action === 'apply') this.clearGenerationFeedback();
+      this.update({ listing: current, correction: undefined, announcement: correctionAnnouncement(action, current) });
+      this.recheck(false);
+    } catch (failure) {
+      if (controller.signal.aborted) return;
+      const error = failure instanceof RequestError ? failure : undefined;
+      if (error?.status === 401) {
+        this.update({ verified: false, inaccessible: true, correction: { phase: 'checking', accessError: message(error) } });
+        this.recheck(true);
+      } else if (error?.status === 429) {
+        const retryAt = Date.now() + (error.retryAfterSeconds ?? 1) * 1000;
+        this.update({ correction: { retryAt, message: 'Слишком много запросов. Подождите и попробуйте снова' } });
+      } else {
+        this.refreshNeeded = true;
+        const uncertain = error?.kind !== 'http' || ((error.status ?? 0) >= 500 && error.code !== 'PHOTO_CORRECTION_UNAVAILABLE' && error.status !== 501);
+        this.update({ correction: { phase: 'checking', message: correctionError(error), command: uncertain ? command : undefined } });
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        this.running = false;
+        void this.pump();
+      }
+    }
+  }
+
   async generate(channelIds: string[]) {
     const { listing, verified, inaccessible, editing, listingDeletion, uploads } = this.state;
     if (!this.active || !listing || !verified || inaccessible || editing || listingDeletion || this.running || this.saving
-      || generationLocked(this.state) || this.deletes.length || uploads.some((entry) => entry.file)
+      || listingLocked(this.state) || this.deletes.length || uploads.some((entry) => entry.file)
       || !channelIds.length || photoRequirement(listing) || (this.state.generation?.retryAt ?? 0) > Date.now()) return;
 
     clearTimeout(this.timer);
@@ -347,7 +489,7 @@ export class PhotoManager {
   }
 
   private pollDelay() {
-    return Math.max(0, (this.state.generation?.pollRetryAt ?? 0) - Date.now());
+    return Math.max(0, (this.state.generation?.pollRetryAt ?? 0) - Date.now(), (this.state.correction?.pollRetryAt ?? 0) - Date.now());
   }
 
   private scheduleRead(delay: number) {
@@ -369,13 +511,14 @@ export class PhotoManager {
       this.scheduleRead(pollDelay);
       return;
     }
-    const mayWrite = !deletionPhase && !this.state.editing && !this.state.paused && this.state.verified && !this.state.inaccessible && !generationLocked(this.state);
+    const mayWrite = !deletionPhase && !this.state.editing && !this.state.paused && this.state.verified && !this.state.inaccessible && !listingLocked(this.state);
     const deletion = !read && mayWrite ? this.deletes.shift() : undefined;
     const upload = !read && mayWrite && !deletion ? this.state.uploads.find((entry) => entry.state === 'waiting') : undefined;
     if (!read && !deletion && !upload) {
       const pollingGeneration = listing?.status === 'generating' && !this.state.inaccessible;
-      if (pollingGeneration || (this.state.verified && !this.state.inaccessible && listing?.photos.some((photo) => photo.status === 'processing'))) {
-        this.scheduleRead(pollingGeneration ? Math.max(2000, pollDelay) : 1500);
+      const pollingCorrection = listing?.photoCorrection?.status === 'processing' && !this.state.inaccessible;
+      if (pollingGeneration || pollingCorrection || (this.state.verified && !this.state.inaccessible && listing?.photos.some((photo) => photo.status === 'processing'))) {
+        this.scheduleRead(pollingGeneration || pollingCorrection ? Math.max(2000, pollDelay) : 1500);
       }
       return;
     }
@@ -396,7 +539,7 @@ export class PhotoManager {
       if (read) {
         const current = retainResult(await listings.get(this.id, controller.signal), listing);
         if (controller.signal.aborted) return;
-        if (listing && current.version < listing.version) throw new RequestError('invalid-response', 200);
+        if (staleListing(current, listing)) throw new RequestError('invalid-response', 200);
         const removed = this.reconcileDeletion && !current.photos.some((photo) => photo.id === this.reconcileDeletion) ? this.reconcileDeletion : undefined;
         this.reconcileDeletion = undefined;
         let available = 20 - current.photos.length;
@@ -408,22 +551,35 @@ export class PhotoManager {
         const launch = this.state.generation;
         const checked = launch?.phase === 'checking';
         const confirmed = launch?.reconciliation === 'uncertain' && observedGeneration(current, listing);
+        const correction = this.state.correction;
+        const command = correction?.command;
+        const completed = command && confirmedCorrection(command, current);
+        const pending = !completed && command && current.version === command.listing.version
+          && current.photoCorrectionRevision === command.listing.photoCorrectionRevision;
+        const comparison = current.photoCorrection?.status === 'ready'
+          && (listing?.photoCorrection?.status !== 'ready' || listing.photoCorrection.id !== current.photoCorrection.id
+            || this.state.announcement === comparisonReady);
+        if (completed && command.action === 'apply') this.clearGenerationFeedback();
         this.update({ listing: current, uploads, verified: true, inaccessible: false,
           ...(removed ? { removed } : {}),
-          ...(launch && { generation: { ...launch,
+          ...(correction && { correction: !completed && (correction.message || correction.retryAt || pending)
+            ? { message: correction.message, retryAt: correction.retryAt, command: pending ? command : undefined } : undefined }),
+          ...(this.state.generation && { generation: { ...this.state.generation,
             ...(checked && { phase: undefined, reconciliation: undefined, message: confirmed ? undefined : launch.message }),
             pollError: undefined, pollRetryAt: undefined,
           } }),
           ...(listing?.status === 'generating' && current.status !== 'generating' && !uploads.some((entry) => entry.file) ? { paused: false, error: undefined } : {}),
           ...(current.status === 'generating' && (this.state.editing || uploads.some((entry) => entry.file)) ? { paused: true, error: 'Очередь приостановлена до завершения генерации.' } : {}),
-          announcement: removed ? 'Фотография удалена.' : current.photos.some((photo) => photo.status === 'processing') ? 'Фотографии обрабатываются.' : 'Состояние фотографий обновлено.',
+          announcement: completed ? correctionAnnouncement(command.action, current) : comparison ? comparisonReady
+            : removed ? 'Фотография удалена.' : current.photos.some((photo) => photo.status === 'processing') ? 'Фотографии обрабатываются.' : 'Состояние фотографий обновлено.',
         });
       } else if (deletion) {
         const result = await photos.remove(this.id, deletion, listing!.version, controller.signal);
         if (controller.signal.aborted) return;
         this.metadataDirty = true;
         this.clearGenerationFeedback();
-        this.update({ listing: { ...listing!, version: result.version, status: 'draft', photos: listing!.photos.filter((photo) => photo.id !== deletion) },
+        this.update({ listing: { ...listing!, version: result.version, status: 'draft', photos: listing!.photos.filter((photo) => photo.id !== deletion),
+          ...(listing!.photoCorrection?.photoId === deletion && { photoCorrection: null }) },
           removed: deletion, announcement: 'Фотография удалена.', error: undefined });
       } else if (upload) {
         const result = await photos.upload(this.id, upload.file!, listing!.version, controller.signal);
@@ -441,6 +597,23 @@ export class PhotoManager {
       const status = failure instanceof RequestError ? failure.status : undefined;
       const uncertain = !read && (!(failure instanceof RequestError) || failure.kind !== 'http' || (status ?? 0) >= 500);
       const inaccessible = status === 401 || status === 403 || (read && status === 404);
+      if (read && status === 401 && correctionLocked(this.state)) {
+        this.deletes = [];
+        this.update({ verified: false, inaccessible: true, correction: { ...this.state.correction,
+          accessError: error, pollError: undefined, pollRetryAt: undefined,
+        } });
+        this.recheck(true);
+        return;
+      }
+      if (read && correctionLocked(this.state) && !inaccessible) {
+        const retryAfter = failure instanceof RequestError ? failure.retryAfterSeconds : undefined;
+        this.update({ verified: false, correction: { ...this.state.correction,
+          accessError: undefined,
+          pollError: 'Не удалось проверить исправление. Проверьте подключение и попробуйте снова',
+          pollRetryAt: retryAfter ? Date.now() + retryAfter * 1000 : undefined,
+        } });
+        return;
+      }
       if (read && generationLocked(this.state) && !inaccessible) {
         const retryAfter = failure instanceof RequestError ? failure.retryAfterSeconds : undefined;
         this.update({ verified: false, generation: { ...this.state.generation,
@@ -452,6 +625,9 @@ export class PhotoManager {
       this.deletes = [];
       this.update({ paused: true, verified: false, inaccessible, error,
         ...(inaccessible && deletionPhase === 'busy' && { listingDeletion: undefined }),
+        ...(inaccessible && this.state.correction && {
+          correction: { ...this.state.correction, accessError: undefined, pollError: undefined, pollRetryAt: undefined },
+        }),
         uploads: this.state.uploads.map((entry) => entry.key === upload?.key ? {
           ...entry, state: uncertain ? 'uncertain' : 'error',
           ...(uncertain ? { file: undefined } : {}),

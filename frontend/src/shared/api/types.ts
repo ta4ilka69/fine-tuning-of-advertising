@@ -26,6 +26,7 @@ export type ListingSummary = {
 };
 
 export type PhotoQuality = 'good' | 'needs_fix' | 'unfit';
+export type PhotoImprovement = 'clutter';
 
 export type Photo = {
   id: string;
@@ -38,10 +39,22 @@ export type Photo = {
   thumbnailUrl: string | null;
   quality: PhotoQuality | null;
   qualityReason: string | null;
+  qualityLabel?: string | null;
+  scene?: string | null;
+  description?: string | null;
+  improvementType?: PhotoImprovement | null;
+  improvementLabel?: string | null;
+  editInstruction?: string | null;
   error: Problem | null;
 };
 
 export type PhotoMutation = { version: number; photo: Photo };
+
+export type PhotoCorrection = { id: string; photoId: string; improvementType: PhotoImprovement } & (
+  | { status: 'processing' }
+  | { status: 'ready'; previewUrl: string }
+  | { status: 'failed'; error: Problem }
+);
 
 export type ListingOverview = ListingSummary & { isApartments: boolean; photos: Photo[] };
 
@@ -62,7 +75,13 @@ export type ChannelResult = {
   photos?: { top: { photo_id: string; why: string }[] };
 };
 
-export type Listing = ListingOverview & { data: ListingData; result: GenerationResult | null; generationError: Problem | null };
+export type Listing = ListingOverview & {
+  data: ListingData;
+  result: GenerationResult | null;
+  generationError: Problem | null;
+  photoCorrection?: PhotoCorrection | null;
+  photoCorrectionRevision?: number;
+};
 
 export type ListingPage = { items: ListingSummary[]; nextCursor: string | null };
 

@@ -4,6 +4,7 @@ import type { AnySchemaObject } from 'ajv';
 import addFormats from 'ajv-formats';
 import { describe, expect, test } from 'vitest';
 import { generationResult, listingDetails } from '../fixtures/listings';
+import { correctableListing, failed, processing, ready } from '../fixtures/photo-corrections';
 
 interface Contract {
   components: { schemas: Record<string, AnySchemaObject> };
@@ -111,4 +112,37 @@ test('контракт допускает пустые пояснения в с�
     }],
   };
   expect(validate(result), ajv.errorsText(validate.errors)).toBe(true);
+});
+
+test('контракт объявления принимает старые снимки и требует результат или ошибку по состоянию правки', () => {
+  const validate = validator({ $ref: '#/components/schemas/Listing' });
+  expect(validate(listingDetails())).toBe(true);
+  const listing = correctableListing();
+  expect(validate({ ...listing, photoCorrectionRevision: undefined })).toBe(false);
+  expect(validate({ ...listing, photoCorrection: undefined })).toBe(false);
+  for (const photoCorrection of [null, processing(), ready(), failed()]) {
+    expect(validate({ ...listing, photoCorrection }), ajv.errorsText(validate.errors)).toBe(true);
+  }
+  for (const photoCorrection of [{ ...ready(), status: 'processing' }, { ...processing(), status: 'ready' }, { ...processing(), status: 'failed' }]) {
+    expect(validate({ ...listing, photoCorrection })).toBe(false);
+  }
+});
+
+test('контракт мутаций исправления требует ревизию и состояние, соответствующее операции', () => {
+  const start = validator({ $ref: '#/components/schemas/PhotoCorrectionStart' });
+  const request = { expectedVersion: 2, expectedCorrectionRevision: 0, correctionId: processing().id, improvementType: 'clutter' };
+  expect(start(request)).toBe(true);
+  expect(start({ ...request, expectedCorrectionRevision: undefined })).toBe(false);
+  const accepted = validator({ $ref: '#/components/schemas/PhotoCorrectionAccepted' });
+  const resolved = validator({ $ref: '#/components/schemas/PhotoCorrectionResolved' });
+  const applied = validator({ $ref: '#/components/schemas/PhotoCorrectionApplied' });
+  const listing = correctableListing();
+  expect(accepted(listingDetails())).toBe(false);
+  expect(accepted(listing)).toBe(false);
+  expect(accepted({ ...listing, photoCorrection: processing(), photoCorrectionRevision: 1 })).toBe(true);
+  expect(resolved(listingDetails())).toBe(false);
+  expect(resolved({ ...listing, photoCorrectionRevision: 2 })).toBe(true);
+  expect(resolved({ ...listing, photoCorrection: processing(), photoCorrectionRevision: 1 })).toBe(false);
+  expect(applied({ ...listing, photoCorrectionRevision: 2 })).toBe(false);
+  expect(applied({ ...listing, photoCorrectionRevision: 2, status: 'draft' })).toBe(true);
 });

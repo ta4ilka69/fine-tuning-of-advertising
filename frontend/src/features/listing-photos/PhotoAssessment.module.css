@@ -25,3 +25,17 @@
 .assessment .label {
   color: var(--photo-quality-ink);
 }
+
+.details {
+  font-size: var(--mantine-font-size-sm);
+}
+
+.details summary {
+  color: var(--app-primary);
+  cursor: pointer;
+  width: fit-content;
+}
+
+.details p {
+  margin-block: 4px;
+}

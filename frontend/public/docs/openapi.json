@@ -782,7 +782,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Возвращает данные, фото, состояние генерации (status, generationError) и последний успешный результат result. Ход генерации отслеживается опросом этого запроса раз в 2 секунды, пока status=generating. Неудачная генерация и правка данных не стирают result: при status=draft непустой result считается устаревшим.",
+        "description": "Возвращает данные, фото, состояние генерации (status, generationError) и последний успешный результат result. Ход генерации отслеживается опросом этого запроса раз в 2 секунды, пока status=generating. Неудачная генерация и правка данных не стирают result: при status=draft непустой result считается устаревшим.\n\nПредлагаемое расширение. Если photoCorrection.status=processing, опрашивать это объявление раз в 2 секунды до ready, failed или null. После перезагрузки, возврата в карточку или конфликта получить состояние тем же запросом. Обработка продолжается после ухода со страницы. Для определения состояния правки использовать серверный снимок без кеширования, даже если version не изменилась. В ready нужно показать исходное фото из photos и исправленный вариант по previewUrl. Если результат записи неизвестен, сначала обновить карточку, затем при необходимости повторить действие вручную.",
         "parameters": [
           {
             "$ref": "#/components/parameters/id"
@@ -1048,7 +1048,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Заменяет data целиком. Сначала проверяет expectedVersion: устаревшая версия возвращает 409 VERSION_CONFLICT даже при неизменённых данных. Во время генерации (status=generating) возвращается 409 LISTING_BUSY. Затем сравнивает переданный data с сохранённым: при одинаковых значениях возвращает 200 с тем же объявлением, version и updatedAt не изменяются. Порядок ключей объектов при сравнении не учитывается; порядок элементов массивов учитывается. Фактическое изменение увеличивает version на 1, обновляет updatedAt и переводит status в draft; result сохраняется и считается устаревшим. Неполные данные допустимы; неверные типы и неприменимые поля отклоняются. Проверка версии, сравнение и запись атомарны.",
+        "description": "Заменяет data целиком. Сначала проверяет expectedVersion: устаревшая версия возвращает 409 VERSION_CONFLICT даже при неизменённых данных. Во время генерации (status=generating) возвращается 409 LISTING_BUSY. Затем сравнивает переданный data с сохранённым: при одинаковых значениях возвращает 200 с тем же объявлением, version и updatedAt не изменяются. Порядок ключей объектов при сравнении не учитывается; порядок элементов массивов учитывается. Фактическое изменение увеличивает version на 1, обновляет updatedAt и переводит status в draft; result сохраняется и считается устаревшим. Неполные данные допустимы; неверные типы и неприменимые поля отклоняются. Проверка версии, сравнение и запись атомарны. В предлагаемом расширении попытка исправления в processing или ready даёт 409 PHOTO_CORRECTION_ACTIVE.",
         "parameters": [
           {
             "$ref": "#/components/parameters/Origin"
@@ -1180,7 +1180,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Удаляет объявление вместе с фото. 409 для старой версии или во время генерации (LISTING_BUSY). Пользовательское подтверждение выполняет фронтенд.",
+        "description": "Удаляет объявление вместе с фото. 409 для старой версии или во время генерации (LISTING_BUSY). Пользовательское подтверждение выполняет фронтенд. В предлагаемом расширении попытка исправления в processing или ready даёт 409 PHOTO_CORRECTION_ACTIVE. Удаление объявления очищает связанные исправления и архивы.",
         "parameters": [
           {
             "$ref": "#/components/parameters/Origin"
@@ -1267,7 +1267,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Один файл за запрос. Проверка лимита 20 и изменение version атомарны. Загрузки клиента последовательные, каждая использует version предыдущего ответа. processing/ready/failed обновляются в GET объявления. Переход статуса обработки не меняет version, поскольку исходный файл не изменяется. Загрузка переводит status объявления в draft, если он был ready или failed. Во время генерации 409 LISTING_BUSY. Лимит файла относится к байтам файла, не к multipart-обрамлению.",
+        "description": "Один файл за запрос. Проверка лимита 20 и изменение version атомарны. Загрузки клиента последовательные, каждая использует version предыдущего ответа. processing/ready/failed обновляются в GET объявления. Переход статуса обработки не меняет version, поскольку исходный файл не изменяется. Загрузка переводит status объявления в draft, если он был ready или failed. Во время генерации 409 LISTING_BUSY. Лимит файла относится к байтам файла, не к multipart-обрамлению. В предлагаемом расширении попытка исправления в processing или ready даёт 409 PHOTO_CORRECTION_ACTIVE.",
         "parameters": [
           {
             "name": "Origin",
@@ -1360,7 +1360,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Возвращает новую version; проверяет владельца и принадлежность фото объявлению. Удаление увеличивает version и переводит status объявления в draft, если он был ready или failed. Во время генерации 409 LISTING_BUSY.",
+        "description": "Возвращает новую version; проверяет владельца и принадлежность фото объявлению. Удаление увеличивает version и переводит status объявления в draft, если он был ready или failed. Во время генерации 409 LISTING_BUSY. В предлагаемом расширении попытка исправления в processing или ready даёт 409 PHOTO_CORRECTION_ACTIVE. Удаление исходного фото очищает связанную попытку в failed. Удаление исправленного фото удаляет связанный архив исходника.",
         "parameters": [
           {
             "$ref": "#/components/parameters/Origin"
@@ -1418,7 +1418,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Только владелец объявления. Превью требует status=ready; иначе 409 PHOTO_NOT_READY. Исходник доступен после загрузки. Cache-Control: private, no-store.",
+        "description": "Только владелец объявления. Превью требует status=ready; иначе 409 PHOTO_NOT_READY. Исходник доступен после загрузки. Cache-Control: private, no-store. В предлагаемом расширении владелец может получить архивированный исходник по его прежнему ID.",
         "parameters": [
           {
             "$ref": "#/components/parameters/id"
@@ -1479,6 +1479,283 @@
             "$ref": "#/components/parameters/photoId"
           }
         ]
+      }
+    },
+    "/listings/{id}/photos/{photoId}/corrections": {
+      "post": {
+        "operationId": "startPhotoCorrection",
+        "summary": "Запустить или повторить исправление фотографии",
+        "tags": [
+          "Фотографии"
+        ],
+        "description": "Предлагаемое расширение контракта. Операция ещё не реализована на бэкенде. Требуется сессия владельца объявления и доверенный Origin. Для другого владельца или отсутствующего объекта ответ 404. При несовпадении expectedVersion возвращается 409 VERSION_CONFLICT с currentVersion. Исходное фото должно быть ready, а тип правки должен совпадать с improvementType фото. При отсутствии предложения или неподдерживаемом типе возвращается 422 PHOTO_CORRECTION_NOT_OFFERED. Инструкция берётся из анализа на сервере. Повтор разрешён для текущей попытки в failed с тем же фото и типом и указанным retryCorrectionId. Повтор атомарно заменяет неудачную попытку новой. Сервер выполняет проверки и постановку в очередь атомарно. Если есть текущая попытка, обычный запуск возвращает 409 PHOTO_CORRECTION_ACTIVE. Если попытка для повтора уже устарела, возвращается 409 PHOTO_CORRECTION_CHANGED. Повторное использование correctionId возвращает 409 PHOTO_CORRECTION_DUPLICATE без постановки в очередь. Во время генерации возвращается 409 LISTING_BUSY. Запуск сохраняет version, status и result объявления. Попытка переходит из processing в ready при наличии корректного JPEG или PNG до 15 000 000 байт либо в failed с ошибкой в формате Problem. По истечении серверного тайм-аута попытка переходит в failed с PHOTO_CORRECTION_TIMEOUT, а запоздалый результат отбрасывается. Пока попытка в processing или ready, редактирование, загрузка и удаление фото, удаление объявления и генерация заблокированы (409 PHOTO_CORRECTION_ACTIVE). При failed эти действия доступны. Временный файл хранится отдельно от photos, не участвует в генерации и не расходует лимит 20 фото. При недоступности исправления сервер отвечает 503 PHOTO_CORRECTION_UNAVAILABLE. При несовпадении expectedCorrectionRevision возвращается 409 PHOTO_CORRECTION_CHANGED. Сервер проверяет ревизию и меняет её в той же транзакции, что и состояние попытки.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/photoId"
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoCorrectionStart"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Попытка принята. Возвращаются её состояние и новая ревизия исправления.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoCorrectionAccepted"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "422": {
+            "$ref": "#/components/responses/422"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/listings/{id}/photos/{photoId}/corrections/{correctionId}": {
+      "delete": {
+        "operationId": "discardPhotoCorrection",
+        "summary": "Отказаться от исправления",
+        "tags": [
+          "Фотографии"
+        ],
+        "description": "Предлагаемое расширение контракта. Операция ещё не реализована на бэкенде. Требуется сессия владельца объявления и доверенный Origin. Для другого владельца или отсутствующего объекта ответ 404. При несовпадении expectedVersion возвращается 409 VERSION_CONFLICT с currentVersion. Отказ доступен в processing, ready и failed. ID должен совпадать с текущей попыткой, иначе 409 PHOTO_CORRECTION_CHANGED. Сервер освобождает блокировку, удаляет временный файл, выставляет photoCorrection=null и отбрасывает опоздавший результат фоновой задачи. Исходное фото, версия объявления и актуальность генерации сохраняются. Во время генерации возвращается 409 LISTING_BUSY.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/photoId"
+          },
+          {
+            "$ref": "#/components/parameters/correctionId"
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          },
+          {
+            "$ref": "#/components/parameters/ExpectedVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Отказ принят. Возвращается объявление с photoCorrection=null. Ревизия исправления увеличена на 1.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoCorrectionResolved"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "422": {
+            "$ref": "#/components/responses/422"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/listings/{id}/photos/{photoId}/corrections/{correctionId}/apply": {
+      "post": {
+        "operationId": "applyPhotoCorrection",
+        "summary": "Применить исправленную фотографию",
+        "tags": [
+          "Фотографии"
+        ],
+        "description": "Предлагаемое расширение контракта. Операция ещё не реализована на бэкенде. Требуется сессия владельца объявления и доверенный Origin. Для другого владельца или отсутствующего объекта ответ 404. При несовпадении expectedVersion возвращается 409 VERSION_CONFLICT с currentVersion. Применить можно только текущую попытку в ready. Если ID не совпал, возвращается 409 PHOTO_CORRECTION_CHANGED, если вариант ещё не готов — 409 PHOTO_CORRECTION_NOT_READY. Сервер атомарно ставит исправленное фото с новым ID в тот же слот, возвращает его стандартные contentUrl и thumbnailUrl и удаляет временный предпросмотр. Исходный файл архивируется вместе с объявлением и доступен владельцу по прежнему contentUrl до удаления исправленного фото или объявления. Архив и временный предпросмотр не занимают слоты. Сервер увеличивает version на 1, устанавливает status=draft, очищает generationError, сохраняет предыдущий result как устаревший и выставляет photoCorrection=null. Следующая генерация использует активные фото. Если для нового фото требуется анализ, оно получает статус processing, а генерация доступна после завершения анализа.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/photoId"
+          },
+          {
+            "$ref": "#/components/parameters/correctionId"
+          },
+          {
+            "$ref": "#/components/parameters/Origin"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoCorrectionApply"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Исправленный вариант применён. Возвращается объявление с новой версией. Ревизия исправления увеличена на 1.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoCorrectionApplied"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "422": {
+            "$ref": "#/components/responses/422"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/listings/{id}/photos/{photoId}/corrections/{correctionId}/preview": {
+      "get": {
+        "operationId": "getPhotoCorrectionPreview",
+        "summary": "Посмотреть исправленный вариант",
+        "tags": [
+          "Фотографии"
+        ],
+        "description": "Предлагаемое расширение контракта. Операция ещё не реализована на бэкенде. Требуется сессия владельца объявления. Возвращает временный JPEG или PNG для текущей попытки в ready. Для processing и failed возвращается 409 PHOTO_CORRECTION_NOT_READY. Для другой, удалённой или уже завершённой попытки возвращается 404.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/photoId"
+          },
+          {
+            "$ref": "#/components/parameters/correctionId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Изображение исправленного варианта.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "409": {
+            "$ref": "#/components/responses/409"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
       }
     },
     "/listings/{id}/validate": {
@@ -1549,7 +1826,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Ничего не изменяет. 200 с errors/warnings; canGenerate=true только при пустых errors. Проверяет ReadyListingData и минимум одно фото; все прикреплённые фото должны быть ready. Расхождения площадей и этажности — warnings. При запуске проверка повторяется атомарно.",
+        "description": "Ничего не изменяет. 200 с errors/warnings; canGenerate=true только при пустых errors. Проверяет ReadyListingData и минимум одно фото; все прикреплённые фото должны быть ready. Расхождения площадей и этажности — warnings. При запуске проверка повторяется атомарно. В предлагаемом расширении попытка исправления в processing или ready даёт 409 PHOTO_CORRECTION_ACTIVE.",
         "parameters": [
           {
             "name": "Origin",
@@ -1775,7 +2052,7 @@
             "$ref": "#/components/responses/503"
           }
         },
-        "description": "Непустой уникальный набор включённых channelIds. Запуск атомарный: переводит объявление в status=generating, только если генерация ещё не идёт; иначе 409 LISTING_BUSY. Версия устарела — 409 VERSION_CONFLICT. Ошибки данных дают 422 с fieldErrors. Запуск не меняет version. Ответ — объявление в состоянии generating; дальше клиент опрашивает GET /listings/{id}. Генерация, не завершившаяся за 50 секунд, переводит объявление в failed с GENERATION_TIMEOUT; поздний ответ отбрасывается. Частичный результат не считается успешным: успех заменяет result целиком, неудача оставляет прежний.",
+        "description": "Непустой уникальный набор включённых channelIds. Запуск атомарный: переводит объявление в status=generating, только если генерация ещё не идёт; иначе 409 LISTING_BUSY. Версия устарела — 409 VERSION_CONFLICT. Ошибки данных дают 422 с fieldErrors. Запуск не меняет version. Ответ — объявление в состоянии generating; дальше клиент опрашивает GET /listings/{id}. Генерация, не завершившаяся за 50 секунд, переводит объявление в failed с GENERATION_TIMEOUT; поздний ответ отбрасывается. Частичный результат не считается успешным: успех заменяет result целиком, неудача оставляет прежний. В предлагаемом расширении попытка исправления в processing или ready даёт 409 PHOTO_CORRECTION_ACTIVE.",
         "parameters": [
           {
             "name": "Origin",
@@ -2810,21 +3087,21 @@
               "clutter",
               null
             ],
-            "description": "Найденное улучшение кадра из закрытого списка (clutter — лишний мусор в кадре). null, если улучшать нечего."
+            "description": "Найденная автоматическая правка. Только известный ненулевой тип даёт право предложить запуск. Отсутствие поля или null может означать, что фото проанализировали до появления этой функции либо правка не предложена. Оценка needs_fix сама по себе не даёт права на запуск."
           },
           "improvementLabel": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Улучшение по-русски, например «почистить кадр». null, если улучшения нет."
+            "description": "Название найденной правки по-русски, например «почистить кадр». Может отсутствовать или быть null."
           },
           "editInstruction": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Инструкция для редактора: что и где поправить в кадре. null, если улучшения нет."
+            "description": "Описание найденной правки: что и где поправить в кадре. Может отсутствовать или быть null."
           },
           "error": {
             "anyOf": [
@@ -2849,7 +3126,7 @@
           "thumbnailUrl",
           "error"
         ],
-        "description": "URL проверяет сессию, не является публичным адресом. processing — готовится превью и нейросеть оценивает фото; failed — обработка не удалась, фото удаляют и загружают заново. Порядок фото — порядок загрузки. Предел 15 МБ трактуется как 15 000 000 байт. После анализа у фото появляются оценка (quality, qualityLabel), её пояснение (qualityReason), что на фото (scene), описание кадра (description) и, если найдено, разрешённое улучшение (improvementType, improvementLabel, editInstruction); у необработанных фото эти поля null.",
+        "description": "URL проверяет сессию, не является публичным адресом. processing — готовится превью и нейросеть оценивает фото; failed — обработка не удалась, фото удаляют и загружают заново. Порядок фото — порядок загрузки. Предел 15 МБ трактуется как 15 000 000 байт. После анализа у фото появляются оценка (quality, qualityLabel), её пояснение (qualityReason), что на фото (scene), описание кадра (description) и, если найдено, разрешённое улучшение (improvementType, improvementLabel, editInstruction); у необработанных фото эти поля null. У старых фото новые поля могут отсутствовать или быть null. Клиент показывает известные данные без вывода о невозможности улучшения.",
         "allOf": [
           {
             "if": {
@@ -3195,7 +3472,24 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time",
-            "description": "Меняется только от действий агента: правка данных, загрузка и удаление фото."
+            "description": "Меняется только от действий агента: правка данных, загрузка и удаление фото. В предлагаемом расширении применение исправления тоже обновляет это время."
+          },
+          "photoCorrection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhotoCorrection"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Предлагаемое расширение. Одна текущая попытка на объявление. Старый сервер не возвращает поля photoCorrection и photoCorrectionRevision. При поддержке исправления оба поля присутствуют во всех ответах Listing. Значение photoCorrection=null означает, что текущей попытки нет."
+          },
+          "photoCorrectionRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Ревизия попытки исправления данного объявления. Начальное значение 0. Сервер увеличивает её на 1 атомарно при запуске, повторе, применении и отказе, а также при удалении исходного фото со связанной попыткой. Фоновая смена статуса её не меняет. Поле возвращается вместе с photoCorrection."
           }
         },
         "additionalProperties": false,
@@ -3265,7 +3559,15 @@
               }
             }
           }
-        ]
+        ],
+        "dependentRequired": {
+          "photoCorrection": [
+            "photoCorrectionRevision"
+          ],
+          "photoCorrectionRevision": [
+            "photoCorrection"
+          ]
+        }
       },
       "ListingSummary": {
         "type": "object",
@@ -4187,6 +4489,217 @@
           "failed"
         ],
         "description": "draft — данные менялись после генерации или генерации не было; generating — идёт генерация, объявление заблокировано; ready — результат актуален; failed — последняя генерация не удалась. draft с непустым result означает, что результат устарел."
+      },
+      "PhotoImprovementType": {
+        "type": "string",
+        "enum": [
+          "clutter"
+        ],
+        "description": "Убрать временные предметы из кадра: мусор, пустые упаковки или использованную посуду."
+      },
+      "PhotoCorrectionStart": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "improvementType": {
+            "$ref": "#/components/schemas/PhotoImprovementType"
+          },
+          "correctionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Новый UUID попытки, созданный клиентом. Сервер хранит факт его использования до удаления объявления."
+          },
+          "retryCorrectionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID текущей неудачной попытки для повтора. Для первичного запуска поле отсутствует."
+          },
+          "expectedCorrectionRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Ревизия исправления из последнего снимка объявления. Проверяется вместе с expectedVersion, даже если текущей попытки нет."
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "expectedCorrectionRevision",
+          "improvementType",
+          "correctionId"
+        ],
+        "additionalProperties": false
+      },
+      "PhotoCorrectionApply": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
+      "PhotoCorrection": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "photoId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID исходного фото из Listing.photos. Ссылки на исходник берутся из Photo.contentUrl и Photo.thumbnailUrl."
+          },
+          "improvementType": {
+            "$ref": "#/components/schemas/PhotoImprovementType"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "ready",
+              "failed"
+            ]
+          },
+          "previewUrl": {
+            "type": "string",
+            "format": "uri-reference",
+            "description": "Ссылка того же origin на /api/v1/listings/{id}/photos/{photoId}/corrections/{correctionId}/preview."
+          },
+          "error": {
+            "$ref": "#/components/schemas/Problem"
+          }
+        },
+        "required": [
+          "id",
+          "photoId",
+          "improvementType",
+          "status"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "processing"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "previewUrl": false,
+                "error": false
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "ready"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "previewUrl"
+              ],
+              "properties": {
+                "previewUrl": {},
+                "error": false
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "failed"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "error"
+              ],
+              "properties": {
+                "error": {},
+                "previewUrl": false
+              }
+            }
+          }
+        ]
+      },
+      "PhotoCorrectionAccepted": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Listing"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "photoCorrection": {
+                "$ref": "#/components/schemas/PhotoCorrection"
+              },
+              "photoCorrectionRevision": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "photoCorrection",
+              "photoCorrectionRevision"
+            ]
+          }
+        ]
+      },
+      "PhotoCorrectionResolved": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Listing"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "photoCorrection": {
+                "type": "null"
+              },
+              "photoCorrectionRevision": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "photoCorrection",
+              "photoCorrectionRevision"
+            ]
+          }
+        ]
+      },
+      "PhotoCorrectionApplied": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PhotoCorrectionResolved"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": "draft"
+              }
+            }
+          }
+        ]
       }
     },
     "responses": {
@@ -4431,6 +4944,15 @@
         "schema": {
           "type": "integer",
           "minimum": 1
+        }
+      },
+      "correctionId": {
+        "name": "correctionId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
         }
       }
     },

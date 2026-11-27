@@ -9,9 +9,17 @@ const labels: Record<PhotoQuality, string> = {
 };
 
 export function PhotoAssessment({ photo }: { photo: Photo }) {
-  if (!photo.quality) return null;
+  const improvement = photo.improvementType === 'clutter' ? photo.improvementLabel || 'Убрать лишнее из кадра' : undefined;
+  if (!photo.quality && !improvement && !photo.scene && !photo.description) return null;
   return <div className={classes.assessment}>
-    <Text size="sm" fw={600} className={classes.label}>{labels[photo.quality]}</Text>
+    {photo.quality && <Text size="sm" fw={600} className={classes.label}>{photo.qualityLabel ? `Оценка: ${photo.qualityLabel}` : labels[photo.quality]}</Text>}
     {photo.qualityReason && <Text size="sm">{photo.qualityReason}</Text>}
+    {improvement && <Text size="sm" fw={600}>Правка ИИ: {improvement}</Text>}
+    {(photo.scene || photo.description || (improvement && photo.editInstruction)) && <details className={classes.details}>
+      <summary>Детали анализа</summary>
+      {improvement && photo.editInstruction && <Text size="sm">{photo.editInstruction}</Text>}
+      {photo.scene && <Text size="sm" fw={600}>{photo.scene}</Text>}
+      {photo.description && <Text size="sm">{photo.description}</Text>}
+    </details>}
   </div>;
 }
